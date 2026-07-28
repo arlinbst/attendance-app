@@ -42,9 +42,10 @@ function showTab(tabName) {
         stopScanner();
     }
     
-    // Update cluster filter when switching to records tab
+    // Refresh cluster dropdown when switching to records tab
     if (tabName === 'records') {
         populateClusterFilter();
+        filterRecords(); // Re-apply current filters
     }
 }
 
@@ -170,8 +171,8 @@ function onScanError(errorMessage) {
 function logAttendance(name, cluster) {
     const record = {
         id: Date.now(),
-        name: name,
-        cluster: cluster,
+        name: name.trim(),
+        cluster: cluster.trim(), // Trim whitespace
         timestamp: new Date().toISOString(),
         date: new Date().toLocaleDateString(),
         time: new Date().toLocaleTimeString()
@@ -180,7 +181,7 @@ function logAttendance(name, cluster) {
     attendanceRecords.unshift(record);
     saveRecords();
     updateStats();
-    populateClusterFilter(); // Update dropdown after new record
+    populateClusterFilter(); // Update dropdown after adding record
     displayRecords();
 }
 
@@ -202,7 +203,7 @@ function clearAllRecords() {
         attendanceRecords = [];
         saveRecords();
         updateStats();
-        populateClusterFilter(); // Update dropdown after clearing
+        populateClusterFilter(); // Update dropdown
         displayRecords();
     }
 }
@@ -236,9 +237,10 @@ function updateStats() {
 }
 
 function populateClusterFilter() {
-    const clusters = [...new Set(attendanceRecords.map(r => r.cluster))].sort();
+    // Get unique clusters and sort them
+    const clusters = [...new Set(attendanceRecords.map(r => r.cluster.trim()))].sort();
     const select = document.getElementById('filter-cluster');
-    const currentValue = select.value; // Remember current selection
+    const currentValue = select.value; // Save current selection
     
     select.innerHTML = '<option value="">All Clusters</option>';
     clusters.forEach(cluster => {
@@ -248,41 +250,35 @@ function populateClusterFilter() {
         select.appendChild(option);
     });
     
-    // Restore previous selection if it still exists
+    // Restore previous selection if it exists
     if (currentValue && clusters.includes(currentValue)) {
         select.value = currentValue;
     }
-    
-    console.log('Clusters available:', clusters);
 }
 
-// Filter Records
+// Filter Records - FIXED VERSION
 function filterRecords() {
     const dateFilter = document.getElementById('filter-date').value;
-    const clusterFilter = document.getElementById('filter-cluster').value;
+    const clusterFilter = document.getElementById('filter-cluster').value.trim();
     
-    console.log('Date filter:', dateFilter);
-    console.log('Cluster filter:', clusterFilter);
-    console.log('Total records:', attendanceRecords.length);
-    
-    let filtered = [...attendanceRecords]; // Create a copy
+    // Start with all records
+    let filtered = [...attendanceRecords];
     
     // Apply date filter
     if (dateFilter) {
         const filterDate = new Date(dateFilter).toLocaleDateString();
         filtered = filtered.filter(r => r.date === filterDate);
-        console.log('After date filter:', filtered.length);
     }
     
-    // Apply cluster filter
+    // Apply cluster filter - EXACT MATCH
     if (clusterFilter) {
-        filtered = filtered.filter(r => r.cluster === clusterFilter);
-        console.log('After cluster filter:', filtered.length);
-        console.log('Looking for cluster:', clusterFilter);
-        console.log('Available clusters in filtered:', filtered.map(r => r.cluster));
+        filtered = filtered.filter(r => r.cluster.trim() === clusterFilter);
     }
     
-    console.log('Final filtered count:', filtered.length);
+    // Debug info - show alert
+    if (clusterFilter) {
+        alert(`Filtering by: "${clusterFilter}"\nFound: ${filtered.length} records`);
+    }
     
     // Display filtered results
     displayRecords(filtered);
