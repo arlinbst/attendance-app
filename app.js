@@ -521,7 +521,7 @@ function generateQR() {
     const cluster = document.getElementById('employee-cluster').value.trim();
     
     if (!name || !cluster) {
-        alert('Please enter both name and cluster!');
+        alert('Please enter name and select cluster!');
         return;
     }
     
