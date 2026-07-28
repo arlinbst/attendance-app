@@ -1,11 +1,13 @@
 // Service Worker for PWA
-const CACHE_NAME = 'attendance-app-v1';
+const CACHE_NAME = 'attendance-app-v2';
 const urlsToCache = [
   './',
   './index.html',
   './styles.css',
   './app.js',
   './manifest.json',
+  'https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js',
+  'https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js',
   'https://unpkg.com/html5-qrcode',
   'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'
 ];
