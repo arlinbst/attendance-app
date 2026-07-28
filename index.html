@@ -25,6 +25,17 @@
         <!-- SCAN TAB -->
         <div id="scan-tab" class="tab-content active">
             <div class="scan-section">
+                <div class="form-section">
+                    <label for="service-type" style="display: block; margin-bottom: 8px; font-weight: bold;">Type of Service:</label>
+                    <select id="service-type" class="input-field" style="margin-bottom: 15px;">
+                        <option value="Bible Study">Bible Study</option>
+                        <option value="Prayer Meeting">Prayer Meeting</option>
+                        <option value="First Worship">First Worship</option>
+                        <option value="Second Worship">Second Worship</option>
+                        <option value="Evangelistic Service">Evangelistic Service</option>
+                        <option value="Family Devotion">Family Devotion</option>
+                    </select>
+                </div>
                 <div id="reader"></div>
                 <button id="start-scan-btn" class="btn btn-primary">Start Scanner</button>
                 <button id="stop-scan-btn" class="btn btn-danger" style="display: none;">Stop Scanner</button>
@@ -33,6 +44,7 @@
                     <h3>✅ Attendance Logged!</h3>
                     <p><strong>Name:</strong> <span id="scanned-name"></span></p>
                     <p><strong>Cluster:</strong> <span id="scanned-cluster"></span></p>
+                    <p><strong>Service Type:</strong> <span id="scanned-service"></span></p>
                     <p><strong>Time:</strong> <span id="scanned-time"></span></p>
                 </div>
             </div>
@@ -69,9 +81,9 @@
         <!-- GENERATE QR TAB -->
         <div id="generate-tab" class="tab-content">
             <div class="form-section">
-                <h3>Generate QR Code for Employee</h3>
-                <input type="text" id="employee-name" class="input-field" placeholder="Enter Employee Name" required>
-                <input type="text" id="employee-cluster" class="input-field" placeholder="Enter Cluster/Department" required>
+                <h3>Generate QR Code</h3>
+                <input type="text" id="employee-name" class="input-field" placeholder="Enter Lastname, Firstname Middlename)" required>
+                <input type="text" id="employee-cluster" class="input-field" placeholder="Enter Cluster" required>
                 <button onclick="generateQR()" class="btn btn-primary">Generate QR Code</button>
                 
                 <div id="qr-output" style="display: none; margin-top: 20px;">
