@@ -2,9 +2,10 @@
 let html5QrcodeScanner = null;
 let attendanceRecords = [];
 let currentQRCode = null;
-let isProcessingScan = false; // Prevent multiple scans
-let lastScannedData = null; // Track last scanned QR data
-let lastScanTime = 0; // Track last scan timestamp
+let isProcessingScan = false;
+let lastScannedData = null;
+let lastScanTime = 0;
+let currentDisplayedRecords = []; // Track what's currently shown
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -12,10 +13,8 @@ document.addEventListener('DOMContentLoaded', function() {
     updateStats();
     populateClusterFilter();
     
-    // Set today's date as default filter
     document.getElementById('filter-date').valueAsDate = new Date();
     
-    // Register service worker for PWA
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js')
             .then(() => console.log('Service Worker registered'))
@@ -25,7 +24,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Tab switching
 function showTab(tabName) {
-    // Hide all tabs
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
     });
@@ -33,13 +31,15 @@ function showTab(tabName) {
         btn.classList.remove('active');
     });
     
-    // Show selected tab
     document.getElementById(tabName + '-tab').classList.add('active');
     event.target.classList.add('active');
     
-    // Stop scanner when switching away from scan tab
     if (tabName !== 'scan' && html5QrcodeScanner) {
         stopScanner();
+    }
+    
+    if (tabName === 'records') {
+        populateClusterFilter();
     }
 }
 
@@ -48,7 +48,6 @@ document.getElementById('start-scan-btn').addEventListener('click', startScanner
 document.getElementById('stop-scan-btn').addEventListener('click', stopScanner);
 
 function startScanner() {
-    // Reset all flags
     isProcessingScan = false;
     lastScannedData = null;
     lastScanTime = 0;
@@ -81,7 +80,6 @@ function stopScanner() {
             html5QrcodeScanner = null;
             document.getElementById('start-scan-btn').style.display = 'inline-block';
             document.getElementById('stop-scan-btn').style.display = 'none';
-            // Don't reset flags here - let them timeout naturally to prevent accidental re-scans
         }).catch(err => {
             console.error('Error stopping scanner:', err);
         });
@@ -91,18 +89,14 @@ function stopScanner() {
 function onScanSuccess(decodedText, decodedResult) {
     const now = Date.now();
     
-    // AGGRESSIVE duplicate prevention
-    // 1. Check if already processing
     if (isProcessingScan) {
         return;
     }
     
-    // 2. Check if same data was just scanned (within 3 seconds)
     if (lastScannedData === decodedText && (now - lastScanTime) < 3000) {
         return;
     }
     
-    // Set flags immediately to block other scans
     isProcessingScan = true;
     lastScannedData = decodedText;
     lastScanTime = now;
@@ -111,14 +105,12 @@ function onScanSuccess(decodedText, decodedResult) {
         const data = JSON.parse(decodedText);
         
         if (data.name && data.cluster) {
-            // Stop scanner immediately (before logging)
             stopScanner();
             
-            // Check for recent duplicate in records (within last 5 seconds)
             const recentDuplicate = attendanceRecords.find(record => 
                 record.name === data.name && 
                 record.cluster === data.cluster &&
-                (now - record.id) < 5000 // 5 seconds
+                (now - record.id) < 5000
             );
             
             if (recentDuplicate) {
@@ -129,21 +121,17 @@ function onScanSuccess(decodedText, decodedResult) {
                 return;
             }
             
-            // Log attendance
             logAttendance(data.name, data.cluster);
             
-            // Show result
             document.getElementById('scanned-name').textContent = data.name;
             document.getElementById('scanned-cluster').textContent = data.cluster;
             document.getElementById('scanned-time').textContent = new Date().toLocaleString();
             document.getElementById('scan-result').style.display = 'block';
             
-            // Vibrate on success
             if (navigator.vibrate) {
                 navigator.vibrate(200);
             }
             
-            // Reset processing flag after delay
             setTimeout(() => {
                 isProcessingScan = false;
             }, 3000);
@@ -158,15 +146,15 @@ function onScanSuccess(decodedText, decodedResult) {
 }
 
 function onScanError(errorMessage) {
-    // Ignore errors (scanning continues)
+    // Ignore errors
 }
 
 // Attendance Logging
 function logAttendance(name, cluster) {
     const record = {
         id: Date.now(),
-        name: name,
-        cluster: cluster,
+        name: name.trim(),
+        cluster: cluster.trim(),
         timestamp: new Date().toISOString(),
         date: new Date().toLocaleDateString(),
         time: new Date().toLocaleTimeString()
@@ -175,7 +163,7 @@ function logAttendance(name, cluster) {
     attendanceRecords.unshift(record);
     saveRecords();
     updateStats();
-    populateClusterFilter(); // Update cluster dropdown
+    populateClusterFilter();
     displayRecords();
 }
 
@@ -197,15 +185,18 @@ function clearAllRecords() {
         attendanceRecords = [];
         saveRecords();
         updateStats();
-        populateClusterFilter(); // Update dropdown after clearing
+        populateClusterFilter();
         displayRecords();
     }
 }
 
-// Display Functions
+// Display Functions - UPDATED to track displayed records
 function displayRecords(filteredRecords = null) {
     const recordsList = document.getElementById('records-list');
     const records = filteredRecords || attendanceRecords;
+    
+    // IMPORTANT: Store currently displayed records for export
+    currentDisplayedRecords = records;
     
     if (records.length === 0) {
         recordsList.innerHTML = '<p class="empty-state">No attendance records found.</p>';
@@ -231,9 +222,9 @@ function updateStats() {
 }
 
 function populateClusterFilter() {
-    const clusters = [...new Set(attendanceRecords.map(r => r.cluster))].sort();
+    const clusters = [...new Set(attendanceRecords.map(r => r.cluster.trim()))].sort();
     const select = document.getElementById('filter-cluster');
-    const currentValue = select.value; // Remember current selection
+    const currentValue = select.value;
     
     select.innerHTML = '<option value="">All Clusters</option>';
     clusters.forEach(cluster => {
@@ -243,46 +234,42 @@ function populateClusterFilter() {
         select.appendChild(option);
     });
     
-    // Restore previous selection if it still exists
     if (currentValue && clusters.includes(currentValue)) {
         select.value = currentValue;
     }
 }
 
-// Filter Records
+// Filter Records - FIXED with .slice()
 function filterRecords() {
     const dateFilter = document.getElementById('filter-date').value;
     const clusterFilter = document.getElementById('filter-cluster').value;
     
-    let filtered = attendanceRecords;
+    let filtered = attendanceRecords.slice(); // Create copy
     
-    // Apply date filter
     if (dateFilter) {
         const filterDate = new Date(dateFilter).toLocaleDateString();
         filtered = filtered.filter(r => r.date === filterDate);
     }
     
-    // Apply cluster filter
     if (clusterFilter) {
-        filtered = filtered.filter(r => r.cluster === clusterFilter);
+        filtered = filtered.filter(r => r.cluster.trim() === clusterFilter.trim());
     }
     
-    // Display filtered results
     displayRecords(filtered);
-    
-    // Show count
-    console.log(`Filtered ${filtered.length} records from ${attendanceRecords.length} total`);
 }
 
-// Export to CSV
+// Export to CSV - FIXED to use displayed records
 function exportToCSV() {
-    if (attendanceRecords.length === 0) {
+    // Use currently displayed records instead of all records
+    const recordsToExport = currentDisplayedRecords.length > 0 ? currentDisplayedRecords : attendanceRecords;
+    
+    if (recordsToExport.length === 0) {
         alert('No records to export!');
         return;
     }
     
     const headers = ['Name', 'Cluster', 'Date', 'Time'];
-    const rows = attendanceRecords.map(r => [r.name, r.cluster, r.date, r.time]);
+    const rows = recordsToExport.map(r => [r.name, r.cluster, r.date, r.time]);
     
     let csvContent = headers.join(',') + '\n';
     rows.forEach(row => {
@@ -293,7 +280,21 @@ function exportToCSV() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `attendance_${new Date().toLocaleDateString()}.csv`;
+    
+    // Generate smart filename with filter info
+    const dateFilter = document.getElementById('filter-date').value;
+    const clusterFilter = document.getElementById('filter-cluster').value;
+    let filename = 'attendance';
+    
+    if (dateFilter) {
+        filename += `_${dateFilter}`;
+    }
+    if (clusterFilter) {
+        filename += `_${clusterFilter.replace(/\s+/g, '_')}`;
+    }
+    filename += `.csv`;
+    
+    a.download = filename;
     a.click();
     window.URL.revokeObjectURL(url);
 }
@@ -310,10 +311,8 @@ function generateQR() {
     
     const data = JSON.stringify({ name, cluster });
     
-    // Clear previous QR code
     document.getElementById('qrcode').innerHTML = '';
     
-    // Generate new QR code
     currentQRCode = new QRCode(document.getElementById('qrcode'), {
         text: data,
         width: 256,
