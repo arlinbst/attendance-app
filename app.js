@@ -278,8 +278,22 @@ function filterRecords() {
 
 // Export to CSV - FIXED to export filtered records
 function exportToCSV() {
-    // Use currently displayed records instead of all records
-    const recordsToExport = currentDisplayedRecords.length > 0 ? currentDisplayedRecords : attendanceRecords;
+    // Re-apply current filters to ensure we export what's displayed
+    const dateFilter = document.getElementById('filter-date').value;
+    const clusterFilter = document.getElementById('filter-cluster').value;
+    
+    let recordsToExport = attendanceRecords.slice(); // Start with all records
+    
+    // Apply date filter if set
+    if (dateFilter) {
+        const filterDate = new Date(dateFilter).toLocaleDateString();
+        recordsToExport = recordsToExport.filter(r => r.date === filterDate);
+    }
+    
+    // Apply cluster filter if set
+    if (clusterFilter) {
+        recordsToExport = recordsToExport.filter(r => r.cluster.trim() === clusterFilter.trim());
+    }
     
     if (recordsToExport.length === 0) {
         alert('No records to export!');
@@ -300,8 +314,6 @@ function exportToCSV() {
     a.href = url;
     
     // Generate filename with filter info
-    const dateFilter = document.getElementById('filter-date').value;
-    const clusterFilter = document.getElementById('filter-cluster').value;
     let filename = 'attendance';
     
     if (dateFilter) {
