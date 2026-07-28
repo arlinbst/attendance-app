@@ -2,6 +2,7 @@
 let html5QrcodeScanner = null;
 let attendanceRecords = [];
 let currentQRCode = null;
+let isProcessingScan = false; // Prevent multiple scans
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -45,6 +46,9 @@ document.getElementById('start-scan-btn').addEventListener('click', startScanner
 document.getElementById('stop-scan-btn').addEventListener('click', stopScanner);
 
 function startScanner() {
+    // Reset processing flag
+    isProcessingScan = false;
+    
     const config = {
         fps: 10,
         qrbox: { width: 250, height: 250 },
@@ -73,17 +77,44 @@ function stopScanner() {
             html5QrcodeScanner = null;
             document.getElementById('start-scan-btn').style.display = 'inline-block';
             document.getElementById('stop-scan-btn').style.display = 'none';
+            isProcessingScan = false; // Reset flag when scanner stops
         }).catch(err => {
             console.error('Error stopping scanner:', err);
+            isProcessingScan = false; // Reset flag even on error
         });
     }
 }
 
 function onScanSuccess(decodedText, decodedResult) {
+    // Prevent multiple scans
+    if (isProcessingScan) {
+        return;
+    }
+    
     try {
         const data = JSON.parse(decodedText);
         
         if (data.name && data.cluster) {
+            // Set flag to prevent duplicate processing
+            isProcessingScan = true;
+            
+            // Stop scanner immediately
+            stopScanner();
+            
+            // Check for duplicate within last 10 seconds
+            const now = Date.now();
+            const recentDuplicate = attendanceRecords.find(record => 
+                record.name === data.name && 
+                record.cluster === data.cluster &&
+                (now - record.id) < 10000 // 10 seconds
+            );
+            
+            if (recentDuplicate) {
+                alert('This person was already scanned recently!');
+                isProcessingScan = false;
+                return;
+            }
+            
             logAttendance(data.name, data.cluster);
             
             // Show result
@@ -97,13 +128,14 @@ function onScanSuccess(decodedText, decodedResult) {
                 navigator.vibrate(200);
             }
             
-            // Stop scanner after successful scan
+            // Reset flag after 2 seconds
             setTimeout(() => {
-                stopScanner();
-            }, 1000);
+                isProcessingScan = false;
+            }, 2000);
         }
     } catch (e) {
         alert('Invalid QR Code format. Please scan a valid attendance QR code.');
+        isProcessingScan = false;
     }
 }
 
