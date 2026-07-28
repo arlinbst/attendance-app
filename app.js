@@ -41,6 +41,11 @@ function showTab(tabName) {
     if (tabName !== 'scan' && html5QrcodeScanner) {
         stopScanner();
     }
+    
+    // Update cluster filter when switching to records tab
+    if (tabName === 'records') {
+        populateClusterFilter();
+    }
 }
 
 // QR Code Scanner Functions
@@ -175,7 +180,7 @@ function logAttendance(name, cluster) {
     attendanceRecords.unshift(record);
     saveRecords();
     updateStats();
-    populateClusterFilter(); // Update cluster dropdown
+    populateClusterFilter(); // Update dropdown after new record
     displayRecords();
 }
 
@@ -247,6 +252,8 @@ function populateClusterFilter() {
     if (currentValue && clusters.includes(currentValue)) {
         select.value = currentValue;
     }
+    
+    console.log('Clusters available:', clusters);
 }
 
 // Filter Records
@@ -254,24 +261,31 @@ function filterRecords() {
     const dateFilter = document.getElementById('filter-date').value;
     const clusterFilter = document.getElementById('filter-cluster').value;
     
-    let filtered = attendanceRecords;
+    console.log('Date filter:', dateFilter);
+    console.log('Cluster filter:', clusterFilter);
+    console.log('Total records:', attendanceRecords.length);
+    
+    let filtered = [...attendanceRecords]; // Create a copy
     
     // Apply date filter
     if (dateFilter) {
         const filterDate = new Date(dateFilter).toLocaleDateString();
         filtered = filtered.filter(r => r.date === filterDate);
+        console.log('After date filter:', filtered.length);
     }
     
     // Apply cluster filter
     if (clusterFilter) {
         filtered = filtered.filter(r => r.cluster === clusterFilter);
+        console.log('After cluster filter:', filtered.length);
+        console.log('Looking for cluster:', clusterFilter);
+        console.log('Available clusters in filtered:', filtered.map(r => r.cluster));
     }
+    
+    console.log('Final filtered count:', filtered.length);
     
     // Display filtered results
     displayRecords(filtered);
-    
-    // Show count
-    console.log(`Filtered ${filtered.length} records from ${attendanceRecords.length} total`);
 }
 
 // Export to CSV
@@ -293,7 +307,7 @@ function exportToCSV() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `attendance_${new Date().toLocaleDateString()}.csv`;
+    a.download = `attendance_${new Date().toLocaleDateString().replace(/\//g, '-')}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
 }
