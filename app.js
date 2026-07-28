@@ -35,7 +35,6 @@ document.addEventListener('DOMContentLoaded', function() {
         loadRecords();
         updateStats();
         populateClusterFilter();
-        populateServiceTypeFilter();
     });
     
     // Register service worker for PWA
@@ -68,7 +67,6 @@ function showTab(tabName) {
     // Update cluster filter when switching to records
     if (tabName === 'records') {
         populateClusterFilter();
-        populateServiceTypeFilter();
     }
 }
 
@@ -212,7 +210,6 @@ function logAttendance(name, cluster, serviceType) {
     displayRecords();
     updateStats();
     populateClusterFilter();
-    populateServiceTypeFilter();
 }
 
 // Firebase Functions
@@ -241,7 +238,6 @@ async function initializeFirebase() {
             displayRecords();
             updateStats();
             populateClusterFilter();
-            populateServiceTypeFilter();
             
             // Also save to localStorage as backup
             localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
@@ -282,7 +278,6 @@ async function loadRecordsFromCloud() {
             displayRecords();
             updateStats();
             populateClusterFilter();
-            populateServiceTypeFilter();
             
             // Save to localStorage as backup
             localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
@@ -335,7 +330,6 @@ function clearAllRecords() {
         saveRecords();
         updateStats();
         populateClusterFilter();
-        populateServiceTypeFilter();
         displayRecords();
     }
 }
