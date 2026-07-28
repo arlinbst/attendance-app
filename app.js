@@ -157,11 +157,13 @@ function onScanSuccess(decodedText, decodedResult) {
             }
             
             // Log attendance
-            logAttendance(data.name, data.cluster);
+            const serviceType = document.getElementById('service-type').value;
+            logAttendance(data.name, data.cluster, serviceType);
             
             // Show result
             document.getElementById('scanned-name').textContent = data.name;
             document.getElementById('scanned-cluster').textContent = data.cluster;
+            document.getElementById('scanned-service').textContent = serviceType;
             document.getElementById('scanned-time').textContent = new Date().toLocaleString();
             document.getElementById('scan-result').style.display = 'block';
             
@@ -189,10 +191,11 @@ function onScanError(errorMessage) {
 }
 
 // Attendance Logging
-function logAttendance(name, cluster) {
+function logAttendance(name, cluster, serviceType) {
     const record = {
         name: name.trim(),
         cluster: cluster.trim(),
+        serviceType: serviceType,
         timestamp: new Date().toISOString(),
         date: new Date().toLocaleDateString(),
         time: new Date().toLocaleTimeString()
@@ -348,6 +351,7 @@ function displayRecords(filteredRecords = null) {
         <div class="record-item">
             <h4>${record.name}</h4>
             <p><strong>Cluster:</strong> ${record.cluster}</p>
+            <p><strong>Service Type:</strong> ${record.serviceType || 'N/A'}</p>
             <p><strong>Date:</strong> ${record.date}</p>
             <p><strong>Time:</strong> ${record.time}</p>
         </div>
@@ -423,8 +427,8 @@ function exportToCSV() {
         return;
     }
     
-    const headers = ['Name', 'Cluster', 'Date', 'Time'];
-    const rows = recordsToExport.map(r => [r.name, r.cluster, r.date, r.time]);
+    const headers = ['Name', 'Cluster', 'Service Type', 'Date', 'Time'];
+    const rows = recordsToExport.map(r => [r.name, r.cluster, r.serviceType || 'N/A', r.date, r.time]);
     
     let csvContent = headers.join(',') + '\n';
     rows.forEach(row => {
@@ -433,6 +437,12 @@ function exportToCSV() {
     
     // Generate filename with filter info
     let filename = 'attendance';
+    
+    // Get service type from first record if all records have same type
+    const serviceTypes = [...new Set(recordsToExport.map(r => r.serviceType).filter(Boolean))];
+    if (serviceTypes.length === 1) {
+        filename += `_${serviceTypes[0].replace(/\s+/g, '_')}`;
+    }
     
     if (dateFilter) {
         filename += `_${dateFilter}`;
