@@ -3,6 +3,8 @@ let html5QrcodeScanner = null;
 let attendanceRecords = [];
 let currentQRCode = null;
 let isProcessingScan = false; // Prevent multiple scans
+let lastScannedData = null; // Track last scanned QR data
+let lastScanTime = 0; // Track last scan timestamp
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -46,8 +48,10 @@ document.getElementById('start-scan-btn').addEventListener('click', startScanner
 document.getElementById('stop-scan-btn').addEventListener('click', stopScanner);
 
 function startScanner() {
-    // Reset processing flag
+    // Reset all flags
     isProcessingScan = false;
+    lastScannedData = null;
+    lastScanTime = 0;
     
     const config = {
         fps: 10,
@@ -77,44 +81,55 @@ function stopScanner() {
             html5QrcodeScanner = null;
             document.getElementById('start-scan-btn').style.display = 'inline-block';
             document.getElementById('stop-scan-btn').style.display = 'none';
-            isProcessingScan = false; // Reset flag when scanner stops
+            // Don't reset flags here - let them timeout naturally to prevent accidental re-scans
         }).catch(err => {
             console.error('Error stopping scanner:', err);
-            isProcessingScan = false; // Reset flag even on error
         });
     }
 }
 
 function onScanSuccess(decodedText, decodedResult) {
-    // Prevent multiple scans
+    const now = Date.now();
+    
+    // AGGRESSIVE duplicate prevention
+    // 1. Check if already processing
     if (isProcessingScan) {
         return;
     }
+    
+    // 2. Check if same data was just scanned (within 3 seconds)
+    if (lastScannedData === decodedText && (now - lastScanTime) < 3000) {
+        return;
+    }
+    
+    // Set flags immediately to block other scans
+    isProcessingScan = true;
+    lastScannedData = decodedText;
+    lastScanTime = now;
     
     try {
         const data = JSON.parse(decodedText);
         
         if (data.name && data.cluster) {
-            // Set flag to prevent duplicate processing
-            isProcessingScan = true;
-            
-            // Stop scanner immediately
+            // Stop scanner immediately (before logging)
             stopScanner();
             
-            // Check for duplicate within last 10 seconds
-            const now = Date.now();
+            // Check for recent duplicate in records (within last 5 seconds)
             const recentDuplicate = attendanceRecords.find(record => 
                 record.name === data.name && 
                 record.cluster === data.cluster &&
-                (now - record.id) < 10000 // 10 seconds
+                (now - record.id) < 5000 // 5 seconds
             );
             
             if (recentDuplicate) {
                 alert('This person was already scanned recently!');
-                isProcessingScan = false;
+                setTimeout(() => {
+                    isProcessingScan = false;
+                }, 2000);
                 return;
             }
             
+            // Log attendance
             logAttendance(data.name, data.cluster);
             
             // Show result
@@ -123,19 +138,22 @@ function onScanSuccess(decodedText, decodedResult) {
             document.getElementById('scanned-time').textContent = new Date().toLocaleString();
             document.getElementById('scan-result').style.display = 'block';
             
-            // Play success sound (vibrate)
+            // Vibrate on success
             if (navigator.vibrate) {
                 navigator.vibrate(200);
             }
             
-            // Reset flag after 2 seconds
+            // Reset processing flag after delay
             setTimeout(() => {
                 isProcessingScan = false;
-            }, 2000);
+            }, 3000);
+        } else {
+            isProcessingScan = false;
         }
     } catch (e) {
         alert('Invalid QR Code format. Please scan a valid attendance QR code.');
         isProcessingScan = false;
+        lastScannedData = null;
     }
 }
 
