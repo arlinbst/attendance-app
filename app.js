@@ -308,11 +308,6 @@ function exportToCSV() {
         csvContent += row.join(',') + '\n';
     });
     
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    
     // Generate filename with filter info
     let filename = 'attendance';
     
@@ -324,6 +319,36 @@ function exportToCSV() {
     }
     filename += '.csv';
     
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    
+    // Check if Web Share API is supported (for mobile sharing)
+    if (navigator.share && navigator.canShare) {
+        const file = new File([blob], filename, { type: 'text/csv' });
+        if (navigator.canShare({ files: [file] })) {
+            navigator.share({
+                files: [file],
+                title: 'Attendance Report',
+                text: 'Attendance records export'
+            }).then(() => {
+                console.log('Shared successfully');
+            }).catch((error) => {
+                console.log('Error sharing:', error);
+                // Fallback to download
+                downloadBlob(blob, filename);
+            });
+            return;
+        }
+    }
+    
+    // Fallback: regular download
+    downloadBlob(blob, filename);
+}
+
+// Helper function to download blob
+function downloadBlob(blob, filename) {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
     a.download = filename;
     a.click();
     window.URL.revokeObjectURL(url);
@@ -360,12 +385,43 @@ function generateQR() {
 
 function downloadQR() {
     const canvas = document.querySelector('#qrcode canvas');
-    if (canvas) {
-        const url = canvas.toDataURL('image/png');
-        const a = document.createElement('a');
-        const name = document.getElementById('employee-name').value.trim();
-        a.href = url;
-        a.download = `QR_${name.replace(/\s+/g, '_')}.png`;
-        a.click();
-    }
+    if (!canvas) return;
+    
+    const name = document.getElementById('employee-name').value.trim();
+    const filename = `QR_${name.replace(/\s+/g, '_')}.png`;
+    
+    // Convert canvas to blob
+    canvas.toBlob((blob) => {
+        // Check if Web Share API is supported (for mobile sharing)
+        if (navigator.share && navigator.canShare) {
+            const file = new File([blob], filename, { type: 'image/png' });
+            if (navigator.canShare({ files: [file] })) {
+                navigator.share({
+                    files: [file],
+                    title: `QR Code - ${name}`,
+                    text: `QR code for ${name}`
+                }).then(() => {
+                    console.log('Shared successfully');
+                }).catch((error) => {
+                    console.log('Error sharing:', error);
+                    // Fallback to download
+                    downloadBlobFromCanvas(blob, filename);
+                });
+                return;
+            }
+        }
+        
+        // Fallback: regular download
+        downloadBlobFromCanvas(blob, filename);
+    }, 'image/png');
+}
+
+// Helper function to download blob from canvas
+function downloadBlobFromCanvas(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
 }
