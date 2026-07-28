@@ -96,7 +96,17 @@
             <div class="form-section">
                 <h3>Generate QR Code</h3>
                 <input type="text" id="employee-name" class="input-field" placeholder="Enter Lastname, Firstname Middlename)" required>
-                <input type="text" id="employee-cluster" class="input-field" placeholder="Enter Cluster" required>
+                <select id="employee-cluster" class="input-field" required>
+                    <option value="">Select Cluster</option>
+                    <option value="CAMP AGUINALDO">CAMP AGUINALDO</option>
+                    <option value="CENTRAL">CENTRAL</option>
+                    <option value="KAINGIN">KAINGIN</option>
+                    <option value="KNL 1">KNL 1</option>
+                    <option value="KNL 2">KNL 2</option>
+                    <option value="PANSOL">PANSOL</option>
+                    <option value="UP CAMPUS/CP GARCIA">UP CAMPUS/CP GARCIA</option>
+                    <option value="WHITE">WHITE</option>
+                </select>
                 <button onclick="generateQR()" class="btn btn-primary">Generate QR Code</button>
                 
                 <div id="qr-output" style="display: none; margin-top: 20px;">
