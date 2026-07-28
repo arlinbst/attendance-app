@@ -7,15 +7,15 @@ let lastScannedData = null; // Track last scanned QR data
 let lastScanTime = 0; // Track last scan timestamp
 let currentDisplayedRecords = []; // Track currently displayed/filtered records
 
-// Firebase Configuration
+// Firebase Configuration - REPLACE THIS WITH YOUR CONFIG!
 const firebaseConfig = {
-  apiKey: "AIzaSyCbZI9mTTieFtelvSRscgp2oWp9oA5cIYo",
-  authDomain: "attendance-app-5b4f5.firebaseapp.com",
-  projectId: "attendance-app-5b4f5",
-  storageBucket: "attendance-app-5b4f5.firebasestorage.app",
-  messagingSenderId: "956254297402",
-  appId: "1:956254297402:web:355f174260dc36b662c403",
-  measurementId: "G-M305PQ2KVR"
+    apiKey: "AIzaSyCbZI9mTieFtelvSRscgp2oWp9oA5cIYo",
+    authDomain: "attendance-app-5b4f5.firebaseapp.com",
+    projectId: "attendance-app-5b4f5",
+    storageBucket: "attendance-app-5b4f5.firebasestorage.app",
+    messagingSenderId: "956254297402",
+    appId: "1:956254297402:web:355f174260dc36b662c403",
+    measurementId: "G-M305PQ2KVR"
 };
 
 // Initialize Firebase (will be loaded from CDN)
@@ -206,7 +206,13 @@ function logAttendance(name, cluster) {
     attendanceRecords.unshift(tempRecord);
     displayRecords();
     updateStats();
-    populateClusterFilterf Firebase libraries are loaded
+    populateClusterFilter();
+}
+
+// Firebase Functions
+async function initializeFirebase() {
+    try {
+        // Check if Firebase libraries are loaded
         if (typeof firebase === 'undefined') {
             throw new Error('Firebase not loaded');
         }
@@ -221,10 +227,6 @@ function logAttendance(name, cluster) {
         console.log('Firebase initialized successfully');
         
         // Listen for real-time updates
-        // Clear from cloud
-        clearAllRecordsFromCloud();
-        
-        // Clear local
         db.collection('attendance').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
             attendanceRecords = [];
             snapshot.forEach((doc) => {
@@ -303,12 +305,6 @@ async function clearAllRecordsFromCloud() {
 }
 
 // Local Storage Functions (Fallback)
-    updateStats();
-    populateClusterFilter();
-    displayRecords();
-}
-
-// Local Storage Functions
 function saveRecords() {
     localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
 }
@@ -323,6 +319,10 @@ function loadRecords() {
 
 function clearAllRecords() {
     if (confirm('Are you sure you want to delete all attendance records? This cannot be undone.')) {
+        // Clear from cloud
+        clearAllRecordsFromCloud();
+        
+        // Clear local
         attendanceRecords = [];
         saveRecords();
         updateStats();
