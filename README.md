@@ -132,6 +132,7 @@ For issues or questions, check:
 - Using HTTPS (required for camera access online)
 
 ## 🔐 Privacy
+
 **With Cloud Sync (Firebase):**
 - Data stored in Firebase Firestore (Google Cloud)
 - Shared across all users of the app
@@ -143,8 +144,7 @@ For issues or questions, check:
 - No data sent to any server
 - Device-specific storage
 
-You control your data based on Firebase configuration
-All data is stored locally on your device using browser localStorage. No data is sent to any server.
+You control your data based on Firebase configuration.
 
 ---
 
