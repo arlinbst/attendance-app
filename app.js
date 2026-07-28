@@ -175,6 +175,7 @@ function logAttendance(name, cluster) {
     attendanceRecords.unshift(record);
     saveRecords();
     updateStats();
+    populateClusterFilter(); // Update cluster dropdown
     displayRecords();
 }
 
@@ -196,6 +197,7 @@ function clearAllRecords() {
         attendanceRecords = [];
         saveRecords();
         updateStats();
+        populateClusterFilter(); // Update dropdown after clearing
         displayRecords();
     }
 }
@@ -229,8 +231,9 @@ function updateStats() {
 }
 
 function populateClusterFilter() {
-    const clusters = [...new Set(attendanceRecords.map(r => r.cluster))];
+    const clusters = [...new Set(attendanceRecords.map(r => r.cluster))].sort();
     const select = document.getElementById('filter-cluster');
+    const currentValue = select.value; // Remember current selection
     
     select.innerHTML = '<option value="">All Clusters</option>';
     clusters.forEach(cluster => {
@@ -239,6 +242,11 @@ function populateClusterFilter() {
         option.textContent = cluster;
         select.appendChild(option);
     });
+    
+    // Restore previous selection if it still exists
+    if (currentValue && clusters.includes(currentValue)) {
+        select.value = currentValue;
+    }
 }
 
 // Filter Records
@@ -248,16 +256,22 @@ function filterRecords() {
     
     let filtered = attendanceRecords;
     
+    // Apply date filter
     if (dateFilter) {
         const filterDate = new Date(dateFilter).toLocaleDateString();
         filtered = filtered.filter(r => r.date === filterDate);
     }
     
+    // Apply cluster filter
     if (clusterFilter) {
         filtered = filtered.filter(r => r.cluster === clusterFilter);
     }
     
+    // Display filtered results
     displayRecords(filtered);
+    
+    // Show count
+    console.log(`Filtered ${filtered.length} records from ${attendanceRecords.length} total`);
 }
 
 // Export to CSV
