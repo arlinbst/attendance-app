@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2196F3">
+    <title>Attendance Monitoring System</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📋 Attendance Monitor</h1>
+            <p class="subtitle">QR Code Scanner</p>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('scan')">🔍 Scan</button>
+            <button class="tab-btn" onclick="showTab('records')">📊 Records</button>
+            <button class="tab-btn" onclick="showTab('generate')">🎫 Generate QR</button>
+        </div>
+
+        <!-- SCAN TAB -->
+        <div id="scan-tab" class="tab-content active">
+            <div class="scan-section">
+                <div id="reader"></div>
+                <button id="start-scan-btn" class="btn btn-primary">Start Scanner</button>
+                <button id="stop-scan-btn" class="btn btn-danger" style="display: none;">Stop Scanner</button>
+                
+                <div id="scan-result" class="result-box" style="display: none;">
+                    <h3>✅ Attendance Logged!</h3>
+                    <p><strong>Name:</strong> <span id="scanned-name"></span></p>
+                    <p><strong>Cluster:</strong> <span id="scanned-cluster"></span></p>
+                    <p><strong>Time:</strong> <span id="scanned-time"></span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- RECORDS TAB -->
+        <div id="records-tab" class="tab-content">
+            <div class="controls">
+                <input type="date" id="filter-date" class="input-field">
+                <select id="filter-cluster" class="input-field">
+                    <option value="">All Clusters</option>
+                </select>
+                <button onclick="filterRecords()" class="btn btn-secondary">Filter</button>
+                <button onclick="exportToCSV()" class="btn btn-success">📥 Export CSV</button>
+                <button onclick="clearAllRecords()" class="btn btn-danger">🗑️ Clear All</button>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-card">
+                    <h3 id="total-today">0</h3>
+                    <p>Today's Attendance</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="total-all">0</h3>
+                    <p>Total Records</p>
+                </div>
+            </div>
+
+            <div id="records-list" class="records-container">
+                <p class="empty-state">No attendance records yet. Start scanning QR codes!</p>
+            </div>
+        </div>
+
+        <!-- GENERATE QR TAB -->
+        <div id="generate-tab" class="tab-content">
+            <div class="form-section">
+                <h3>Generate QR Code for Employee</h3>
+                <input type="text" id="employee-name" class="input-field" placeholder="Enter Employee Name" required>
+                <input type="text" id="employee-cluster" class="input-field" placeholder="Enter Cluster/Department" required>
+                <button onclick="generateQR()" class="btn btn-primary">Generate QR Code</button>
+                
+                <div id="qr-output" style="display: none; margin-top: 20px;">
+                    <h4>QR Code for <span id="qr-name"></span></h4>
+                    <div id="qrcode"></div>
+                    <button onclick="downloadQR()" class="btn btn-success">Download QR Code</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
