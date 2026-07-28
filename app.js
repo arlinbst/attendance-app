@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loadRecords();
         updateStats();
         populateClusterFilter();
+        populateServiceTypeFilter();
     });
     
     // Register service worker for PWA
@@ -67,6 +68,7 @@ function showTab(tabName) {
     // Update cluster filter when switching to records
     if (tabName === 'records') {
         populateClusterFilter();
+        populateServiceTypeFilter();
     }
 }
 
@@ -210,6 +212,7 @@ function logAttendance(name, cluster, serviceType) {
     displayRecords();
     updateStats();
     populateClusterFilter();
+    populateServiceTypeFilter();
 }
 
 // Firebase Functions
@@ -238,6 +241,7 @@ async function initializeFirebase() {
             displayRecords();
             updateStats();
             populateClusterFilter();
+            populateServiceTypeFilter();
             
             // Also save to localStorage as backup
             localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
@@ -278,6 +282,7 @@ async function loadRecordsFromCloud() {
             displayRecords();
             updateStats();
             populateClusterFilter();
+            populateServiceTypeFilter();
             
             // Save to localStorage as backup
             localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
@@ -330,6 +335,7 @@ function clearAllRecords() {
         saveRecords();
         updateStats();
         populateClusterFilter();
+        populateServiceTypeFilter();
         displayRecords();
     }
 }
@@ -384,10 +390,29 @@ function populateClusterFilter() {
     }
 }
 
+function populateServiceTypeFilter() {
+    const serviceTypes = [...new Set(attendanceRecords.map(r => r.serviceType).filter(Boolean))].sort();
+    const select = document.getElementById('filter-service');
+    const currentValue = select.value;
+    
+    select.innerHTML = '<option value="">All Service Types</option>';
+    serviceTypes.forEach(service => {
+        const option = document.createElement('option');
+        option.value = service;
+        option.textContent = service;
+        select.appendChild(option);
+    });
+    
+    if (currentValue && serviceTypes.includes(currentValue)) {
+        select.value = currentValue;
+    }
+}
+
 // Filter Records
 function filterRecords() {
     const dateFilter = document.getElementById('filter-date').value;
     const clusterFilter = document.getElementById('filter-cluster').value;
+    const serviceFilter = document.getElementById('filter-service').value;
     
     let filtered = attendanceRecords.slice(); // Create a copy
     
@@ -400,6 +425,10 @@ function filterRecords() {
         filtered = filtered.filter(r => r.cluster.trim() === clusterFilter.trim());
     }
     
+    if (serviceFilter) {
+        filtered = filtered.filter(r => r.serviceType === serviceFilter);
+    }
+    
     displayRecords(filtered);
 }
 
@@ -408,6 +437,7 @@ function exportToCSV() {
     // Re-apply current filters to ensure we export what's displayed
     const dateFilter = document.getElementById('filter-date').value;
     const clusterFilter = document.getElementById('filter-cluster').value;
+    const serviceFilter = document.getElementById('filter-service').value;
     
     let recordsToExport = attendanceRecords.slice(); // Start with all records
     
@@ -420,6 +450,11 @@ function exportToCSV() {
     // Apply cluster filter if set
     if (clusterFilter) {
         recordsToExport = recordsToExport.filter(r => r.cluster.trim() === clusterFilter.trim());
+    }
+    
+    // Apply service type filter if set
+    if (serviceFilter) {
+        recordsToExport = recordsToExport.filter(r => r.serviceType === serviceFilter);
     }
     
     if (recordsToExport.length === 0) {
@@ -438,10 +473,9 @@ function exportToCSV() {
     // Generate filename with filter info
     let filename = 'attendance';
     
-    // Get service type from first record if all records have same type
-    const serviceTypes = [...new Set(recordsToExport.map(r => r.serviceType).filter(Boolean))];
-    if (serviceTypes.length === 1) {
-        filename += `_${serviceTypes[0].replace(/\s+/g, '_')}`;
+    // Add service type to filename if filtered
+    if (serviceFilter) {
+        filename += `_${serviceFilter.replace(/\s+/g, '_')}`;
     }
     
     if (dateFilter) {
