@@ -9,12 +9,13 @@ let currentDisplayedRecords = []; // Track currently displayed/filtered records
 
 // Firebase Configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyDAttendanceApp-REPLACE-THIS",
-    authDomain: "attendance-app.firebaseapp.com",
-    projectId: "attendance-app-demo",
-    storageBucket: "attendance-app-demo.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "1:123456789:web:abcdef123456"
+  apiKey: "AIzaSyCbZI9mTTieFtelvSRscgp2oWp9oA5cIYo",
+  authDomain: "attendance-app-5b4f5.firebaseapp.com",
+  projectId: "attendance-app-5b4f5",
+  storageBucket: "attendance-app-5b4f5.firebasestorage.app",
+  messagingSenderId: "956254297402",
+  appId: "1:956254297402:web:355f174260dc36b662c403",
+  measurementId: "G-M305PQ2KVR"
 };
 
 // Initialize Firebase (will be loaded from CDN)
