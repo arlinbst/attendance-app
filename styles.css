@@ -227,6 +227,9 @@ header h1 {
 .record-item h4 {
     color: #333;
     margin-bottom: 8px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
 }
 
 .record-item p {
