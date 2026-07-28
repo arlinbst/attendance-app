@@ -42,10 +42,9 @@ function showTab(tabName) {
         stopScanner();
     }
     
-    // Refresh cluster dropdown when switching to records tab
+    // Update cluster filter when switching to records
     if (tabName === 'records') {
         populateClusterFilter();
-        filterRecords(); // Re-apply current filters
     }
 }
 
@@ -172,7 +171,7 @@ function logAttendance(name, cluster) {
     const record = {
         id: Date.now(),
         name: name.trim(),
-        cluster: cluster.trim(), // Trim whitespace
+        cluster: cluster.trim(),
         timestamp: new Date().toISOString(),
         date: new Date().toLocaleDateString(),
         time: new Date().toLocaleTimeString()
@@ -181,7 +180,7 @@ function logAttendance(name, cluster) {
     attendanceRecords.unshift(record);
     saveRecords();
     updateStats();
-    populateClusterFilter(); // Update dropdown after adding record
+    populateClusterFilter();
     displayRecords();
 }
 
@@ -203,7 +202,7 @@ function clearAllRecords() {
         attendanceRecords = [];
         saveRecords();
         updateStats();
-        populateClusterFilter(); // Update dropdown
+        populateClusterFilter();
         displayRecords();
     }
 }
@@ -237,10 +236,9 @@ function updateStats() {
 }
 
 function populateClusterFilter() {
-    // Get unique clusters and sort them
     const clusters = [...new Set(attendanceRecords.map(r => r.cluster.trim()))].sort();
     const select = document.getElementById('filter-cluster');
-    const currentValue = select.value; // Save current selection
+    const currentValue = select.value;
     
     select.innerHTML = '<option value="">All Clusters</option>';
     clusters.forEach(cluster => {
@@ -250,19 +248,18 @@ function populateClusterFilter() {
         select.appendChild(option);
     });
     
-    // Restore previous selection if it exists
     if (currentValue && clusters.includes(currentValue)) {
         select.value = currentValue;
     }
 }
 
-// Filter Records - FIXED VERSION
+// Filter Records - COMPLETELY FIXED
 function filterRecords() {
     const dateFilter = document.getElementById('filter-date').value;
-    const clusterFilter = document.getElementById('filter-cluster').value.trim();
+    const clusterFilter = document.getElementById('filter-cluster').value;
     
-    // Start with all records
-    let filtered = [...attendanceRecords];
+    // IMPORTANT: Always start with a FRESH COPY of all records
+    let filtered = JSON.parse(JSON.stringify(attendanceRecords));
     
     // Apply date filter
     if (dateFilter) {
@@ -270,17 +267,12 @@ function filterRecords() {
         filtered = filtered.filter(r => r.date === filterDate);
     }
     
-    // Apply cluster filter - EXACT MATCH
+    // Apply cluster filter
     if (clusterFilter) {
-        filtered = filtered.filter(r => r.cluster.trim() === clusterFilter);
+        filtered = filtered.filter(r => r.cluster.trim() === clusterFilter.trim());
     }
     
-    // Debug info - show alert
-    if (clusterFilter) {
-        alert(`Filtering by: "${clusterFilter}"\nFound: ${filtered.length} records`);
-    }
-    
-    // Display filtered results
+    // Display results
     displayRecords(filtered);
 }
 
