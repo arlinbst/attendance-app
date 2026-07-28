@@ -7,14 +7,34 @@ let lastScannedData = null; // Track last scanned QR data
 let lastScanTime = 0; // Track last scan timestamp
 let currentDisplayedRecords = []; // Track currently displayed/filtered records
 
+// Firebase Configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyDAttendanceApp-REPLACE-THIS",
+    authDomain: "attendance-app.firebaseapp.com",
+    projectId: "attendance-app-demo",
+    storageBucket: "attendance-app-demo.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "1:123456789:web:abcdef123456"
+};
+
+// Initialize Firebase (will be loaded from CDN)
+let db = null;
+let firebaseInitialized = false;
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
-    loadRecords();
-    updateStats();
-    populateClusterFilter();
-    
     // Set today's date as default filter
     document.getElementById('filter-date').valueAsDate = new Date();
+    
+    // Initialize Firebase and load records
+    initializeFirebase().then(() => {
+        loadRecordsFromCloud();
+    }).catch(() => {
+        // Fallback to localStorage if Firebase fails
+        loadRecords();
+        updateStats();
+        populateClusterFilter();
+    });
     
     // Register service worker for PWA
     if ('serviceWorker' in navigator) {
@@ -170,7 +190,6 @@ function onScanError(errorMessage) {
 // Attendance Logging
 function logAttendance(name, cluster) {
     const record = {
-        id: Date.now(),
         name: name.trim(),
         cluster: cluster.trim(),
         timestamp: new Date().toISOString(),
@@ -178,8 +197,111 @@ function logAttendance(name, cluster) {
         time: new Date().toLocaleTimeString()
     };
     
-    attendanceRecords.unshift(record);
-    saveRecords();
+    // Save to cloud (which will trigger real-time update)
+    saveRecordToCloud(record);
+    
+    // For immediate UI feedback (before cloud sync)
+    const tempRecord = { id: Date.now(), ...record };
+    attendanceRecords.unshift(tempRecord);
+    displayRecords();
+    updateStats();
+    populateClusterFilterf Firebase libraries are loaded
+        if (typeof firebase === 'undefined') {
+            throw new Error('Firebase not loaded');
+        }
+        
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        
+        db = firebase.firestore();
+        firebaseInitialized = true;
+        console.log('Firebase initialized successfully');
+        
+        // Listen for real-time updates
+        // Clear from cloud
+        clearAllRecordsFromCloud();
+        
+        // Clear local
+        db.collection('attendance').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
+            attendanceRecords = [];
+            snapshot.forEach((doc) => {
+                attendanceRecords.push({ id: doc.id, ...doc.data() });
+            });
+            displayRecords();
+            updateStats();
+            populateClusterFilter();
+            
+            // Also save to localStorage as backup
+            localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
+        });
+        
+        return true;
+    } catch (error) {
+        console.error('Firebase initialization failed:', error);
+        firebaseInitialized = false;
+        throw error;
+    }
+}
+
+async function saveRecordToCloud(record) {
+    if (firebaseInitialized && db) {
+        try {
+            await db.collection('attendance').add(record);
+            console.log('Record saved to cloud');
+        } catch (error) {
+            console.error('Error saving to cloud:', error);
+            // Fallback to localStorage
+            saveRecords();
+        }
+    } else {
+        // Fallback to localStorage
+        saveRecords();
+    }
+}
+
+async function loadRecordsFromCloud() {
+    if (firebaseInitialized && db) {
+        try {
+            const snapshot = await db.collection('attendance').orderBy('timestamp', 'desc').get();
+            attendanceRecords = [];
+            snapshot.forEach((doc) => {
+                attendanceRecords.push({ id: doc.id, ...doc.data() });
+            });
+            displayRecords();
+            updateStats();
+            populateClusterFilter();
+            
+            // Save to localStorage as backup
+            localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
+        } catch (error) {
+            console.error('Error loading from cloud:', error);
+            // Fallback to localStorage
+            loadRecords();
+        }
+    } else {
+        loadRecords();
+    }
+}
+
+async function clearAllRecordsFromCloud() {
+    if (firebaseInitialized && db) {
+        try {
+            const batch = db.batch();
+            const snapshot = await db.collection('attendance').get();
+            snapshot.docs.forEach((doc) => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+            console.log('All records cleared from cloud');
+        } catch (error) {
+            console.error('Error clearing cloud records:', error);
+        }
+    }
+}
+
+// Local Storage Functions (Fallback)
     updateStats();
     populateClusterFilter();
     displayRecords();
