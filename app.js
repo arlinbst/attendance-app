@@ -205,7 +205,8 @@ function logAttendance(name, cluster, serviceType) {
         serviceType: serviceType,
         timestamp: new Date().toISOString(),
         date: new Date().toLocaleDateString(),
-        time: new Date().toLocaleTimeString()
+        time: new Date().toLocaleTimeString(),
+        isVisitor: false
     };
     
     // Save to cloud (which will trigger real-time update)
@@ -217,6 +218,75 @@ function logAttendance(name, cluster, serviceType) {
     displayRecords();
     updateStats();
     populateClusterFilter();
+}
+
+// Add Visitor Attendance
+function addVisitor() {
+    const name = document.getElementById('visitor-name').value.trim();
+    const visitorType = document.getElementById('visitor-type').value;
+    const serviceType = document.getElementById('visitor-service').value;
+    
+    if (!name) {
+        alert('Please enter visitor name!');
+        return;
+    }
+    
+    if (!visitorType) {
+        alert('Please select visitor type!');
+        return;
+    }
+    
+    const today = new Date().toLocaleDateString();
+    
+    // Check for duplicate visitor: same name + same date + same service type
+    const duplicate = attendanceRecords.find(record => 
+        record.name.trim().toLowerCase() === name.toLowerCase() &&
+        record.date === today &&
+        record.serviceType === serviceType &&
+        record.isVisitor === true
+    );
+    
+    if (duplicate) {
+        alert('⚠️ Duplicate Visitor!\n\n' + name + ' already added for ' + serviceType + ' today at ' + duplicate.time);
+        return;
+    }
+    
+    const record = {
+        name: name,
+        cluster: visitorType, // Store visitor type in cluster field
+        serviceType: serviceType,
+        timestamp: new Date().toISOString(),
+        date: new Date().toLocaleDateString(),
+        time: new Date().toLocaleTimeString(),
+        isVisitor: true,
+        visitorType: visitorType
+    };
+    
+    // Save to cloud
+    saveRecordToCloud(record);
+    
+    // For immediate UI feedback
+    const tempRecord = { id: Date.now(), ...record };
+    attendanceRecords.unshift(tempRecord);
+    displayRecords();
+    updateStats();
+    populateClusterFilter();
+    
+    // Show success message
+    document.getElementById('visitor-added-name').textContent = name;
+    document.getElementById('visitor-added-type').textContent = visitorType;
+    document.getElementById('visitor-added-service').textContent = serviceType;
+    document.getElementById('visitor-added-time').textContent = new Date().toLocaleString();
+    document.getElementById('visitor-result').style.display = 'block';
+    
+    // Clear form
+    document.getElementById('visitor-name').value = '';
+    document.getElementById('visitor-type').value = '';
+    
+    // Hide success message after 5 seconds
+    setTimeout(() => {
+        document.getElementById('visitor-result').style.display = 'none';
+    }, 5000);
 }
 
 // Firebase Functions
@@ -355,9 +425,9 @@ function displayRecords(filteredRecords = null) {
     }
     
     recordsList.innerHTML = records.map(record => `
-        <div class="record-item">
-            <h4>${record.name}</h4>
-            <p><strong>Cluster:</strong> ${record.cluster}</p>
+        <div class="record-item" style="${record.isVisitor ? 'border-left-color: #FF9800;' : ''}">
+            <h4>${record.name} ${record.isVisitor ? '👤' : ''}</h4>
+            <p><strong>${record.isVisitor ? 'Visitor Type:' : 'Cluster:'}</strong> ${record.cluster}</p>
             <p><strong>Service Type:</strong> ${record.serviceType || 'N/A'}</p>
             <p><strong>Date:</strong> ${record.date}</p>
             <p><strong>Time:</strong> ${record.time}</p>
@@ -441,7 +511,7 @@ function filterRecords() {
     displayRecords(filtered);
 }
 
-// Export to CSV - FIXED to export filtered records with sorting
+// Export to CSV - FIXED to export filtered records
 function exportToCSV() {
     // Re-apply current filters to ensure we export what's displayed
     const dateFilter = document.getElementById('filter-date').value;
@@ -478,8 +548,15 @@ function exportToCSV() {
         return a.name.trim().localeCompare(b.name.trim());
     });
     
-    const headers = ['Name', 'Cluster', 'Service Type', 'Date', 'Time'];
-    const rows = recordsToExport.map(r => [r.name, r.cluster, r.serviceType || 'N/A', r.date, r.time]);
+    const headers = ['Name', 'Cluster/Visitor Type', 'Service Type', 'Date', 'Time', 'Type'];
+    const rows = recordsToExport.map(r => [
+        r.name, 
+        r.cluster, 
+        r.serviceType || 'N/A', 
+        r.date, 
+        r.time,
+        r.isVisitor ? 'Visitor' : 'Member'
+    ]);
     
     let csvContent = headers.join(',') + '\n';
     rows.forEach(row => {
@@ -638,16 +715,32 @@ function generateReport() {
     
     // Group by cluster
     const byCluster = {};
+    const visitorCounts = {
+        'Other Locale': 0,
+        'Visitor': 0,
+        'Balik-loob': 0
+    };
+    
     filteredRecords.forEach(record => {
-        const cluster = record.cluster.trim();
-        if (!byCluster[cluster]) {
-            byCluster[cluster] = [];
+        // Count visitors separately
+        if (record.isVisitor && record.visitorType) {
+            visitorCounts[record.visitorType]++;
+        } else {
+            // Regular members
+            const cluster = record.cluster.trim();
+            if (!byCluster[cluster]) {
+                byCluster[cluster] = [];
+            }
+            byCluster[cluster].push(record);
         }
-        byCluster[cluster].push(record);
     });
     
     // Sort clusters alphabetically
     const sortedClusters = Object.keys(byCluster).sort();
+    
+    // Count total members (excluding visitors)
+    const totalMembers = filteredRecords.filter(r => !r.isVisitor).length;
+    const totalVisitors = visitorCounts['Other Locale'] + visitorCounts['Visitor'] + visitorCounts['Balik-loob'];
     
     // Generate report HTML
     let reportHTML = `
@@ -656,6 +749,7 @@ function generateReport() {
             <p><strong>Date:</strong> ${dateFilter ? new Date(dateFilter).toLocaleDateString() : 'All Dates'}</p>
             <p><strong>Service Type:</strong> ${serviceFilter || 'All Services'}</p>
             <p><strong>Total Attendance:</strong> ${filteredRecords.length}</p>
+            <p><strong>Members:</strong> ${totalMembers} | <strong>Visitors:</strong> ${totalVisitors}</p>
             <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
         </div>
         
@@ -681,6 +775,42 @@ function generateReport() {
         `;
     });
     
+    // Add visitor counts
+    if (totalVisitors > 0) {
+        reportHTML += `
+            <tr style="border-top: 2px solid #2196F3;">
+                <td colspan="2"><strong>VISITORS</strong></td>
+            </tr>
+        `;
+        
+        if (visitorCounts['Other Locale'] > 0) {
+            reportHTML += `
+                <tr>
+                    <td>Other Locale</td>
+                    <td>${visitorCounts['Other Locale']}</td>
+                </tr>
+            `;
+        }
+        
+        if (visitorCounts['Visitor'] > 0) {
+            reportHTML += `
+                <tr>
+                    <td>Visitor</td>
+                    <td>${visitorCounts['Visitor']}</td>
+                </tr>
+            `;
+        }
+        
+        if (visitorCounts['Balik-loob'] > 0) {
+            reportHTML += `
+                <tr>
+                    <td>Balik-loob</td>
+                    <td>${visitorCounts['Balik-loob']}</td>
+                </tr>
+            `;
+        }
+    }
+    
     reportHTML += `
                 </tbody>
             </table>
@@ -690,7 +820,7 @@ function generateReport() {
             <h3>Detailed Attendance by Cluster</h3>
     `;
     
-    // List names by cluster
+    // List names by cluster (members only)
     sortedClusters.forEach(cluster => {
         const records = byCluster[cluster].sort((a, b) => a.name.localeCompare(b.name));
         reportHTML += `
@@ -708,6 +838,39 @@ function generateReport() {
             </div>
         `;
     });
+    
+    // List visitors separately
+    if (totalVisitors > 0) {
+        reportHTML += `
+            <div class="cluster-section" style="border-left-color: #FF9800;">
+                <h4 style="color: #FF9800;">VISITORS (${totalVisitors} total)</h4>
+        `;
+        
+        // Get all visitors sorted by type then name
+        const visitors = filteredRecords.filter(r => r.isVisitor).sort((a, b) => {
+            if (a.visitorType !== b.visitorType) {
+                return a.visitorType.localeCompare(b.visitorType);
+            }
+            return a.name.localeCompare(b.name);
+        });
+        
+        let currentType = '';
+        visitors.forEach(visitor => {
+            if (visitor.visitorType !== currentType) {
+                if (currentType !== '') {
+                    reportHTML += `</ol>`;
+                }
+                currentType = visitor.visitorType;
+                reportHTML += `<p style="margin-top: 10px; font-weight: bold; color: #FF9800;">${currentType}:</p><ol class="attendee-list">`;
+            }
+            reportHTML += `<li>${visitor.name} - ${visitor.time}</li>`;
+        });
+        
+        reportHTML += `
+                </ol>
+            </div>
+        `;
+    }
     
     reportHTML += `</div>`;
     
