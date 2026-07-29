@@ -408,3 +408,24 @@ header h1 {
         padding: 0;
     }
 }
+
+/* Delete Controls Warning Styling */
+.controls button.btn-danger {
+    position: relative;
+}
+
+.controls button.btn-danger::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: transparent;
+    border-radius: 8px;
+    pointer-events: none;
+}
+
+.controls button.btn-danger:hover::before {
+    background: rgba(244, 67, 54, 0.1);
+}
