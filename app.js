@@ -2,12 +2,12 @@
 let html5QrcodeScanner = null;
 let attendanceRecords = [];
 let currentQRCode = null;
-let isProcessingScan = false; // Prevent multiple scans
-let lastScannedData = null; // Track last scanned QR data
-let lastScanTime = 0; // Track last scan timestamp
-let currentDisplayedRecords = []; // Track currently displayed/filtered records
+let isProcessingScan = false;
+let lastScannedData = null;
+let lastScanTime = 0;
+let currentDisplayedRecords = [];
 
-// Firebase Configuration - REPLACE THIS WITH YOUR CONFIG!
+// Firebase Configuration
 const firebaseConfig = {
     apiKey: "AIzaSyCbZI9mTieFtelvSRscgp2oWp9oA5cIYo",
     authDomain: "attendance-app-5b4f5.firebaseapp.com",
@@ -18,29 +18,24 @@ const firebaseConfig = {
     measurementId: "G-M305PQ2KVR"
 };
 
-// Initialize Firebase (will be loaded from CDN)
 let db = null;
 let firebaseInitialized = false;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
-    // DON'T set default date - show all records by default
-    // Add auto-filter event listeners
+    // Auto-filtering on input change
     document.getElementById('filter-date').addEventListener('change', filterRecords);
     document.getElementById('filter-cluster').addEventListener('change', filterRecords);
     document.getElementById('filter-service').addEventListener('change', filterRecords);
     
-    // Initialize Firebase and load records
     initializeFirebase().then(() => {
         loadRecordsFromCloud();
     }).catch(() => {
-        // Fallback to localStorage if Firebase fails
         loadRecords();
         updateStats();
         populateClusterFilter();
     });
     
-    // Register service worker for PWA
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js')
             .then(() => console.log('Service Worker registered'))
@@ -50,7 +45,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Tab switching
 function showTab(tabName) {
-    // Hide all tabs
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
     });
@@ -58,19 +52,24 @@ function showTab(tabName) {
         btn.classList.remove('active');
     });
     
-    // Show selected tab
     document.getElementById(tabName + '-tab').classList.add('active');
     event.target.classList.add('active');
     
-    // Stop scanner when switching away from scan tab
     if (tabName !== 'scan' && html5QrcodeScanner) {
         stopScanner();
     }
     
-    // Update cluster filter when switching to records
     if (tabName === 'records') {
         populateClusterFilter();
     }
+}
+
+// Clear all filters and show all records
+function clearFilters() {
+    document.getElementById('filter-date').value = '';
+    document.getElementById('filter-cluster').value = '';
+    document.getElementById('filter-service').value = '';
+    displayRecords(attendanceRecords);
 }
 
 // QR Code Scanner Functions
@@ -78,7 +77,6 @@ document.getElementById('start-scan-btn').addEventListener('click', startScanner
 document.getElementById('stop-scan-btn').addEventListener('click', stopScanner);
 
 function startScanner() {
-    // Reset all flags
     isProcessingScan = false;
     lastScannedData = null;
     lastScanTime = 0;
@@ -111,7 +109,6 @@ function stopScanner() {
             html5QrcodeScanner = null;
             document.getElementById('start-scan-btn').style.display = 'inline-block';
             document.getElementById('stop-scan-btn').style.display = 'none';
-            // Don't reset flags here - let them timeout naturally to prevent accidental re-scans
         }).catch(err => {
             console.error('Error stopping scanner:', err);
         });
@@ -121,18 +118,14 @@ function stopScanner() {
 function onScanSuccess(decodedText, decodedResult) {
     const now = Date.now();
     
-    // AGGRESSIVE duplicate prevention
-    // 1. Check if already processing
     if (isProcessingScan) {
         return;
     }
     
-    // 2. Check if same data was just scanned (within 3 seconds)
     if (lastScannedData === decodedText && (now - lastScanTime) < 3000) {
         return;
     }
     
-    // Set flags immediately to block other scans
     isProcessingScan = true;
     lastScannedData = decodedText;
     lastScanTime = now;
@@ -141,45 +134,40 @@ function onScanSuccess(decodedText, decodedResult) {
         const data = JSON.parse(decodedText);
         
         if (data.name && data.cluster) {
-            // Stop scanner immediately (before logging)
             stopScanner();
             
-            // Get current service type and date
             const serviceType = document.getElementById('service-type').value;
             const today = new Date().toLocaleDateString();
             
-            // Check for duplicate: same person + same date + same service type
-            const duplicate = attendanceRecords.find(record => 
-                record.name.trim().toLowerCase() === data.name.trim().toLowerCase() && 
-                record.cluster.trim().toLowerCase() === data.cluster.trim().toLowerCase() &&
+            // Enhanced duplicate check: same person + same date + same service type
+            const duplicateToday = attendanceRecords.find(record => 
+                record.name === data.name && 
+                record.cluster === data.cluster &&
                 record.date === today &&
-                record.serviceType === serviceType
+                record.serviceType === serviceType &&
+                !record.isVisitor
             );
             
-            if (duplicate) {
-                alert('⚠️ Duplicate Attendance!\n\n' + data.name + ' already scanned for ' + serviceType + ' today at ' + duplicate.time);
+            if (duplicateToday) {
+                alert(`Duplicate attendance detected!\n\n${data.name} already attended ${serviceType} today.`);
                 setTimeout(() => {
                     isProcessingScan = false;
                 }, 2000);
                 return;
             }
             
-            // Log attendance
             logAttendance(data.name, data.cluster, serviceType);
             
-            // Show result
             document.getElementById('scanned-name').textContent = data.name;
             document.getElementById('scanned-cluster').textContent = data.cluster;
             document.getElementById('scanned-service').textContent = serviceType;
             document.getElementById('scanned-time').textContent = new Date().toLocaleString();
             document.getElementById('scan-result').style.display = 'block';
             
-            // Vibrate on success
             if (navigator.vibrate) {
                 navigator.vibrate(200);
             }
             
-            // Reset processing flag after delay
             setTimeout(() => {
                 isProcessingScan = false;
             }, 3000);
@@ -194,7 +182,7 @@ function onScanSuccess(decodedText, decodedResult) {
 }
 
 function onScanError(errorMessage) {
-    // Ignore errors (scanning continues)
+    // Ignore scan errors
 }
 
 // Attendance Logging
@@ -209,10 +197,8 @@ function logAttendance(name, cluster, serviceType) {
         isVisitor: false
     };
     
-    // Save to cloud (which will trigger real-time update)
     saveRecordToCloud(record);
     
-    // For immediate UI feedback (before cloud sync)
     const tempRecord = { id: Date.now(), ...record };
     attendanceRecords.unshift(tempRecord);
     displayRecords();
@@ -220,7 +206,7 @@ function logAttendance(name, cluster, serviceType) {
     populateClusterFilter();
 }
 
-// Add Visitor Attendance
+// Add Visitor Function
 function addVisitor() {
     const name = document.getElementById('visitor-name').value.trim();
     const visitorType = document.getElementById('visitor-type').value;
@@ -231,41 +217,34 @@ function addVisitor() {
         return;
     }
     
-    if (!visitorType) {
-        alert('Please select visitor type!');
-        return;
-    }
-    
     const today = new Date().toLocaleDateString();
     
-    // Check for duplicate visitor: same name + same date + same service type
-    const duplicate = attendanceRecords.find(record => 
-        record.name.trim().toLowerCase() === name.toLowerCase() &&
+    // Check for duplicate visitor
+    const duplicateVisitor = attendanceRecords.find(record => 
+        record.name === name && 
         record.date === today &&
         record.serviceType === serviceType &&
         record.isVisitor === true
     );
     
-    if (duplicate) {
-        alert('⚠️ Duplicate Visitor!\n\n' + name + ' already added for ' + serviceType + ' today at ' + duplicate.time);
+    if (duplicateVisitor) {
+        alert(`Duplicate visitor detected!\n\n${name} already recorded for ${serviceType} today.`);
         return;
     }
     
     const record = {
         name: name,
-        cluster: visitorType, // Store visitor type in cluster field
+        cluster: 'VISITOR',
         serviceType: serviceType,
         timestamp: new Date().toISOString(),
-        date: new Date().toLocaleDateString(),
+        date: today,
         time: new Date().toLocaleTimeString(),
         isVisitor: true,
         visitorType: visitorType
     };
     
-    // Save to cloud
     saveRecordToCloud(record);
     
-    // For immediate UI feedback
     const tempRecord = { id: Date.now(), ...record };
     attendanceRecords.unshift(tempRecord);
     displayRecords();
@@ -273,17 +252,20 @@ function addVisitor() {
     populateClusterFilter();
     
     // Show success message
-    document.getElementById('visitor-added-name').textContent = name;
-    document.getElementById('visitor-added-type').textContent = visitorType;
-    document.getElementById('visitor-added-service').textContent = serviceType;
-    document.getElementById('visitor-added-time').textContent = new Date().toLocaleString();
+    document.getElementById('visitor-result-name').textContent = name;
+    document.getElementById('visitor-result-type').textContent = visitorType;
+    document.getElementById('visitor-result-service').textContent = serviceType;
+    document.getElementById('visitor-result-time').textContent = new Date().toLocaleString();
     document.getElementById('visitor-result').style.display = 'block';
     
     // Clear form
     document.getElementById('visitor-name').value = '';
-    document.getElementById('visitor-type').value = '';
     
-    // Hide success message after 5 seconds
+    // Vibrate on success
+    if (navigator.vibrate) {
+        navigator.vibrate(200);
+    }
+    
     setTimeout(() => {
         document.getElementById('visitor-result').style.display = 'none';
     }, 5000);
@@ -292,12 +274,10 @@ function addVisitor() {
 // Firebase Functions
 async function initializeFirebase() {
     try {
-        // Check if Firebase libraries are loaded
         if (typeof firebase === 'undefined') {
             throw new Error('Firebase not loaded');
         }
         
-        // Initialize Firebase
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
@@ -306,7 +286,6 @@ async function initializeFirebase() {
         firebaseInitialized = true;
         console.log('Firebase initialized successfully');
         
-        // Listen for real-time updates
         db.collection('attendance').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
             attendanceRecords = [];
             snapshot.forEach((doc) => {
@@ -316,7 +295,6 @@ async function initializeFirebase() {
             updateStats();
             populateClusterFilter();
             
-            // Also save to localStorage as backup
             localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
         });
         
@@ -335,11 +313,9 @@ async function saveRecordToCloud(record) {
             console.log('Record saved to cloud');
         } catch (error) {
             console.error('Error saving to cloud:', error);
-            // Fallback to localStorage
             saveRecords();
         }
     } else {
-        // Fallback to localStorage
         saveRecords();
     }
 }
@@ -356,15 +332,32 @@ async function loadRecordsFromCloud() {
             updateStats();
             populateClusterFilter();
             
-            // Save to localStorage as backup
             localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
         } catch (error) {
             console.error('Error loading from cloud:', error);
-            // Fallback to localStorage
             loadRecords();
         }
     } else {
         loadRecords();
+    }
+}
+
+async function deleteRecordsByDateFromCloud(dateToDelete) {
+    if (firebaseInitialized && db) {
+        try {
+            const batch = db.batch();
+            const snapshot = await db.collection('attendance').get();
+            snapshot.docs.forEach((doc) => {
+                const record = doc.data();
+                if (record.date === dateToDelete) {
+                    batch.delete(doc.ref);
+                }
+            });
+            await batch.commit();
+            console.log('Records deleted from cloud for date:', dateToDelete);
+        } catch (error) {
+            console.error('Error deleting records from cloud:', error);
+        }
     }
 }
 
@@ -384,26 +377,7 @@ async function clearAllRecordsFromCloud() {
     }
 }
 
-async function deleteRecordsByDateFromCloud(dateToDelete) {
-    if (firebaseInitialized && db) {
-        try {
-            const batch = db.batch();
-            const snapshot = await db.collection('attendance').get();
-            snapshot.docs.forEach((doc) => {
-                const data = doc.data();
-                if (data.date === dateToDelete) {
-                    batch.delete(doc.ref);
-                }
-            });
-            await batch.commit();
-            console.log('Records for ' + dateToDelete + ' cleared from cloud');
-        } catch (error) {
-            console.error('Error deleting records by date:', error);
-        }
-    }
-}
-
-// Local Storage Functions (Fallback)
+// Local Storage Functions
 function saveRecords() {
     localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
 }
@@ -416,6 +390,40 @@ function loadRecords() {
     }
 }
 
+// Delete Records by Date
+function deleteRecordsByDate() {
+    const dateInput = document.getElementById('delete-date').value;
+    
+    if (!dateInput) {
+        alert('Please select a date to delete records!');
+        return;
+    }
+    
+    const dateToDelete = new Date(dateInput).toLocaleDateString();
+    const recordsToDelete = attendanceRecords.filter(r => r.date === dateToDelete);
+    
+    if (recordsToDelete.length === 0) {
+        alert(`No records found for ${dateToDelete}`);
+        return;
+    }
+    
+    const confirmMsg = `Found ${recordsToDelete.length} record(s) for ${dateToDelete}.\n\nAre you sure you want to delete these records?\n\nThis action cannot be undone!`;
+    
+    if (confirm(confirmMsg)) {
+        deleteRecordsByDateFromCloud(dateToDelete);
+        
+        attendanceRecords = attendanceRecords.filter(r => r.date !== dateToDelete);
+        saveRecords();
+        displayRecords();
+        updateStats();
+        populateClusterFilter();
+        
+        alert(`Successfully deleted ${recordsToDelete.length} record(s) for ${dateToDelete}`);
+        document.getElementById('delete-date').value = '';
+    }
+}
+
+// Clear All Records with Enhanced Warning
 function clearAllRecords() {
     const totalRecords = attendanceRecords.length;
     
@@ -424,82 +432,22 @@ function clearAllRecords() {
         return;
     }
     
-    const confirmMessage = '⚠️ WARNING: DELETE ALL RECORDS\n\n' +
-        'You are about to DELETE ALL ' + totalRecords + ' attendance records from ALL dates!\n\n' +
-        '• This will delete records from EVERY date\n' +
-        '• This will delete ALL service types\n' +
-        '• This will delete ALL clusters and visitors\n' +
-        '• This CANNOT be undone!\n\n' +
-        'TIP: Use "Delete by Date" instead to delete specific dates only.\n\n' +
-        'Are you ABSOLUTELY SURE you want to delete EVERYTHING?';
+    const warningMsg = `⚠️ WARNING: DELETE ALL RECORDS ⚠️\n\nYou are about to permanently delete:\n• Total Records: ${totalRecords}\n\nThis will remove ALL attendance data from the system.\n\nThis action CANNOT be undone!\n\nAre you absolutely sure you want to continue?`;
     
-    if (confirm(confirmMessage)) {
-        // Final confirmation
-        if (confirm('FINAL CONFIRMATION:\n\nDelete ALL ' + totalRecords + ' records permanently?')) {
-            // Clear from cloud
+    if (confirm(warningMsg)) {
+        const finalConfirm = confirm(`FINAL CONFIRMATION:\n\nDelete all ${totalRecords} records?\n\nClick OK to permanently delete all data.`);
+        
+        if (finalConfirm) {
             clearAllRecordsFromCloud();
             
-            // Clear local
             attendanceRecords = [];
             saveRecords();
             updateStats();
             populateClusterFilter();
             displayRecords();
             
-            alert('✅ All records have been deleted.');
+            alert('All records have been deleted successfully.');
         }
-    }
-}
-
-function deleteRecordsByDate() {
-    const deleteDateInput = document.getElementById('delete-date');
-    const deleteDate = deleteDateInput.value;
-    
-    if (!deleteDate) {
-        alert('⚠️ Please select a date to delete!\n\nUse the date picker in the "Delete by Date" section.');
-        return;
-    }
-    
-    const selectedDate = new Date(deleteDate).toLocaleDateString();
-    
-    // Count records for this date
-    const recordsToDelete = attendanceRecords.filter(r => r.date === selectedDate);
-    const deleteCount = recordsToDelete.length;
-    
-    if (deleteCount === 0) {
-        alert('No records found for ' + selectedDate + '\n\nNothing to delete.');
-        return;
-    }
-    
-    // Show detailed confirmation
-    const confirmMessage = '🗑️ DELETE RECORDS FOR SPECIFIC DATE\n\n' +
-        'Date: ' + selectedDate + '\n' +
-        'Records to delete: ' + deleteCount + '\n\n' +
-        'This will delete:\n' +
-        '• All attendance records for ' + selectedDate + '\n' +
-        '• All service types on this date\n' +
-        '• Both members and visitors for this date\n\n' +
-        '⚠️ This cannot be undone!\n\n' +
-        'Records from other dates will NOT be affected.\n\n' +
-        'Are you sure you want to delete ' + deleteCount + ' record(s) from ' + selectedDate + '?';
-    
-    if (confirm(confirmMessage)) {
-        // Delete from cloud
-        deleteRecordsByDateFromCloud(selectedDate);
-        
-        // Delete from local array
-        attendanceRecords = attendanceRecords.filter(r => r.date !== selectedDate);
-        
-        // Update UI
-        saveRecords();
-        updateStats();
-        populateClusterFilter();
-        displayRecords();
-        
-        // Clear the delete date input
-        deleteDateInput.value = '';
-        
-        alert('✅ Successfully deleted ' + deleteCount + ' record(s) from ' + selectedDate);
     }
 }
 
@@ -508,7 +456,6 @@ function displayRecords(filteredRecords = null) {
     const recordsList = document.getElementById('records-list');
     const records = filteredRecords || attendanceRecords;
     
-    // IMPORTANT: Store currently displayed records for export
     currentDisplayedRecords = records;
     
     if (records.length === 0) {
@@ -517,9 +464,10 @@ function displayRecords(filteredRecords = null) {
     }
     
     recordsList.innerHTML = records.map(record => `
-        <div class="record-item" style="${record.isVisitor ? 'border-left-color: #FF9800;' : ''}">
+        <div class="record-item ${record.isVisitor ? 'visitor-record' : ''}">
             <h4>${record.name} ${record.isVisitor ? '👤' : ''}</h4>
-            <p><strong>${record.isVisitor ? 'Visitor Type:' : 'Cluster:'}</strong> ${record.cluster}</p>
+            <p><strong>Cluster:</strong> ${record.cluster}</p>
+            ${record.isVisitor ? `<p><strong>Visitor Type:</strong> ${record.visitorType || 'N/A'}</p>` : ''}
             <p><strong>Service Type:</strong> ${record.serviceType || 'N/A'}</p>
             <p><strong>Date:</strong> ${record.date}</p>
             <p><strong>Time:</strong> ${record.time}</p>
@@ -536,7 +484,7 @@ function updateStats() {
 }
 
 function populateClusterFilter() {
-    const clusters = [...new Set(attendanceRecords.map(r => r.cluster.trim()))].sort();
+    const clusters = [...new Set(attendanceRecords.map(r => r.cluster.trim()).filter(c => c !== 'VISITOR'))].sort();
     const select = document.getElementById('filter-cluster');
     const currentValue = select.value;
     
@@ -553,39 +501,13 @@ function populateClusterFilter() {
     }
 }
 
-// Clear all filters
-function clearFilters() {
-    document.getElementById('filter-date').value = '';
-    document.getElementById('filter-cluster').value = '';
-    document.getElementById('filter-service').value = '';
-    displayRecords(); // Show all records
-}
-
-function populateServiceTypeFilter() {
-    const serviceTypes = [...new Set(attendanceRecords.map(r => r.serviceType).filter(Boolean))].sort();
-    const select = document.getElementById('filter-service');
-    const currentValue = select.value;
-    
-    select.innerHTML = '<option value="">All Service Types</option>';
-    serviceTypes.forEach(service => {
-        const option = document.createElement('option');
-        option.value = service;
-        option.textContent = service;
-        select.appendChild(option);
-    });
-    
-    if (currentValue && serviceTypes.includes(currentValue)) {
-        select.value = currentValue;
-    }
-}
-
 // Filter Records
 function filterRecords() {
     const dateFilter = document.getElementById('filter-date').value;
     const clusterFilter = document.getElementById('filter-cluster').value;
     const serviceFilter = document.getElementById('filter-service').value;
     
-    let filtered = attendanceRecords.slice(); // Create a copy
+    let filtered = attendanceRecords.slice();
     
     if (dateFilter) {
         const filterDate = new Date(dateFilter).toLocaleDateString();
@@ -603,27 +525,23 @@ function filterRecords() {
     displayRecords(filtered);
 }
 
-// Export to CSV - FIXED to export filtered records
+// Export to CSV - Sorted by Cluster then Name
 function exportToCSV() {
-    // Re-apply current filters to ensure we export what's displayed
     const dateFilter = document.getElementById('filter-date').value;
     const clusterFilter = document.getElementById('filter-cluster').value;
     const serviceFilter = document.getElementById('filter-service').value;
     
-    let recordsToExport = attendanceRecords.slice(); // Start with all records
+    let recordsToExport = attendanceRecords.slice();
     
-    // Apply date filter if set
     if (dateFilter) {
         const filterDate = new Date(dateFilter).toLocaleDateString();
         recordsToExport = recordsToExport.filter(r => r.date === filterDate);
     }
     
-    // Apply cluster filter if set
     if (clusterFilter) {
         recordsToExport = recordsToExport.filter(r => r.cluster.trim() === clusterFilter.trim());
     }
     
-    // Apply service type filter if set
     if (serviceFilter) {
         recordsToExport = recordsToExport.filter(r => r.serviceType === serviceFilter);
     }
@@ -633,21 +551,23 @@ function exportToCSV() {
         return;
     }
     
-    // Sort by Cluster first, then by Name
+    // Sort by Cluster (alphabetically) then by Name (alphabetically)
     recordsToExport.sort((a, b) => {
-        const clusterCompare = a.cluster.trim().localeCompare(b.cluster.trim());
-        if (clusterCompare !== 0) return clusterCompare;
-        return a.name.trim().localeCompare(b.name.trim());
+        const clusterCompare = a.cluster.localeCompare(b.cluster);
+        if (clusterCompare !== 0) {
+            return clusterCompare;
+        }
+        return a.name.localeCompare(b.name);
     });
     
-    const headers = ['Name', 'Cluster/Visitor Type', 'Service Type', 'Date', 'Time', 'Type'];
+    const headers = ['Name', 'Cluster', 'Service Type', 'Date', 'Time', 'Visitor Type'];
     const rows = recordsToExport.map(r => [
         r.name, 
         r.cluster, 
         r.serviceType || 'N/A', 
         r.date, 
         r.time,
-        r.isVisitor ? 'Visitor' : 'Member'
+        r.isVisitor ? (r.visitorType || 'Visitor') : 'Member'
     ]);
     
     let csvContent = headers.join(',') + '\n';
@@ -655,10 +575,8 @@ function exportToCSV() {
         csvContent += row.join(',') + '\n';
     });
     
-    // Generate filename with filter info
     let filename = 'attendance';
     
-    // Add service type to filename if filtered
     if (serviceFilter) {
         filename += `_${serviceFilter.replace(/\s+/g, '_')}`;
     }
@@ -673,7 +591,6 @@ function exportToCSV() {
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     
-    // Check if Web Share API is supported (for mobile sharing)
     if (navigator.share && navigator.canShare) {
         const file = new File([blob], filename, { type: 'text/csv' });
         if (navigator.canShare({ files: [file] })) {
@@ -685,18 +602,15 @@ function exportToCSV() {
                 console.log('Shared successfully');
             }).catch((error) => {
                 console.log('Error sharing:', error);
-                // Fallback to download
                 downloadBlob(blob, filename);
             });
             return;
         }
     }
     
-    // Fallback: regular download
     downloadBlob(blob, filename);
 }
 
-// Helper function to download blob
 function downloadBlob(blob, filename) {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -704,6 +618,192 @@ function downloadBlob(blob, filename) {
     a.download = filename;
     a.click();
     window.URL.revokeObjectURL(url);
+}
+
+// Generate Report Function
+function generateReport() {
+    const dateInput = document.getElementById('report-date').value;
+    const serviceFilter = document.getElementById('report-service').value;
+    
+    if (!dateInput) {
+        alert('Please select a date!');
+        return;
+    }
+    
+    const reportDate = new Date(dateInput).toLocaleDateString();
+    let filtered = attendanceRecords.filter(r => r.date === reportDate);
+    
+    if (serviceFilter) {
+        filtered = filtered.filter(r => r.serviceType === serviceFilter);
+    }
+    
+    if (filtered.length === 0) {
+        document.getElementById('report-content').innerHTML = '<p class="empty-state">No attendance records found for the selected date and service type.</p>';
+        return;
+    }
+    
+    // Separate members and visitors
+    const members = filtered.filter(r => !r.isVisitor);
+    const visitors = filtered.filter(r => r.isVisitor);
+    
+    // Group members by cluster
+    const clusterGroups = {};
+    members.forEach(record => {
+        if (!clusterGroups[record.cluster]) {
+            clusterGroups[record.cluster] = [];
+        }
+        clusterGroups[record.cluster].push(record);
+    });
+    
+    // Count visitors by type
+    const visitorCounts = {
+        'Other Locale': visitors.filter(v => v.visitorType === 'Other Locale').length,
+        'Visitor': visitors.filter(v => v.visitorType === 'Visitor').length,
+        'Balik-loob': visitors.filter(v => v.visitorType === 'Balik-loob').length
+    };
+    
+    // Build report HTML
+    let reportHTML = `
+        <div class="report-header">
+            <h3>Attendance Report</h3>
+            <p><strong>Date:</strong> ${reportDate}</p>
+            <p><strong>Service:</strong> ${serviceFilter || 'All Services'}</p>
+            <p><strong>Total Attendance:</strong> ${filtered.length}</p>
+        </div>
+        
+        <h4 style="margin-top: 25px; margin-bottom: 15px;">Summary by Cluster</h4>
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>Cluster</th>
+                    <th>Count</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    // Add member clusters
+    Object.keys(clusterGroups).sort().forEach(cluster => {
+        reportHTML += `
+            <tr>
+                <td>${cluster}</td>
+                <td>${clusterGroups[cluster].length}</td>
+            </tr>
+        `;
+    });
+    
+    // Add visitor rows
+    if (visitorCounts['Other Locale'] > 0) {
+        reportHTML += `
+            <tr>
+                <td>Other Locale</td>
+                <td>${visitorCounts['Other Locale']}</td>
+            </tr>
+        `;
+    }
+    if (visitorCounts['Visitor'] > 0) {
+        reportHTML += `
+            <tr>
+                <td>Visitor</td>
+                <td>${visitorCounts['Visitor']}</td>
+            </tr>
+        `;
+    }
+    if (visitorCounts['Balik-loob'] > 0) {
+        reportHTML += `
+            <tr>
+                <td>Balik-loob</td>
+                <td>${visitorCounts['Balik-loob']}</td>
+            </tr>
+        `;
+    }
+    
+    reportHTML += `
+            </tbody>
+        </table>
+        
+        <h4 style="margin-top: 30px; margin-bottom: 15px;">Detailed Attendance List</h4>
+    `;
+    
+    // Add detailed lists by cluster
+    Object.keys(clusterGroups).sort().forEach(cluster => {
+        const sortedMembers = clusterGroups[cluster].sort((a, b) => a.name.localeCompare(b.name));
+        
+        reportHTML += `
+            <div class="cluster-section">
+                <h5>${cluster} (${sortedMembers.length})</h5>
+                <ul class="attendee-list">
+        `;
+        
+        sortedMembers.forEach(record => {
+            reportHTML += `<li>${record.name}</li>`;
+        });
+        
+        reportHTML += `
+                </ul>
+            </div>
+        `;
+    });
+    
+    // Add visitors section
+    if (visitors.length > 0) {
+        const sortedVisitors = visitors.sort((a, b) => a.name.localeCompare(b.name));
+        
+        reportHTML += `
+            <div class="cluster-section">
+                <h5>VISITORS (${visitors.length})</h5>
+                <ul class="attendee-list">
+        `;
+        
+        sortedVisitors.forEach(record => {
+            reportHTML += `<li>${record.name} - <em>${record.visitorType}</em></li>`;
+        });
+        
+        reportHTML += `
+                </ul>
+            </div>
+        `;
+    }
+    
+    document.getElementById('report-content').innerHTML = reportHTML;
+}
+
+// Print Report Function
+function printReport() {
+    const reportContent = document.getElementById('report-content').innerHTML;
+    
+    if (!reportContent || reportContent.includes('empty-state')) {
+        alert('Please generate a report first!');
+        return;
+    }
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Attendance Report</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; }
+                h3, h4, h5 { color: #333; }
+                .report-header { margin-bottom: 20px; border-bottom: 2px solid #2196F3; padding-bottom: 10px; }
+                .report-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                .report-table th { background: #2196F3; color: white; padding: 10px; text-align: left; }
+                .report-table td { border: 1px solid #ddd; padding: 8px; }
+                .cluster-section { margin-bottom: 20px; page-break-inside: avoid; }
+                .attendee-list { list-style: none; padding: 0; column-count: 2; }
+                .attendee-list li { padding: 5px 0; }
+                @media print {
+                    body { padding: 10px; }
+                }
+            </style>
+        </head>
+        <body>
+            ${reportContent}
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
 }
 
 // QR Code Generation
@@ -718,10 +818,8 @@ function generateQR() {
     
     const data = JSON.stringify({ name, cluster });
     
-    // Clear previous QR code
     document.getElementById('qrcode').innerHTML = '';
     
-    // Generate new QR code
     currentQRCode = new QRCode(document.getElementById('qrcode'), {
         text: data,
         width: 256,
@@ -742,9 +840,7 @@ function downloadQR() {
     const name = document.getElementById('employee-name').value.trim();
     const filename = `QR_${name.replace(/\s+/g, '_')}.png`;
     
-    // Convert canvas to blob
     canvas.toBlob((blob) => {
-        // Check if Web Share API is supported (for mobile sharing)
         if (navigator.share && navigator.canShare) {
             const file = new File([blob], filename, { type: 'image/png' });
             if (navigator.canShare({ files: [file] })) {
@@ -756,19 +852,16 @@ function downloadQR() {
                     console.log('Shared successfully');
                 }).catch((error) => {
                     console.log('Error sharing:', error);
-                    // Fallback to download
                     downloadBlobFromCanvas(blob, filename);
                 });
                 return;
             }
         }
         
-        // Fallback: regular download
         downloadBlobFromCanvas(blob, filename);
     }, 'image/png');
 }
 
-// Helper function to download blob from canvas
 function downloadBlobFromCanvas(blob, filename) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -776,280 +869,4 @@ function downloadBlobFromCanvas(blob, filename) {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-}
-
-// Generate Report
-function generateReport() {
-    const dateFilter = document.getElementById('report-date').value;
-    const serviceFilter = document.getElementById('report-service').value;
-    
-    if (!dateFilter && !serviceFilter) {
-        alert('Please select at least a date or service type to generate a report.');
-        return;
-    }
-    
-    let filteredRecords = attendanceRecords.slice();
-    
-    // Apply filters
-    if (dateFilter) {
-        const filterDate = new Date(dateFilter).toLocaleDateString();
-        filteredRecords = filteredRecords.filter(r => r.date === filterDate);
-    }
-    
-    if (serviceFilter) {
-        filteredRecords = filteredRecords.filter(r => r.serviceType === serviceFilter);
-    }
-    
-    if (filteredRecords.length === 0) {
-        document.getElementById('report-content').innerHTML = '<p class="empty-state">No attendance records found for the selected criteria.</p>';
-        return;
-    }
-    
-    // Group by cluster
-    const byCluster = {};
-    const visitorCounts = {
-        'Other Locale': 0,
-        'Visitor': 0,
-        'Balik-loob': 0
-    };
-    
-    filteredRecords.forEach(record => {
-        // Count visitors separately
-        if (record.isVisitor && record.visitorType) {
-            visitorCounts[record.visitorType]++;
-        } else {
-            // Regular members
-            const cluster = record.cluster.trim();
-            if (!byCluster[cluster]) {
-                byCluster[cluster] = [];
-            }
-            byCluster[cluster].push(record);
-        }
-    });
-    
-    // Sort clusters alphabetically
-    const sortedClusters = Object.keys(byCluster).sort();
-    
-    // Count total members (excluding visitors)
-    const totalMembers = filteredRecords.filter(r => !r.isVisitor).length;
-    const totalVisitors = visitorCounts['Other Locale'] + visitorCounts['Visitor'] + visitorCounts['Balik-loob'];
-    
-    // Generate report HTML
-    let reportHTML = `
-        <div class="report-header">
-            <h2>📊 Attendance Report</h2>
-            <p><strong>Date:</strong> ${dateFilter ? new Date(dateFilter).toLocaleDateString() : 'All Dates'}</p>
-            <p><strong>Service Type:</strong> ${serviceFilter || 'All Services'}</p>
-            <p><strong>Total Attendance:</strong> ${filteredRecords.length}</p>
-            <p><strong>Members:</strong> ${totalMembers} | <strong>Visitors:</strong> ${totalVisitors}</p>
-            <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
-        </div>
-        
-        <div class="report-summary">
-            <h3>Summary by Cluster</h3>
-            <table class="report-table">
-                <thead>
-                    <tr>
-                        <th>Cluster</th>
-                        <th>Count</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-    
-    sortedClusters.forEach(cluster => {
-        const count = byCluster[cluster].length;
-        reportHTML += `
-            <tr>
-                <td><strong>${cluster}</strong></td>
-                <td>${count}</td>
-            </tr>
-        `;
-    });
-    
-    // Add visitor counts
-    if (totalVisitors > 0) {
-        reportHTML += `
-            <tr style="border-top: 2px solid #2196F3;">
-                <td colspan="2"><strong>VISITORS</strong></td>
-            </tr>
-        `;
-        
-        if (visitorCounts['Other Locale'] > 0) {
-            reportHTML += `
-                <tr>
-                    <td>Other Locale</td>
-                    <td>${visitorCounts['Other Locale']}</td>
-                </tr>
-            `;
-        }
-        
-        if (visitorCounts['Visitor'] > 0) {
-            reportHTML += `
-                <tr>
-                    <td>Visitor</td>
-                    <td>${visitorCounts['Visitor']}</td>
-                </tr>
-            `;
-        }
-        
-        if (visitorCounts['Balik-loob'] > 0) {
-            reportHTML += `
-                <tr>
-                    <td>Balik-loob</td>
-                    <td>${visitorCounts['Balik-loob']}</td>
-                </tr>
-            `;
-        }
-    }
-    
-    reportHTML += `
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="report-details">
-            <h3>Detailed Attendance by Cluster</h3>
-    `;
-    
-    // List names by cluster (members only)
-    sortedClusters.forEach(cluster => {
-        const records = byCluster[cluster].sort((a, b) => a.name.localeCompare(b.name));
-        reportHTML += `
-            <div class="cluster-section">
-                <h4>${cluster} (${records.length} attendees)</h4>
-                <ol class="attendee-list">
-        `;
-        
-        records.forEach(record => {
-            reportHTML += `<li>${record.name} - ${record.time}</li>`;
-        });
-        
-        reportHTML += `
-                </ol>
-            </div>
-        `;
-    });
-    
-    // List visitors separately
-    if (totalVisitors > 0) {
-        reportHTML += `
-            <div class="cluster-section" style="border-left-color: #FF9800;">
-                <h4 style="color: #FF9800;">VISITORS (${totalVisitors} total)</h4>
-        `;
-        
-        // Get all visitors sorted by type then name
-        const visitors = filteredRecords.filter(r => r.isVisitor).sort((a, b) => {
-            if (a.visitorType !== b.visitorType) {
-                return a.visitorType.localeCompare(b.visitorType);
-            }
-            return a.name.localeCompare(b.name);
-        });
-        
-        let currentType = '';
-        visitors.forEach(visitor => {
-            if (visitor.visitorType !== currentType) {
-                if (currentType !== '') {
-                    reportHTML += `</ol>`;
-                }
-                currentType = visitor.visitorType;
-                reportHTML += `<p style="margin-top: 10px; font-weight: bold; color: #FF9800;">${currentType}:</p><ol class="attendee-list">`;
-            }
-            reportHTML += `<li>${visitor.name} - ${visitor.time}</li>`;
-        });
-        
-        reportHTML += `
-                </ol>
-            </div>
-        `;
-    }
-    
-    reportHTML += `</div>`;
-    
-    document.getElementById('report-content').innerHTML = reportHTML;
-}
-
-// Print Report
-function printReport() {
-    const reportContent = document.getElementById('report-content').innerHTML;
-    
-    if (reportContent.includes('empty-state')) {
-        alert('Please generate a report first before printing.');
-        return;
-    }
-    
-    // Create a new window for printing
-    const printWindow = window.open('', '', 'width=800,height=600');
-    printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Attendance Report</title>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    padding: 20px;
-                    max-width: 900px;
-                    margin: 0 auto;
-                }
-                .report-header {
-                    text-align: center;
-                    border-bottom: 2px solid #333;
-                    padding-bottom: 15px;
-                    margin-bottom: 20px;
-                }
-                .report-header h2 {
-                    margin: 0 0 10px 0;
-                }
-                .report-summary, .report-details {
-                    margin: 20px 0;
-                }
-                .report-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin: 15px 0;
-                }
-                .report-table th, .report-table td {
-                    border: 1px solid #ddd;
-                    padding: 10px;
-                    text-align: left;
-                }
-                .report-table th {
-                    background-color: #f4f4f4;
-                    font-weight: bold;
-                }
-                .cluster-section {
-                    margin: 20px 0;
-                    page-break-inside: avoid;
-                }
-                .cluster-section h4 {
-                    background-color: #f4f4f4;
-                    padding: 8px;
-                    margin: 10px 0 5px 0;
-                }
-                .attendee-list {
-                    margin: 5px 0;
-                    padding-left: 30px;
-                }
-                .attendee-list li {
-                    margin: 3px 0;
-                }
-                @media print {
-                    body { padding: 10px; }
-                }
-            </style>
-        </head>
-        <body>
-            ${reportContent}
-        </body>
-        </html>
-    `);
-    
-    printWindow.document.close();
-    printWindow.focus();
-    
-    // Wait for content to load, then print
-    setTimeout(() => {
-        printWindow.print();
-    }, 250);
 }
