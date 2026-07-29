@@ -19,6 +19,7 @@
         <div class="tabs">
             <button class="tab-btn active" onclick="showTab('scan')">🔍 Scan</button>
             <button class="tab-btn" onclick="showTab('records')">📊 Records</button>
+            <button class="tab-btn" onclick="showTab('reports')">📈 Reports</button>
             <button class="tab-btn" onclick="showTab('generate')">🎫 Generate QR</button>
         </div>
 
@@ -88,6 +89,30 @@
 
             <div id="records-list" class="records-container">
                 <p class="empty-state">No attendance records yet. Start scanning QR codes!</p>
+            </div>
+        </div>
+
+        <!-- REPORTS TAB -->
+        <div id="reports-tab" class="tab-content">
+            <div class="controls">
+                <input type="date" id="report-date" class="input-field">
+                <select id="report-service" class="input-field">
+                    <option value="">All Service Types</option>
+                    <option value="Sunday Worship">Sunday Worship</option>
+                    <option value="Bible Study">Bible Study</option>
+                    <option value="Prayer Meeting">Prayer Meeting</option>
+                    <option value="Family Devotion">Family Devotion</option>
+                    <option value="Church Anniversary">Church Anniversary</option>
+                    <option value="Camp">Camp</option>
+                    <option value="International Convention">International Convention</option>
+                    <option value="Elders Conference">Elders Conference</option>
+                </select>
+                <button onclick="generateReport()" class="btn btn-primary">📊 Generate Report</button>
+                <button onclick="printReport()" class="btn btn-secondary">🖨️ Print Report</button>
+            </div>
+
+            <div id="report-content" class="report-container">
+                <p class="empty-state">Select date and service type, then click "Generate Report" to view attendance summary.</p>
             </div>
         </div>
 
