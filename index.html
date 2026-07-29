@@ -115,7 +115,12 @@
                 </select>
                 <button onclick="clearFilters()" class="btn btn-secondary">🔄 Show All</button>
                 <button onclick="exportToCSV()" class="btn btn-success">📥 Export CSV</button>
-                <button onclick="clearAllRecords()" class="btn btn-danger">🗑️ Clear All</button>
+            </div>
+            
+            <div class="controls" style="margin-top: 10px; border-top: 2px solid #e0e0e0; padding-top: 10px;">
+                <input type="date" id="delete-date" class="input-field" placeholder="Select date to delete">
+                <button onclick="deleteRecordsByDate()" class="btn btn-danger" style="flex: 1;">🗑️ Delete by Date</button>
+                <button onclick="clearAllRecords()" class="btn btn-danger" style="flex: 1;">⚠️ Delete All Records</button>
             </div>
             
             <div class="stats">
