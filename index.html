@@ -18,6 +18,7 @@
 
         <div class="tabs">
             <button class="tab-btn active" onclick="showTab('scan')">🔍 Scan</button>
+            <button class="tab-btn" onclick="showTab('visitors')">👥 Visitors</button>
             <button class="tab-btn" onclick="showTab('records')">📊 Records</button>
             <button class="tab-btn" onclick="showTab('reports')">📈 Reports</button>
             <button class="tab-btn" onclick="showTab('generate')">🎫 Generate QR</button>
@@ -49,6 +50,47 @@
                     <p><strong>Cluster:</strong> <span id="scanned-cluster"></span></p>
                     <p><strong>Service Type:</strong> <span id="scanned-service"></span></p>
                     <p><strong>Time:</strong> <span id="scanned-time"></span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISITORS TAB -->
+        <div id="visitors-tab" class="tab-content">
+            <div class="form-section">
+                <h3>Add Visitor Attendance</h3>
+                <p style="color: #666; margin-bottom: 15px;">For visitors without QR codes</p>
+                
+                <label for="visitor-name" style="display: block; margin-bottom: 8px; font-weight: bold;">Name:</label>
+                <input type="text" id="visitor-name" class="input-field" placeholder="Enter Lastname, Firstname Middlename" style="margin-bottom: 15px;">
+                
+                <label for="visitor-type" style="display: block; margin-bottom: 8px; font-weight: bold;">Visitor Type:</label>
+                <select id="visitor-type" class="input-field" style="margin-bottom: 15px;">
+                    <option value="">Select Visitor Type</option>
+                    <option value="Other Locale">Other Locale</option>
+                    <option value="Visitor">Visitor</option>
+                    <option value="Balik-loob">Balik-loob</option>
+                </select>
+                
+                <label for="visitor-service" style="display: block; margin-bottom: 8px; font-weight: bold;">Service Type:</label>
+                <select id="visitor-service" class="input-field" style="margin-bottom: 15px;">
+                    <option value="Sunday Worship">Sunday Worship</option>
+                    <option value="Bible Study">Bible Study</option>
+                    <option value="Prayer Meeting">Prayer Meeting</option>
+                    <option value="Family Devotion">Family Devotion</option>
+                    <option value="Church Anniversary">Church Anniversary</option>
+                    <option value="Camp">Camp</option>
+                    <option value="International Convention">International Convention</option>
+                    <option value="Elders Conference">Elders Conference</option>
+                </select>
+                
+                <button onclick="addVisitor()" class="btn btn-primary" style="width: 100%;">✅ Add Visitor</button>
+                
+                <div id="visitor-result" class="result-box" style="display: none; margin-top: 20px;">
+                    <h3>✅ Visitor Added!</h3>
+                    <p><strong>Name:</strong> <span id="visitor-added-name"></span></p>
+                    <p><strong>Type:</strong> <span id="visitor-added-type"></span></p>
+                    <p><strong>Service:</strong> <span id="visitor-added-service"></span></p>
+                    <p><strong>Time:</strong> <span id="visitor-added-time"></span></p>
                 </div>
             </div>
         </div>
