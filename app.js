@@ -666,7 +666,6 @@ function generateReport() {
                     <tr>
                         <th>Cluster</th>
                         <th>Count</th>
-                        <th>Percentage</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -674,12 +673,10 @@ function generateReport() {
     
     sortedClusters.forEach(cluster => {
         const count = byCluster[cluster].length;
-        const percentage = ((count / filteredRecords.length) * 100).toFixed(1);
         reportHTML += `
             <tr>
                 <td><strong>${cluster}</strong></td>
                 <td>${count}</td>
-                <td>${percentage}%</td>
             </tr>
         `;
     });
