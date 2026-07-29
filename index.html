@@ -6,8 +6,10 @@
     <meta name="theme-color" content="#2196F3">
     <title>Attendance Monitoring System</title>
     <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
     <link rel="stylesheet" href="styles.css">
-    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==">
 </head>
 <body>
     <div class="container">
@@ -58,21 +60,19 @@
         <div id="visitors-tab" class="tab-content">
             <div class="form-section">
                 <h3>Add Visitor Attendance</h3>
-                <p style="color: #666; margin-bottom: 15px;">For visitors without QR codes</p>
+                <p style="color: #666; margin-bottom: 20px;">For visitors without QR codes</p>
                 
-                <label for="visitor-name" style="display: block; margin-bottom: 8px; font-weight: bold;">Name:</label>
-                <input type="text" id="visitor-name" class="input-field" placeholder="Enter Lastname, Firstname Middlename" style="margin-bottom: 15px;">
+                <input type="text" id="visitor-name" class="input-field" placeholder="Enter visitor name (Lastname, Firstname)" required>
                 
-                <label for="visitor-type" style="display: block; margin-bottom: 8px; font-weight: bold;">Visitor Type:</label>
-                <select id="visitor-type" class="input-field" style="margin-bottom: 15px;">
-                    <option value="">Select Visitor Type</option>
+                <label for="visitor-type" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Visitor Type:</label>
+                <select id="visitor-type" class="input-field">
                     <option value="Other Locale">Other Locale</option>
                     <option value="Visitor">Visitor</option>
                     <option value="Balik-loob">Balik-loob</option>
                 </select>
                 
-                <label for="visitor-service" style="display: block; margin-bottom: 8px; font-weight: bold;">Service Type:</label>
-                <select id="visitor-service" class="input-field" style="margin-bottom: 15px;">
+                <label for="visitor-service" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Service Type:</label>
+                <select id="visitor-service" class="input-field">
                     <option value="Sunday Worship">Sunday Worship</option>
                     <option value="Evangelistic Service">Evangelistic Service</option>
                     <option value="Bible Study">Bible Study</option>
@@ -83,14 +83,14 @@
                     <option value="International Convention">International Convention</option>
                 </select>
                 
-                <button onclick="addVisitor()" class="btn btn-primary" style="width: 100%;">✅ Add Visitor</button>
+                <button onclick="addVisitor()" class="btn btn-primary" style="margin-top: 20px;">Add Visitor</button>
                 
                 <div id="visitor-result" class="result-box" style="display: none; margin-top: 20px;">
                     <h3>✅ Visitor Added!</h3>
-                    <p><strong>Name:</strong> <span id="visitor-added-name"></span></p>
-                    <p><strong>Type:</strong> <span id="visitor-added-type"></span></p>
-                    <p><strong>Service:</strong> <span id="visitor-added-service"></span></p>
-                    <p><strong>Time:</strong> <span id="visitor-added-time"></span></p>
+                    <p><strong>Name:</strong> <span id="visitor-result-name"></span></p>
+                    <p><strong>Type:</strong> <span id="visitor-result-type"></span></p>
+                    <p><strong>Service:</strong> <span id="visitor-result-service"></span></p>
+                    <p><strong>Time:</strong> <span id="visitor-result-time"></span></p>
                 </div>
             </div>
         </div>
@@ -98,7 +98,7 @@
         <!-- RECORDS TAB -->
         <div id="records-tab" class="tab-content">
             <div class="controls">
-                <input type="date" id="filter-date" class="input-field">
+                <input type="date" id="filter-date" class="input-field" placeholder="Filter by date">
                 <select id="filter-cluster" class="input-field">
                     <option value="">All Clusters</option>
                 </select>
@@ -113,14 +113,14 @@
                     <option value="Camp">Camp</option>
                     <option value="International Convention">International Convention</option>
                 </select>
-                <button onclick="clearFilters()" class="btn btn-secondary">🔄 Show All</button>
+                <button onclick="clearFilters()" class="btn btn-secondary">Show All</button>
                 <button onclick="exportToCSV()" class="btn btn-success">📥 Export CSV</button>
             </div>
             
-            <div class="controls" style="margin-top: 10px; border-top: 2px solid #e0e0e0; padding-top: 10px;">
+            <div class="controls" style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #e0e0e0;">
                 <input type="date" id="delete-date" class="input-field" placeholder="Select date to delete">
-                <button onclick="deleteRecordsByDate()" class="btn btn-danger" style="flex: 1;">🗑️ Delete by Date</button>
-                <button onclick="clearAllRecords()" class="btn btn-danger" style="flex: 1;">⚠️ Delete All Records</button>
+                <button onclick="deleteRecordsByDate()" class="btn btn-danger">Delete by Date</button>
+                <button onclick="clearAllRecords()" class="btn btn-danger">🗑️ Delete All Records</button>
             </div>
             
             <div class="stats">
@@ -141,10 +141,15 @@
 
         <!-- REPORTS TAB -->
         <div id="reports-tab" class="tab-content">
-            <div class="controls">
+            <div class="form-section">
+                <h3>Attendance Report</h3>
+                
+                <label for="report-date" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Select Date:</label>
                 <input type="date" id="report-date" class="input-field">
+                
+                <label for="report-service" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Service Type:</label>
                 <select id="report-service" class="input-field">
-                    <option value="">All Service Types</option>
+                    <option value="">All Services</option>
                     <option value="Sunday Worship">Sunday Worship</option>
                     <option value="Evangelistic Service">Evangelistic Service</option>
                     <option value="Bible Study">Bible Study</option>
@@ -154,12 +159,13 @@
                     <option value="Camp">Camp</option>
                     <option value="International Convention">International Convention</option>
                 </select>
-                <button onclick="generateReport()" class="btn btn-primary">📊 Generate Report</button>
-                <button onclick="printReport()" class="btn btn-secondary">🖨️ Print Report</button>
-            </div>
-
-            <div id="report-content" class="report-container">
-                <p class="empty-state">Select date and service type, then click "Generate Report" to view attendance summary.</p>
+                
+                <button onclick="generateReport()" class="btn btn-primary" style="margin-top: 20px;">Generate Report</button>
+                <button onclick="printReport()" class="btn btn-success" style="margin-top: 20px;">Print Report</button>
+                
+                <div id="report-content" style="margin-top: 30px;">
+                    <p class="empty-state">Select date and service type, then click "Generate Report" to view attendance summary.</p>
+                </div>
             </div>
         </div>
 
@@ -167,7 +173,7 @@
         <div id="generate-tab" class="tab-content">
             <div class="form-section">
                 <h3>Generate QR Code</h3>
-                <input type="text" id="employee-name" class="input-field" placeholder="Enter Lastname, Firstname Middlename)" required>
+                <input type="text" id="employee-name" class="input-field" placeholder="Enter name (Lastname, Firstname Middlename)" required>
                 <select id="employee-cluster" class="input-field" required>
                     <option value="">Select Cluster</option>
                     <option value="CAMP AGUINALDO">CAMP AGUINALDO</option>
@@ -191,16 +197,10 @@
     </div>
 
     <!-- Scripts -->
-    <!-- Firebase App (the core Firebase SDK) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <!-- Firebase Firestore -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    
-    <!-- QR Code Libraries -->
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    
-    <!-- App Script -->
     <script src="app.js"></script>
 </body>
 </html>
