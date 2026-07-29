@@ -608,3 +608,196 @@ function downloadBlobFromCanvas(blob, filename) {
     a.click();
     URL.revokeObjectURL(url);
 }
+
+// Generate Report
+function generateReport() {
+    const dateFilter = document.getElementById('report-date').value;
+    const serviceFilter = document.getElementById('report-service').value;
+    
+    if (!dateFilter && !serviceFilter) {
+        alert('Please select at least a date or service type to generate a report.');
+        return;
+    }
+    
+    let filteredRecords = attendanceRecords.slice();
+    
+    // Apply filters
+    if (dateFilter) {
+        const filterDate = new Date(dateFilter).toLocaleDateString();
+        filteredRecords = filteredRecords.filter(r => r.date === filterDate);
+    }
+    
+    if (serviceFilter) {
+        filteredRecords = filteredRecords.filter(r => r.serviceType === serviceFilter);
+    }
+    
+    if (filteredRecords.length === 0) {
+        document.getElementById('report-content').innerHTML = '<p class="empty-state">No attendance records found for the selected criteria.</p>';
+        return;
+    }
+    
+    // Group by cluster
+    const byCluster = {};
+    filteredRecords.forEach(record => {
+        const cluster = record.cluster.trim();
+        if (!byCluster[cluster]) {
+            byCluster[cluster] = [];
+        }
+        byCluster[cluster].push(record);
+    });
+    
+    // Sort clusters alphabetically
+    const sortedClusters = Object.keys(byCluster).sort();
+    
+    // Generate report HTML
+    let reportHTML = `
+        <div class="report-header">
+            <h2>📊 Attendance Report</h2>
+            <p><strong>Date:</strong> ${dateFilter ? new Date(dateFilter).toLocaleDateString() : 'All Dates'}</p>
+            <p><strong>Service Type:</strong> ${serviceFilter || 'All Services'}</p>
+            <p><strong>Total Attendance:</strong> ${filteredRecords.length}</p>
+            <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+        </div>
+        
+        <div class="report-summary">
+            <h3>Summary by Cluster</h3>
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Cluster</th>
+                        <th>Count</th>
+                        <th>Percentage</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    sortedClusters.forEach(cluster => {
+        const count = byCluster[cluster].length;
+        const percentage = ((count / filteredRecords.length) * 100).toFixed(1);
+        reportHTML += `
+            <tr>
+                <td><strong>${cluster}</strong></td>
+                <td>${count}</td>
+                <td>${percentage}%</td>
+            </tr>
+        `;
+    });
+    
+    reportHTML += `
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="report-details">
+            <h3>Detailed Attendance by Cluster</h3>
+    `;
+    
+    // List names by cluster
+    sortedClusters.forEach(cluster => {
+        const records = byCluster[cluster].sort((a, b) => a.name.localeCompare(b.name));
+        reportHTML += `
+            <div class="cluster-section">
+                <h4>${cluster} (${records.length} attendees)</h4>
+                <ol class="attendee-list">
+        `;
+        
+        records.forEach(record => {
+            reportHTML += `<li>${record.name} - ${record.time}</li>`;
+        });
+        
+        reportHTML += `
+                </ol>
+            </div>
+        `;
+    });
+    
+    reportHTML += `</div>`;
+    
+    document.getElementById('report-content').innerHTML = reportHTML;
+}
+
+// Print Report
+function printReport() {
+    const reportContent = document.getElementById('report-content').innerHTML;
+    
+    if (reportContent.includes('empty-state')) {
+        alert('Please generate a report first before printing.');
+        return;
+    }
+    
+    // Create a new window for printing
+    const printWindow = window.open('', '', 'width=800,height=600');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Attendance Report</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    padding: 20px;
+                    max-width: 900px;
+                    margin: 0 auto;
+                }
+                .report-header {
+                    text-align: center;
+                    border-bottom: 2px solid #333;
+                    padding-bottom: 15px;
+                    margin-bottom: 20px;
+                }
+                .report-header h2 {
+                    margin: 0 0 10px 0;
+                }
+                .report-summary, .report-details {
+                    margin: 20px 0;
+                }
+                .report-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 15px 0;
+                }
+                .report-table th, .report-table td {
+                    border: 1px solid #ddd;
+                    padding: 10px;
+                    text-align: left;
+                }
+                .report-table th {
+                    background-color: #f4f4f4;
+                    font-weight: bold;
+                }
+                .cluster-section {
+                    margin: 20px 0;
+                    page-break-inside: avoid;
+                }
+                .cluster-section h4 {
+                    background-color: #f4f4f4;
+                    padding: 8px;
+                    margin: 10px 0 5px 0;
+                }
+                .attendee-list {
+                    margin: 5px 0;
+                    padding-left: 30px;
+                }
+                .attendee-list li {
+                    margin: 3px 0;
+                }
+                @media print {
+                    body { padding: 10px; }
+                }
+            </style>
+        </head>
+        <body>
+            ${reportContent}
+        </body>
+        </html>
+    `);
+    
+    printWindow.document.close();
+    printWindow.focus();
+    
+    // Wait for content to load, then print
+    setTimeout(() => {
+        printWindow.print();
+    }, 250);
+}
