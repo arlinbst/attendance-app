@@ -24,8 +24,11 @@ let firebaseInitialized = false;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
-    // Set today's date as default filter
-    document.getElementById('filter-date').valueAsDate = new Date();
+    // DON'T set default date - show all records by default
+    // Add auto-filter event listeners
+    document.getElementById('filter-date').addEventListener('change', filterRecords);
+    document.getElementById('filter-cluster').addEventListener('change', filterRecords);
+    document.getElementById('filter-service').addEventListener('change', filterRecords);
     
     // Initialize Firebase and load records
     initializeFirebase().then(() => {
@@ -141,15 +144,20 @@ function onScanSuccess(decodedText, decodedResult) {
             // Stop scanner immediately (before logging)
             stopScanner();
             
-            // Check for recent duplicate in records (within last 5 seconds)
-            const recentDuplicate = attendanceRecords.find(record => 
-                record.name === data.name && 
-                record.cluster === data.cluster &&
-                (now - record.id) < 5000 // 5 seconds
+            // Get current service type and date
+            const serviceType = document.getElementById('service-type').value;
+            const today = new Date().toLocaleDateString();
+            
+            // Check for duplicate: same person + same date + same service type
+            const duplicate = attendanceRecords.find(record => 
+                record.name.trim().toLowerCase() === data.name.trim().toLowerCase() && 
+                record.cluster.trim().toLowerCase() === data.cluster.trim().toLowerCase() &&
+                record.date === today &&
+                record.serviceType === serviceType
             );
             
-            if (recentDuplicate) {
-                alert('This person was already scanned recently!');
+            if (duplicate) {
+                alert('⚠️ Duplicate Attendance!\n\n' + data.name + ' already scanned for ' + serviceType + ' today at ' + duplicate.time);
                 setTimeout(() => {
                     isProcessingScan = false;
                 }, 2000);
@@ -157,7 +165,6 @@ function onScanSuccess(decodedText, decodedResult) {
             }
             
             // Log attendance
-            const serviceType = document.getElementById('service-type').value;
             logAttendance(data.name, data.cluster, serviceType);
             
             // Show result
@@ -384,6 +391,14 @@ function populateClusterFilter() {
     }
 }
 
+// Clear all filters
+function clearFilters() {
+    document.getElementById('filter-date').value = '';
+    document.getElementById('filter-cluster').value = '';
+    document.getElementById('filter-service').value = '';
+    displayRecords(); // Show all records
+}
+
 function populateServiceTypeFilter() {
     const serviceTypes = [...new Set(attendanceRecords.map(r => r.serviceType).filter(Boolean))].sort();
     const select = document.getElementById('filter-service');
@@ -426,7 +441,7 @@ function filterRecords() {
     displayRecords(filtered);
 }
 
-// Export to CSV - FIXED to export filtered records
+// Export to CSV - FIXED to export filtered records with sorting
 function exportToCSV() {
     // Re-apply current filters to ensure we export what's displayed
     const dateFilter = document.getElementById('filter-date').value;
@@ -455,6 +470,13 @@ function exportToCSV() {
         alert('No records to export!');
         return;
     }
+    
+    // Sort by Cluster first, then by Name
+    recordsToExport.sort((a, b) => {
+        const clusterCompare = a.cluster.trim().localeCompare(b.cluster.trim());
+        if (clusterCompare !== 0) return clusterCompare;
+        return a.name.trim().localeCompare(b.name.trim());
+    });
     
     const headers = ['Name', 'Cluster', 'Service Type', 'Date', 'Time'];
     const rows = recordsToExport.map(r => [r.name, r.cluster, r.serviceType || 'N/A', r.date, r.time]);
