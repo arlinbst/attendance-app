@@ -156,7 +156,7 @@ function onScanSuccess(decodedText, decodedResult) {
                 return;
             }
             
-            logAttendance(data.name, data.cluster, serviceType);
+            logAttendance(data.name, data.cluster, serviceType, data.category);
             
             document.getElementById('scanned-name').textContent = data.name;
             document.getElementById('scanned-cluster').textContent = data.cluster;
@@ -186,11 +186,12 @@ function onScanError(errorMessage) {
 }
 
 // Attendance Logging
-function logAttendance(name, cluster, serviceType) {
+function logAttendance(name, cluster, serviceType, category) {
     const record = {
         name: name.trim(),
         cluster: cluster.trim(),
         serviceType: serviceType,
+        category: category || 'N/A',
         timestamp: new Date().toISOString(),
         date: new Date().toLocaleDateString(),
         time: new Date().toLocaleTimeString(),
@@ -236,6 +237,7 @@ function addVisitor() {
         name: name,
         cluster: 'VISITOR',
         serviceType: serviceType,
+        category: visitorType,
         timestamp: new Date().toISOString(),
         date: today,
         time: new Date().toLocaleTimeString(),
@@ -467,6 +469,7 @@ function displayRecords(filteredRecords = null) {
         <div class="record-item ${record.isVisitor ? 'visitor-record' : ''}">
             <h4>${record.name} ${record.isVisitor ? '👤' : ''}</h4>
             <p><strong>Cluster:</strong> ${record.cluster}</p>
+            <p><strong>Category:</strong> ${record.category || record.visitorType || 'N/A'}</p>
             ${record.isVisitor ? `<p><strong>Visitor Type:</strong> ${record.visitorType || 'N/A'}</p>` : ''}
             <p><strong>Service Type:</strong> ${record.serviceType || 'N/A'}</p>
             <p><strong>Date:</strong> ${record.date}</p>
@@ -560,10 +563,11 @@ function exportToCSV() {
         return a.name.localeCompare(b.name);
     });
     
-    const headers = ['Name', 'Cluster', 'Service Type', 'Date', 'Time', 'Visitor Type'];
+    const headers = ['Name', 'Cluster', 'Category', 'Service Type', 'Date', 'Time', 'Type'];
     const rows = recordsToExport.map(r => [
         r.name, 
         r.cluster, 
+        r.category || r.visitorType || 'N/A',
         r.serviceType || 'N/A', 
         r.date, 
         r.time,
@@ -656,11 +660,11 @@ function generateReport() {
     });
     
     // Count visitors by type
-    const visitorCounts = {
-        'Other Locale': visitors.filter(v => v.visitorType === 'Other Locale').length,
-        'Visitor': visitors.filter(v => v.visitorType === 'Visitor').length,
-        'Balik-loob': visitors.filter(v => v.visitorType === 'Balik-loob').length
-    };
+    const visitorTypes = [...new Set(visitors.map(v => v.visitorType))];
+    const visitorCounts = {};
+    visitorTypes.forEach(type => {
+        visitorCounts[type] = visitors.filter(v => v.visitorType === type).length;
+    });
     
     // Build report HTML
     let reportHTML = `
@@ -693,30 +697,16 @@ function generateReport() {
     });
     
     // Add visitor rows
-    if (visitorCounts['Other Locale'] > 0) {
-        reportHTML += `
-            <tr>
-                <td>Other Locale</td>
-                <td>${visitorCounts['Other Locale']}</td>
-            </tr>
-        `;
-    }
-    if (visitorCounts['Visitor'] > 0) {
-        reportHTML += `
-            <tr>
-                <td>Visitor</td>
-                <td>${visitorCounts['Visitor']}</td>
-            </tr>
-        `;
-    }
-    if (visitorCounts['Balik-loob'] > 0) {
-        reportHTML += `
-            <tr>
-                <td>Balik-loob</td>
-                <td>${visitorCounts['Balik-loob']}</td>
-            </tr>
-        `;
-    }
+    Object.keys(visitorCounts).sort().forEach(type => {
+        if (visitorCounts[type] > 0) {
+            reportHTML += `
+                <tr>
+                    <td>${type}</td>
+                    <td>${visitorCounts[type]}</td>
+                </tr>
+            `;
+        }
+    });
     
     reportHTML += `
             </tbody>
@@ -736,7 +726,7 @@ function generateReport() {
         `;
         
         sortedMembers.forEach(record => {
-            reportHTML += `<li>${record.name}</li>`;
+            reportHTML += `<li>${record.name} - <em>${record.category || 'N/A'}</em></li>`;
         });
         
         reportHTML += `
@@ -810,13 +800,14 @@ function printReport() {
 function generateQR() {
     const name = document.getElementById('employee-name').value.trim();
     const cluster = document.getElementById('employee-cluster').value.trim();
+    const category = document.getElementById('employee-category').value.trim();
     
-    if (!name || !cluster) {
-        alert('Please enter name and select cluster!');
+    if (!name || !cluster || !category) {
+        alert('Please fill in all fields (Name, Cluster, and Category)!');
         return;
     }
     
-    const data = JSON.stringify({ name, cluster });
+    const data = JSON.stringify({ name, cluster, category });
     
     document.getElementById('qrcode').innerHTML = '';
     
@@ -830,6 +821,8 @@ function generateQR() {
     });
     
     document.getElementById('qr-name').textContent = name;
+    document.getElementById('qr-cluster').textContent = cluster;
+    document.getElementById('qr-category').textContent = category;
     document.getElementById('qr-output').style.display = 'block';
 }
 
