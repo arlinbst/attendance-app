@@ -44,13 +44,13 @@
 ---
 
 ### 3️⃣ Service Type Dropdown Enhanced
-**Updated to 6 options:**
+**Updated to 6 options (in order):**
 - ✅ Sunday Worship
 - ✅ Evangelistic Service
-- ✅ Church Anniversary
 - ✅ Bible Study
 - ✅ Prayer Meeting
 - ✅ Family Devotion
+- ✅ Church Anniversary
 
 **Updated in 4 tabs:**
 - ✅ SCAN Tab (service-type)
@@ -157,11 +157,11 @@
 - Added 9 new visitor type options
 - Added Category dropdown in Generate QR tab
 - Added category display in QR output section
-- Updated service type dropdowns to 6 options (Sunday Worship, Evangelistic Service, Church Anniversary, Bible Study, Prayer Meeting, Family Devotion)
+- Updated service type dropdowns to 6 options (Sunday Worship, Evangelistic Service, Bible Study, Prayer Meeting, Family Devotion, Church Anniversary)
 - Updated in 4 tabs: SCAN, VISITORS, RECORDS, REPORTS
 
 ### Service Worker (sw.js):
-- Updated cache version: `v4` → `v5`
+- Updated cache version: `v5` → `v6`
 - Forces cache refresh on deployment
 
 ---
@@ -218,7 +218,7 @@ After deployment, test these features:
 - [ ] Downloaded QR works when scanned
 
 **Scanning:**
-- [ ] Service type dropdown shows 6 options (Sunday Worship, Evangelistic Service, Church Anniversary, Bible Study, Prayer Meeting, Family Devotion)
+- [ ] Service type dropdown shows 6 options in order (Sunday Worship, Evangelistic Service, Bible Study, Prayer Meeting, Family Devotion, Church Anniversary)
 - [ ] Scanned QR codes log attendance with category
 - [ ] Duplicate detection works
 
@@ -247,7 +247,7 @@ After deployment, test these features:
 - ✅ Category tracking in all records
 - ✅ Enhanced CSV exports
 - ✅ Updated reports with category info
-- ✅ Cache version updated (v5)
+- ✅ Cache version updated (v6)
 
 **All features working:**
 - ✅ 5 Tabs (Scan, Visitors, Records, Reports, Generate QR)
