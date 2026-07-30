@@ -66,9 +66,18 @@
                 
                 <label for="visitor-type" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Visitor Type:</label>
                 <select id="visitor-type" class="input-field">
-                    <option value="Other Locale">Other Locale</option>
+                    <option value="Visiting Member">Visiting Member</option>
                     <option value="Visitor">Visitor</option>
                     <option value="Balik-loob">Balik-loob</option>
+                    <option value="New Believer">New Believer</option>
+                    <option value="HFGC Baptism">HFGC Baptism</option>
+                    <option value="New Baptism">New Baptism</option>
+                    <option value="Extension Member">Extension Member</option>
+                    <option value="Extension Visitors">Extension Visitors</option>
+                    <option value="Extension Balik-loob">Extension Balik-loob</option>
+                    <option value="Extension New Believer">Extension New Believer</option>
+                    <option value="Extension New Baptism">Extension New Baptism</option>
+                    <option value="Extension Cadets">Extension Cadets</option>
                 </select>
                 
                 <label for="visitor-service" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Service Type:</label>
@@ -173,7 +182,11 @@
         <div id="generate-tab" class="tab-content">
             <div class="form-section">
                 <h3>Generate QR Code</h3>
+                
+                <label for="employee-name" style="display: block; margin-bottom: 8px; font-weight: bold;">Name:</label>
                 <input type="text" id="employee-name" class="input-field" placeholder="Enter name (Lastname, Firstname Middlename)" required>
+                
+                <label for="employee-cluster" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Cluster:</label>
                 <select id="employee-cluster" class="input-field" required>
                     <option value="">Select Cluster</option>
                     <option value="CAMP AGUINALDO">CAMP AGUINALDO</option>
@@ -185,10 +198,25 @@
                     <option value="UP CAMPUS/CP GARCIA">UP CAMPUS/CP GARCIA</option>
                     <option value="WHITE">WHITE</option>
                 </select>
-                <button onclick="generateQR()" class="btn btn-primary">Generate QR Code</button>
+                
+                <label for="employee-category" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Category:</label>
+                <select id="employee-category" class="input-field" required>
+                    <option value="">Select Category</option>
+                    <option value="Pastoral">Pastoral</option>
+                    <option value="Elder">Elder</option>
+                    <option value="Adult">Adult</option>
+                    <option value="Youth">Youth</option>
+                    <option value="Cadets">Cadets</option>
+                </select>
+                
+                <button onclick="generateQR()" class="btn btn-primary" style="margin-top: 20px;">Generate QR Code</button>
                 
                 <div id="qr-output" style="display: none; margin-top: 20px;">
                     <h4>QR Code for <span id="qr-name"></span></h4>
+                    <p style="color: #666; font-size: 14px;">
+                        <strong>Cluster:</strong> <span id="qr-cluster"></span><br>
+                        <strong>Category:</strong> <span id="qr-category"></span>
+                    </p>
                     <div id="qrcode"></div>
                     <button onclick="downloadQR()" class="btn btn-success">Download QR Code</button>
                 </div>
