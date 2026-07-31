@@ -349,6 +349,73 @@ header h1 {
     break-inside: avoid;
 }
 
+/* Enhanced Report Header */
+.report-header-enhanced {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 25px;
+}
+
+.report-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.report-icon {
+    font-size: 24px;
+}
+
+.report-title h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+}
+
+.report-metadata {
+    line-height: 1.8;
+}
+
+.report-metadata p {
+    margin: 5px 0;
+    color: #555;
+    font-size: 14px;
+}
+
+.generated-time {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #f0f0f0;
+    color: #777 !important;
+    font-size: 13px !important;
+}
+
+/* Cluster Detail Sections */
+.cluster-detail-section {
+    margin-bottom: 25px;
+    padding: 15px;
+    background: #fafafa;
+    border-radius: 6px;
+    border-left: 3px solid #2196F3;
+}
+
+.attendee-detail-list {
+    list-style-position: inside;
+    color: #333;
+}
+
+.attendee-detail-list li {
+    padding: 3px 0;
+    color: #444;
+    font-size: 14px;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
     .container {
