@@ -405,35 +405,54 @@ async function loadRecordsFromCloud() {
 async function deleteRecordsByDateFromCloud(dateToDelete) {
     if (firebaseInitialized && db) {
         try {
+            console.log('🗑️ Deleting records from Firebase for date:', dateToDelete);
             const batch = db.batch();
             const snapshot = await db.collection('attendance').get();
+            let deleteCount = 0;
+            
             snapshot.docs.forEach((doc) => {
                 const record = doc.data();
                 if (record.date === dateToDelete) {
                     batch.delete(doc.ref);
+                    deleteCount++;
                 }
             });
+            
             await batch.commit();
-            console.log('Records deleted from cloud for date:', dateToDelete);
+            console.log('✅ Deleted', deleteCount, 'records from Firebase for date:', dateToDelete);
+            return deleteCount;
         } catch (error) {
-            console.error('Error deleting records from cloud:', error);
+            console.error('❌ Error deleting records from Firebase:', error);
+            throw error;
         }
+    } else {
+        console.log('⚠️ Firebase not initialized, deleting locally only');
+        return 0;
     }
 }
 
 async function clearAllRecordsFromCloud() {
     if (firebaseInitialized && db) {
         try {
+            console.log('❌ Clearing ALL records from Firebase...');
             const batch = db.batch();
             const snapshot = await db.collection('attendance').get();
+            const deleteCount = snapshot.size;
+            
             snapshot.docs.forEach((doc) => {
                 batch.delete(doc.ref);
             });
+            
             await batch.commit();
-            console.log('All records cleared from cloud');
+            console.log('✅ Cleared', deleteCount, 'records from Firebase');
+            return deleteCount;
         } catch (error) {
-            console.error('Error clearing cloud records:', error);
+            console.error('❌ Error clearing Firebase records:', error);
+            throw error;
         }
+    } else {
+        console.log('⚠️ Firebase not initialized, clearing locally only');
+        return 0;
     }
 }
 
@@ -493,6 +512,227 @@ function recoverData() {
         });
     } else {
         alert('No data found in localStorage and Firebase is not connected.');
+    }
+}
+
+// DELETE RECORDS FOR SELECTED DATE (with strong warning)
+async function deleteRecordsForDate() {
+    const dateInput = document.getElementById('report-date').value;
+    
+    if (!dateInput) {
+        alert('⚠️ Please select a date first!');
+        return;
+    }
+    
+    const deleteDate = new Date(dateInput).toLocaleDateString();
+    
+    // Count records for this date
+    const recordsToDelete = attendanceRecords.filter(r => r.date === deleteDate);
+    
+    if (recordsToDelete.length === 0) {
+        alert(`ℹ️ No records found for ${deleteDate}\n\nNothing to delete.`);
+        return;
+    }
+    
+    // FIRST WARNING - Show what will be deleted
+    const confirmed1 = confirm(
+        `⚠️ DELETE CONFIRMATION\n` +
+        `═══════════════════════════════\n\n` +
+        `You are about to DELETE ${recordsToDelete.length} record(s) for:\n\n` +
+        `📅 Date: ${deleteDate}\n\n` +
+        `This action CANNOT be undone!\n\n` +
+        `Do you want to proceed?`
+    );
+    
+    if (!confirmed1) {
+        console.log('❌ Delete cancelled by user');
+        return;
+    }
+    
+    // SECOND WARNING - Final confirmation
+    const confirmed2 = confirm(
+        `🚨 FINAL CONFIRMATION\n` +
+        `═══════════════════════════════\n\n` +
+        `Are you ABSOLUTELY SURE you want to\n` +
+        `permanently delete ${recordsToDelete.length} records?\n\n` +
+        `This will delete from:\n` +
+        `• Cloud database (Firebase)\n` +
+        `• Local storage\n` +
+        `• All connected devices\n\n` +
+        `Click OK to DELETE PERMANENTLY\n` +
+        `Click Cancel to keep the data`
+    );
+    
+    if (!confirmed2) {
+        console.log('❌ Delete cancelled at final confirmation');
+        return;
+    }
+    
+    // Show loading message
+    console.log('🗑️ Deleting records for date:', deleteDate);
+    
+    try {
+        // Delete from Firebase
+        if (firebaseInitialized && db) {
+            const deletedCount = await deleteRecordsByDateFromCloud(deleteDate);
+            console.log('✅ Deleted from Firebase:', deletedCount);
+        }
+        
+        // Delete from local array (onSnapshot will handle this, but do it anyway for immediate feedback)
+        const beforeCount = attendanceRecords.length;
+        attendanceRecords = attendanceRecords.filter(r => r.date !== deleteDate);
+        const afterCount = attendanceRecords.length;
+        const localDeleted = beforeCount - afterCount;
+        
+        // Update localStorage
+        localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
+        
+        // Update UI
+        displayRecords();
+        updateStats();
+        populateClusterFilter();
+        
+        // Clear report content
+        document.getElementById('report-content').innerHTML = 
+            '<p class="empty-state">Records deleted. Select a new date to generate report.</p>';
+        
+        // Success message
+        alert(
+            `✅ DELETION SUCCESSFUL\n` +
+            `═══════════════════════════════\n\n` +
+            `Deleted ${localDeleted} record(s) for ${deleteDate}\n\n` +
+            `The records have been permanently removed\n` +
+            `from all devices and cannot be recovered.`
+        );
+        
+        console.log('✅ Delete operation completed successfully');
+        
+    } catch (error) {
+        console.error('❌ Error during delete operation:', error);
+        alert(
+            `❌ DELETE FAILED\n` +
+            `═══════════════════════════════\n\n` +
+            `Error: ${error.message}\n\n` +
+            `Some records may not have been deleted.\n` +
+            `Please check your internet connection\n` +
+            `and try again.`
+        );
+    }
+}
+
+// CLEAR ALL RECORDS (with extra strong warning)
+async function clearAllRecords() {
+    const totalRecords = attendanceRecords.length;
+    
+    if (totalRecords === 0) {
+        alert('ℹ️ No records to delete.\n\nThe database is already empty.');
+        return;
+    }
+    
+    // FIRST WARNING - Explain the danger
+    const confirmed1 = confirm(
+        `🚨 DANGER: CLEAR ALL RECORDS\n` +
+        `═══════════════════════════════\n\n` +
+        `⚠️ THIS WILL DELETE ALL ${totalRecords} RECORDS!\n\n` +
+        `This includes:\n` +
+        `• All attendance records\n` +
+        `• All scanned QR codes\n` +
+        `• All visitor entries\n` +
+        `• All dates and times\n\n` +
+        `❌ THIS CANNOT BE UNDONE!\n\n` +
+        `Are you sure you want to continue?`
+    );
+    
+    if (!confirmed1) {
+        console.log('❌ Clear all cancelled by user');
+        return;
+    }
+    
+    // SECOND WARNING - Type confirmation
+    const typeConfirm = prompt(
+        `🚨 FINAL SAFETY CHECK\n` +
+        `═══════════════════════════════\n\n` +
+        `You are about to PERMANENTLY DELETE\n` +
+        `ALL ${totalRecords} attendance records!\n\n` +
+        `To confirm, type exactly:\n` +
+        `DELETE ALL\n\n` +
+        `(Type carefully - case sensitive)`
+    );
+    
+    if (typeConfirm !== 'DELETE ALL') {
+        if (typeConfirm !== null) {
+            alert('❌ Incorrect confirmation text.\n\nDelete cancelled for your safety.');
+        }
+        console.log('❌ Clear all cancelled - wrong confirmation text');
+        return;
+    }
+    
+    // THIRD WARNING - Last chance
+    const confirmed3 = confirm(
+        `🚨 LAST CHANCE TO CANCEL\n` +
+        `═══════════════════════════════\n\n` +
+        `This is your FINAL warning!\n\n` +
+        `Clicking OK will:\n` +
+        `❌ Delete ALL ${totalRecords} records\n` +
+        `❌ Remove from ALL devices\n` +
+        `❌ PERMANENTLY destroy the data\n\n` +
+        `Click OK to DELETE EVERYTHING\n` +
+        `Click Cancel to KEEP your data`
+    );
+    
+    if (!confirmed3) {
+        console.log('❌ Clear all cancelled at final warning');
+        return;
+    }
+    
+    // Proceed with deletion
+    console.log('❌ Clearing ALL records...');
+    
+    try {
+        // Delete from Firebase
+        if (firebaseInitialized && db) {
+            const deletedCount = await clearAllRecordsFromCloud();
+            console.log('✅ Cleared from Firebase:', deletedCount, 'records');
+        }
+        
+        // Clear local array
+        const deletedCount = attendanceRecords.length;
+        attendanceRecords = [];
+        
+        // Clear localStorage
+        localStorage.setItem('attendanceRecords', JSON.stringify([]));
+        
+        // Update UI
+        displayRecords();
+        updateStats();
+        populateClusterFilter();
+        
+        // Clear report content
+        document.getElementById('report-content').innerHTML = 
+            '<p class="empty-state">All records have been deleted.</p>';
+        
+        // Success message
+        alert(
+            `✅ ALL RECORDS DELETED\n` +
+            `═══════════════════════════════\n\n` +
+            `Successfully deleted ${deletedCount} records.\n\n` +
+            `The database is now empty.\n` +
+            `All data has been permanently removed\n` +
+            `from all devices.`
+        );
+        
+        console.log('✅ Clear all operation completed');
+        
+    } catch (error) {
+        console.error('❌ Error during clear all operation:', error);
+        alert(
+            `❌ DELETION FAILED\n` +
+            `═══════════════════════════════\n\n` +
+            `Error: ${error.message}\n\n` +
+            `Some records may not have been deleted.\n` +
+            `Please check your internet connection\n` +
+            `and try again.`
+        );
     }
 }
 
