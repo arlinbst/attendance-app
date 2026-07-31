@@ -1288,3 +1288,4 @@ function exportToExcel() {
     }
     
     alert(`Report exported successfully!\n\nMembers: ${filteredMembers.length}\nVisitors: ${filteredVisitors.length}\nTotal: ${filteredMembers.length + filteredVisitors.length}`);
+}
