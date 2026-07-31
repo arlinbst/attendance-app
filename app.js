@@ -23,6 +23,8 @@ let firebaseInitialized = false;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Page loaded - initializing...');
+    
     initializeFirebase().then(() => {
         loadRecordsFromCloud();
         loadMembersFromCloud(); // Load member master data
@@ -31,8 +33,17 @@ document.addEventListener('DOMContentLoaded', function() {
         updateStats();
     });
     
-    // Initialize member type field visibility
-    switchMemberType();
+    // Initialize member type field visibility after small delay to ensure DOM is ready
+    setTimeout(() => {
+        try {
+            if (document.getElementById('category-field')) {
+                switchMemberType();
+                console.log('Member type initialized');
+            }
+        } catch (error) {
+            console.log('Member type initialization skipped:', error);
+        }
+    }, 100);
     
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js')
@@ -43,6 +54,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Tab switching
 function showTab(tabName) {
+    console.log('Switching to tab:', tabName);
+    
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
     });
@@ -873,34 +886,43 @@ let currentEditingId = null;
 
 // Switch between Members and Visitors
 function switchMemberType() {
-    const selectedType = document.querySelector('input[name="member-type"]:checked').value;
-    currentMemberType = selectedType;
-    
-    // Show/hide fields based on type
-    const categoryField = document.getElementById('category-field');
-    const visitorTypeField = document.getElementById('visitor-type-field');
-    const statusField = document.getElementById('status-field');
-    
-    if (currentMemberType === 'members') {
-        // Members: Show Category and Status, Hide Visitor Type
-        categoryField.style.display = 'block';
-        statusField.style.display = 'block';
-        visitorTypeField.style.display = 'none';
-        document.getElementById('member-category').required = true;
-        document.getElementById('member-status').required = true;
-        document.getElementById('member-visitor-type').required = false;
-    } else {
-        // Visitors: Hide Category and Status, Show Visitor Type
-        categoryField.style.display = 'none';
-        statusField.style.display = 'none';
-        visitorTypeField.style.display = 'block';
-        document.getElementById('member-category').required = false;
-        document.getElementById('member-status').required = false;
-        document.getElementById('member-visitor-type').required = true;
+    try {
+        const selectedType = document.querySelector('input[name="member-type"]:checked')?.value || 'members';
+        currentMemberType = selectedType;
+        
+        // Show/hide fields based on type
+        const categoryField = document.getElementById('category-field');
+        const visitorTypeField = document.getElementById('visitor-type-field');
+        const statusField = document.getElementById('status-field');
+        
+        if (!categoryField || !visitorTypeField || !statusField) {
+            console.log('Member form fields not found - skipping field visibility update');
+            return;
+        }
+        
+        if (currentMemberType === 'members') {
+            // Members: Show Category and Status, Hide Visitor Type
+            categoryField.style.display = 'block';
+            statusField.style.display = 'block';
+            visitorTypeField.style.display = 'none';
+            document.getElementById('member-category').required = true;
+            document.getElementById('member-status').required = true;
+            document.getElementById('member-visitor-type').required = false;
+        } else {
+            // Visitors: Hide Category and Status, Show Visitor Type
+            categoryField.style.display = 'none';
+            statusField.style.display = 'none';
+            visitorTypeField.style.display = 'block';
+            document.getElementById('member-category').required = false;
+            document.getElementById('member-status').required = false;
+            document.getElementById('member-visitor-type').required = true;
+        }
+        
+        if (typeof clearSearch === 'function') clearSearch();
+        if (typeof updateMemberStats === 'function') updateMemberStats();
+    } catch (error) {
+        console.error('Error in switchMemberType:', error);
     }
-    
-    clearSearch();
-    updateMemberStats();
 }
 
 // Search for member by name
@@ -1187,62 +1209,62 @@ function exportToExcel() {
     let csvContent = '';
     
     // Header
-    csvContent += '\"UP Diliman Locale Active Members Information List\"\\n';
-    csvContent += `\"As of ${currentDate}\"\\n`;
+    csvContent += '"UP Diliman Locale Active Members Information List"\n';
+    csvContent += `"As of ${currentDate}"\n`;
     if (clusterFilter !== 'ALL') {
-        csvContent += `\"Cluster: ${clusterFilter}\"\\n`;
+        csvContent += `"Cluster: ${clusterFilter}"\n`;
     }
-    csvContent += '\\n';
+    csvContent += '\n';
     
     // Members Section
-    csvContent += '\"=== REGULAR MEMBERS ===\"\\n';
-    csvContent += '\"Name\",\"Cluster\",\"Category\",\"Status\"\\n';
+    csvContent += '"=== REGULAR MEMBERS ==="\n';
+    csvContent += '"Name","Cluster","Category","Status"\n';
     
     filteredMembers.forEach(member => {
-        csvContent += `\"${member.name}\",\"${member.cluster}\",\"${member.category}\",\"${member.status}\"\\n`;
+        csvContent += `"${member.name}","${member.cluster}","${member.category}","${member.status}"\n`;
     });
     
-    csvContent += '\\n';
-    csvContent += `\"Total Members: ${filteredMembers.length}\"\\n`;
-    csvContent += '\\n';
+    csvContent += '\n';
+    csvContent += `"Total Members: ${filteredMembers.length}"\n`;
+    csvContent += '\n';
     
     // Members Category Summary
-    csvContent += '\"Members by Category:\"\\n';
+    csvContent += '"Members by Category:"\n';
     Object.keys(categoryTotals).forEach(category => {
-        csvContent += `\"${category}\",\"${categoryTotals[category]}\"\\n`;
+        csvContent += `"${category}","${categoryTotals[category]}"\n`;
     });
     
-    csvContent += '\\n';
-    csvContent += '\"=====================================\"\\n';
-    csvContent += '\\n';
+    csvContent += '\n';
+    csvContent += '"====================================="\n';
+    csvContent += '\n';
     
     // Visitors Section
-    csvContent += '\"=== VISITORS ===\"\\n';
-    csvContent += '\"Name\",\"Cluster\",\"Visitor Type\"\\n';
+    csvContent += '"=== VISITORS ==="\n';
+    csvContent += '"Name","Cluster","Visitor Type"\n';
     
     filteredVisitors.forEach(visitor => {
-        csvContent += `\"${visitor.name}\",\"${visitor.cluster}\",\"${visitor.visitorType || 'N/A'}\"\\n`;
+        csvContent += `"${visitor.name}","${visitor.cluster}","${visitor.visitorType || 'N/A'}"\n`;
     });
     
-    csvContent += '\\n';
-    csvContent += `\"Total Visitors: ${filteredVisitors.length}\"\\n`;
-    csvContent += '\\n';
+    csvContent += '\n';
+    csvContent += `"Total Visitors: ${filteredVisitors.length}"\n`;
+    csvContent += '\n';
     
     // Visitors Type Summary
-    csvContent += '\"Visitors by Type:\"\\n';
+    csvContent += '"Visitors by Type:"\n';
     Object.keys(visitorTypeTotals).forEach(type => {
-        csvContent += `\"${type}\",\"${visitorTypeTotals[type]}\"\\n`;
+        csvContent += `"${type}","${visitorTypeTotals[type]}"\n`;
     });
     
-    csvContent += '\\n';
-    csvContent += '\"=====================================\"\\n';
-    csvContent += '\\n';
+    csvContent += '\n';
+    csvContent += '"====================================="\n';
+    csvContent += '\n';
     
     // Grand Totals
-    csvContent += '\"SUMMARY\"\\n';
-    csvContent += `\"Total Members:\",\"${filteredMembers.length}\"\\n`;
-    csvContent += `\"Total Visitors:\",\"${filteredVisitors.length}\"\\n`;
-    csvContent += `\"Grand Total:\",\"${filteredMembers.length + filteredVisitors.length}\"\\n`;
+    csvContent += '"SUMMARY"\n';
+    csvContent += `"Total Members:","${filteredMembers.length}"\n`;
+    csvContent += `"Total Visitors:","${filteredVisitors.length}"\n`;
+    csvContent += `"Grand Total:","${filteredMembers.length + filteredVisitors.length}"\n`;
     
     // Create and download file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1250,7 +1272,7 @@ function exportToExcel() {
     
     let filename = 'UP_Diliman_Members_Report';
     if (clusterFilter !== 'ALL') {
-        filename += `_${clusterFilter.replace(/\\s+/g, '_')}`;
+        filename += `_${clusterFilter.replace(/\s+/g, '_')}`;
     }
     filename += `_${new Date().toISOString().split('T')[0]}.csv`;
     
@@ -1265,4 +1287,4 @@ function exportToExcel() {
         document.body.removeChild(link);
     }
     
-    alert(`Report exported successfully!\\n\\nMembers: ${filteredMembers.length}\\nVisitors: ${filteredVisitors.length}\\nTotal: ${filteredMembers.length + filteredVisitors.length}`);
+    alert(`Report exported successfully!\n\nMembers: ${filteredMembers.length}\nVisitors: ${filteredVisitors.length}\nTotal: ${filteredMembers.length + filteredVisitors.length}`);
