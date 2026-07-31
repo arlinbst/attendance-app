@@ -2051,6 +2051,175 @@ function exportToExcel() {
     alert(summaryMsg);
 }
 
+// Preview Members Report
+function previewMembersReport() {
+    const typeFilter = document.getElementById('export-type-filter').value;
+    const clusterFilter = document.getElementById('export-cluster-filter').value;
+    const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    
+    // Filter data
+    let filteredMembers = membersData;
+    let filteredVisitors = visitorsData;
+    
+    if (typeFilter === 'MEMBERS') {
+        filteredVisitors = [];
+    } else if (typeFilter === 'VISITORS') {
+        filteredMembers = [];
+    }
+    
+    if (clusterFilter !== 'ALL') {
+        filteredMembers = filteredMembers.filter(m => m.cluster === clusterFilter);
+        filteredVisitors = filteredVisitors.filter(v => v.cluster === clusterFilter);
+    }
+    
+    // Sort by name
+    filteredMembers.sort((a, b) => a.name.localeCompare(b.name));
+    filteredVisitors.sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Determine report title based on type filter
+    let reportTitle = 'UP Diliman Locale Members & Visitors Information List';
+    if (typeFilter === 'MEMBERS') {
+        reportTitle = 'UP Diliman Locale Active Members Information List';
+    } else if (typeFilter === 'VISITORS') {
+        reportTitle = 'UP Diliman Locale Visitors Information List';
+    }
+    
+    // Build preview content
+    let previewContent = `
+        <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #2196F3;">
+            <h2 style="color: #2196F3; margin-bottom: 10px;">UP Diliman Locale</h2>
+            <h3 style="color: #666; margin: 5px 0;">${reportTitle}</h3>
+            <p style="color: #999; margin: 5px 0;">As of ${currentDate}</p>
+            ${typeFilter !== 'ALL' ? `<p style="color: #666; margin: 5px 0;"><strong>Type:</strong> ${typeFilter}</p>` : ''}
+            ${clusterFilter !== 'ALL' ? `<p style="color: #666; margin: 5px 0;"><strong>Cluster:</strong> ${clusterFilter}</p>` : ''}
+        </div>
+    `;
+    
+    // Members Table
+    if (typeFilter !== 'VISITORS' && filteredMembers.length > 0) {
+        previewContent += `
+            <h3 style="color: #2196F3; border-bottom: 2px solid #2196F3; padding-bottom: 10px; margin-top: 30px;">REGULAR MEMBERS</h3>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 14px;">
+                    <thead>
+                        <tr style="background-color: #2196F3; color: white;">
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">#</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Name</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Birthday</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Age</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Contact</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Facebook</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Category</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        filteredMembers.forEach((member, index) => {
+            const statusClass = member.status === 'Active' ? 'background: #4CAF50; color: white;' : 'background: #f44336; color: white;';
+            previewContent += `
+                <tr style="${index % 2 === 0 ? 'background: #f9f9f9;' : 'background: white;'}">
+                    <td style="border: 1px solid #ddd; padding: 8px;">${index + 1}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; font-weight: bold;">${member.name}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.birthday || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.age || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.contactNumber || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.facebookAccount || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.cluster}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.category}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;"><span style="padding: 5px 10px; border-radius: 5px; ${statusClass}">${member.status}</span></td>
+                </tr>
+            `;
+        });
+        
+        previewContent += `
+                    </tbody>
+                </table>
+            </div>
+            <p style="font-weight: bold; margin-top: 10px; font-size: 16px; color: #2196F3;">Total Members: ${filteredMembers.length}</p>
+        `;
+    }
+    
+    // Visitors Table
+    if (typeFilter !== 'MEMBERS' && filteredVisitors.length > 0) {
+        previewContent += `
+            <h3 style="color: #ff9800; border-bottom: 2px solid #ff9800; padding-bottom: 10px; margin-top: 40px;">VISITORS</h3>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 14px;">
+                    <thead>
+                        <tr style="background-color: #ff9800; color: white;">
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">#</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Name</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Birthday</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Age</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Contact</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Facebook</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitor Type</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Date Baptised</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        filteredVisitors.forEach((visitor, index) => {
+            previewContent += `
+                <tr style="${index % 2 === 0 ? 'background: #fff3e0;' : 'background: white;'}">
+                    <td style="border: 1px solid #ddd; padding: 8px;">${index + 1}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; font-weight: bold;">${visitor.name}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.birthday || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.age || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.contactNumber || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.facebookAccount || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.cluster || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.visitorType || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.dateBaptised || 'N/A'}</td>
+                </tr>
+            `;
+        });
+        
+        previewContent += `
+                    </tbody>
+                </table>
+            </div>
+            <p style="font-weight: bold; margin-top: 10px; font-size: 16px; color: #ff9800;">Total Visitors: ${filteredVisitors.length}</p>
+        `;
+    }
+    
+    // Summary
+    previewContent += `
+        <div style="margin-top: 40px; padding: 25px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <h4 style="margin-top: 0; font-size: 20px; border-bottom: 2px solid white; padding-bottom: 10px;">📊 SUMMARY</h4>
+            ${typeFilter !== 'VISITORS' ? `<p style="font-size: 16px; margin: 10px 0;">Total Members: <strong style="font-size: 24px;">${filteredMembers.length}</strong></p>` : ''}
+            ${typeFilter !== 'MEMBERS' ? `<p style="font-size: 16px; margin: 10px 0;">Total Visitors: <strong style="font-size: 24px;">${filteredVisitors.length}</strong></p>` : ''}
+            <p style="font-size: 18px; margin: 15px 0 0 0; padding-top: 15px; border-top: 2px solid rgba(255,255,255,0.3);">Grand Total: <strong style="font-size: 28px;">${filteredMembers.length + filteredVisitors.length}</strong></p>
+        </div>
+    `;
+    
+    // Display in modal
+    document.getElementById('preview-content').innerHTML = previewContent;
+    document.getElementById('preview-modal').style.display = 'block';
+    document.body.style.overflow = 'hidden'; // Disable body scroll while modal is open
+}
+
+// Close Preview Modal
+function closePreview() {
+    document.getElementById('preview-modal').style.display = 'none';
+    document.body.style.overflow = 'auto'; // Re-enable body scroll
+}
+
+// Close preview on ESC key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' || event.key === 'Esc') {
+        const modal = document.getElementById('preview-modal');
+        if (modal && modal.style.display === 'block') {
+            closePreview();
+        }
+    }
+});
+
 // Print Members Report
 function printMembersReport() {
     const typeFilter = document.getElementById('export-type-filter').value;
