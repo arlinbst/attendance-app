@@ -23,8 +23,8 @@ let firebaseInitialized = false;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('âœ… Page loaded - initializing...');
-    console.log('ðŸ“± Device:', navigator.userAgent);
+    console.log('✅ Page loaded - initializing...');
+    console.log('📱 Device:', navigator.userAgent);
     
     // STEP 1: Load from localStorage first (instant display if data exists)
     loadRecords();
@@ -32,11 +32,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // STEP 2: Initialize Firebase (onSnapshot will auto-sync from cloud)
     initializeFirebase().then(() => {
-        console.log('âœ… Firebase connected - real-time sync active');
+        console.log('✅ Firebase connected - real-time sync active');
         loadMembersFromCloud(); // Load member master data from cloud
     }).catch((error) => {
-        console.error('âŒ Firebase failed:', error);
-        console.log('âš ï¸ App will work in offline mode only');
+        console.error('❌ Firebase failed:', error);
+        console.log('⚠️ App will work in offline mode only');
     });
     
     // Initialize member type field visibility after small delay to ensure DOM is ready
@@ -44,17 +44,17 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             if (document.getElementById('category-field')) {
                 switchMemberType();
-                console.log('âœ… Member type initialized');
+                console.log('✅ Member type initialized');
             }
         } catch (error) {
-            console.log('âš ï¸ Member type initialization skipped:', error);
+            console.log('⚠️ Member type initialization skipped:', error);
         }
     }, 100);
     
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js')
-            .then(() => console.log('âœ… Service Worker registered'))
-            .catch(err => console.log('âŒ Service Worker registration failed:', err));
+            .then(() => console.log('✅ Service Worker registered'))
+            .catch(err => console.log('❌ Service Worker registration failed:', err));
     }
 });
 
@@ -216,7 +216,7 @@ async function logAttendance(name, cluster, serviceType, category) {
         scannedAt: new Date().toISOString() // Add timestamp when scanned
     };
     
-    console.log('ðŸ“ Logging attendance:', record);
+    console.log('📝 Logging attendance:', record);
     
     // Save to cloud (this now handles adding to local array too)
     await saveRecordToCloud(record);
@@ -261,7 +261,7 @@ async function addVisitor() {
         scannedAt: new Date().toISOString() // Add timestamp when added
     };
     
-    console.log('ðŸ“ Adding visitor:', record);
+    console.log('📝 Adding visitor:', record);
     
     // Save to cloud (this now handles adding to local array too)
     await saveRecordToCloud(record);
@@ -299,12 +299,12 @@ async function initializeFirebase() {
         
         db = firebase.firestore();
         firebaseInitialized = true;
-        console.log('âœ… Firebase initialized successfully');
+        console.log('✅ Firebase initialized successfully');
         
         // Real-time listener for attendance records (syncs across all devices)
         db.collection('attendance').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
             const recordCount = snapshot.size;
-            console.log('ðŸ“¡ Firebase snapshot update');
+            console.log('📡 Firebase snapshot update');
             console.log('   Server records:', recordCount);
             console.log('   Local records before sync:', attendanceRecords.length);
             
@@ -313,7 +313,7 @@ async function initializeFirebase() {
                 attendanceRecords.push({ id: doc.id, ...doc.data() });
             });
             
-            console.log('âœ… Synced from Firebase:', attendanceRecords.length, 'records');
+            console.log('✅ Synced from Firebase:', attendanceRecords.length, 'records');
             
             // Update UI
             displayRecords();
@@ -322,10 +322,10 @@ async function initializeFirebase() {
             
             // Save to localStorage as backup for offline access
             localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
-            console.log('ðŸ’¾ Saved to localStorage as backup');
+            console.log('💾 Saved to localStorage as backup');
         }, (error) => {
-            console.error('âŒ Firebase listener error:', error);
-            console.log('âš ï¸ Real-time sync interrupted. App will use cached data.');
+            console.error('❌ Firebase listener error:', error);
+            console.log('⚠️ Real-time sync interrupted. App will use cached data.');
         });
         
         return true;
@@ -340,7 +340,7 @@ async function saveRecordToCloud(record) {
     if (firebaseInitialized && db) {
         try {
             const docRef = await db.collection('attendance').add(record);
-            console.log('âœ… Record saved to Firebase with ID:', docRef.id);
+            console.log('✅ Record saved to Firebase with ID:', docRef.id);
             
             // Firebase onSnapshot listener will automatically update the array
             // No need to manually add here - just save to localStorage as backup
@@ -348,8 +348,8 @@ async function saveRecordToCloud(record) {
             
             return docRef.id;
         } catch (error) {
-            console.error('âŒ Error saving to Firebase:', error);
-            alert('âš ï¸ Warning: Could not save to cloud.\nData saved locally only.\n\nPlease check your internet connection.');
+            console.error('❌ Error saving to Firebase:', error);
+            alert('⚠️ Warning: Could not save to cloud.\nData saved locally only.\n\nPlease check your internet connection.');
             
             // Fallback: save locally
             const tempRecord = { id: 'local_' + Date.now(), ...record };
@@ -361,7 +361,7 @@ async function saveRecordToCloud(record) {
             return null;
         }
     } else {
-        console.log('âš ï¸ Firebase not initialized, saving locally only');
+        console.log('⚠️ Firebase not initialized, saving locally only');
         
         // Save locally when Firebase is not available
         const tempRecord = { id: 'local_' + Date.now(), ...record };
@@ -379,13 +379,13 @@ async function loadRecordsFromCloud() {
     // Normal operation uses the onSnapshot listener in initializeFirebase()
     if (firebaseInitialized && db) {
         try {
-            console.log('ðŸ”„ Manual reload from Firebase...');
+            console.log('🔄 Manual reload from Firebase...');
             const snapshot = await db.collection('attendance').orderBy('timestamp', 'desc').get();
             attendanceRecords = [];
             snapshot.forEach((doc) => {
                 attendanceRecords.push({ id: doc.id, ...doc.data() });
             });
-            console.log('âœ… Manual reload complete:', attendanceRecords.length, 'records');
+            console.log('✅ Manual reload complete:', attendanceRecords.length, 'records');
             displayRecords();
             updateStats();
             populateClusterFilter();
@@ -393,12 +393,12 @@ async function loadRecordsFromCloud() {
             // Save to localStorage as backup
             localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
         } catch (error) {
-            console.error('âŒ Error loading from cloud:', error);
-            console.log('âš ï¸ Falling back to localStorage...');
+            console.error('❌ Error loading from cloud:', error);
+            console.log('⚠️ Falling back to localStorage...');
             loadRecords();
         }
     } else {
-        console.log('âš ï¸ Firebase not initialized, loading from localStorage');
+        console.log('⚠️ Firebase not initialized, loading from localStorage');
         loadRecords();
     }
 }
@@ -406,7 +406,7 @@ async function loadRecordsFromCloud() {
 async function deleteRecordsByDateFromCloud(dateToDelete) {
     if (firebaseInitialized && db) {
         try {
-            console.log('ðŸ—‘ï¸ Deleting records from Firebase for date:', dateToDelete);
+            console.log('🗑️ Deleting records from Firebase for date:', dateToDelete);
             const batch = db.batch();
             const snapshot = await db.collection('attendance').get();
             let deleteCount = 0;
@@ -420,14 +420,14 @@ async function deleteRecordsByDateFromCloud(dateToDelete) {
             });
             
             await batch.commit();
-            console.log('âœ… Deleted', deleteCount, 'records from Firebase for date:', dateToDelete);
+            console.log('✅ Deleted', deleteCount, 'records from Firebase for date:', dateToDelete);
             return deleteCount;
         } catch (error) {
-            console.error('âŒ Error deleting records from Firebase:', error);
+            console.error('❌ Error deleting records from Firebase:', error);
             throw error;
         }
     } else {
-        console.log('âš ï¸ Firebase not initialized, deleting locally only');
+        console.log('⚠️ Firebase not initialized, deleting locally only');
         return 0;
     }
 }
@@ -435,7 +435,7 @@ async function deleteRecordsByDateFromCloud(dateToDelete) {
 async function clearAllRecordsFromCloud() {
     if (firebaseInitialized && db) {
         try {
-            console.log('âŒ Clearing ALL records from Firebase...');
+            console.log('❌ Clearing ALL records from Firebase...');
             const batch = db.batch();
             const snapshot = await db.collection('attendance').get();
             const deleteCount = snapshot.size;
@@ -445,14 +445,14 @@ async function clearAllRecordsFromCloud() {
             });
             
             await batch.commit();
-            console.log('âœ… Cleared', deleteCount, 'records from Firebase');
+            console.log('✅ Cleared', deleteCount, 'records from Firebase');
             return deleteCount;
         } catch (error) {
-            console.error('âŒ Error clearing Firebase records:', error);
+            console.error('❌ Error clearing Firebase records:', error);
             throw error;
         }
     } else {
-        console.log('âš ï¸ Firebase not initialized, clearing locally only');
+        console.log('⚠️ Firebase not initialized, clearing locally only');
         return 0;
     }
 }
@@ -468,12 +468,12 @@ function loadRecords() {
     if (saved) {
         try {
             attendanceRecords = JSON.parse(saved);
-            console.log('ðŸ“‚ Loaded from localStorage:', attendanceRecords.length, 'records');
+            console.log('📂 Loaded from localStorage:', attendanceRecords.length, 'records');
             displayRecords();
             updateStats();
             populateClusterFilter();
         } catch (error) {
-            console.error('âŒ Error parsing localStorage data:', error);
+            console.error('❌ Error parsing localStorage data:', error);
             attendanceRecords = [];
         }
     } else {
@@ -521,7 +521,7 @@ async function deleteRecordsForDate() {
     const dateInput = document.getElementById('report-date').value;
     
     if (!dateInput) {
-        alert('âš ï¸ Please select a date first!');
+        alert('⚠️ Please select a date first!');
         return;
     }
     
@@ -531,52 +531,52 @@ async function deleteRecordsForDate() {
     const recordsToDelete = attendanceRecords.filter(r => r.date === deleteDate);
     
     if (recordsToDelete.length === 0) {
-        alert(`â„¹ï¸ No records found for ${deleteDate}\n\nNothing to delete.`);
+        alert(`ℹ️ No records found for ${deleteDate}\n\nNothing to delete.`);
         return;
     }
     
     // FIRST WARNING - Show what will be deleted
     const confirmed1 = confirm(
-        `âš ï¸ DELETE CONFIRMATION\n` +
-        `â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n\n` +
+        `⚠️ DELETE CONFIRMATION\n` +
+        `═══════════════════════════════\n\n` +
         `You are about to DELETE ${recordsToDelete.length} record(s) for:\n\n` +
-        `ðŸ“… Date: ${deleteDate}\n\n` +
+        `📅 Date: ${deleteDate}\n\n` +
         `This action CANNOT be undone!\n\n` +
         `Do you want to proceed?`
     );
     
     if (!confirmed1) {
-        console.log('âŒ Delete cancelled by user');
+        console.log('❌ Delete cancelled by user');
         return;
     }
     
     // SECOND WARNING - Final confirmation
     const confirmed2 = confirm(
-        `ðŸš¨ FINAL CONFIRMATION\n` +
-        `â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n\n` +
+        `🚨 FINAL CONFIRMATION\n` +
+        `═══════════════════════════════\n\n` +
         `Are you ABSOLUTELY SURE you want to\n` +
         `permanently delete ${recordsToDelete.length} records?\n\n` +
         `This will delete from:\n` +
-        `â€¢ Cloud database (Firebase)\n` +
-        `â€¢ Local storage\n` +
-        `â€¢ All connected devices\n\n` +
+        `• Cloud database (Firebase)\n` +
+        `• Local storage\n` +
+        `• All connected devices\n\n` +
         `Click OK to DELETE PERMANENTLY\n` +
         `Click Cancel to keep the data`
     );
     
     if (!confirmed2) {
-        console.log('âŒ Delete cancelled at final confirmation');
+        console.log('❌ Delete cancelled at final confirmation');
         return;
     }
     
     // Show loading message
-    console.log('ðŸ—‘ï¸ Deleting records for date:', deleteDate);
+    console.log('🗑️ Deleting records for date:', deleteDate);
     
     try {
         // Delete from Firebase
         if (firebaseInitialized && db) {
             const deletedCount = await deleteRecordsByDateFromCloud(deleteDate);
-            console.log('âœ… Deleted from Firebase:', deletedCount);
+            console.log('✅ Deleted from Firebase:', deletedCount);
         }
         
         // Delete from local array (onSnapshot will handle this, but do it anyway for immediate feedback)
@@ -599,20 +599,20 @@ async function deleteRecordsForDate() {
         
         // Success message
         alert(
-            `âœ… DELETION SUCCESSFUL\n` +
-            `â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n\n` +
+            `✅ DELETION SUCCESSFUL\n` +
+            `═══════════════════════════════\n\n` +
             `Deleted ${localDeleted} record(s) for ${deleteDate}\n\n` +
             `The records have been permanently removed\n` +
             `from all devices and cannot be recovered.`
         );
         
-        console.log('âœ… Delete operation completed successfully');
+        console.log('✅ Delete operation completed successfully');
         
     } catch (error) {
-        console.error('âŒ Error during delete operation:', error);
+        console.error('❌ Error during delete operation:', error);
         alert(
-            `âŒ DELETE FAILED\n` +
-            `â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n\n` +
+            `❌ DELETE FAILED\n` +
+            `═══════════════════════════════\n\n` +
             `Error: ${error.message}\n\n` +
             `Some records may not have been deleted.\n` +
             `Please check your internet connection\n` +
@@ -626,33 +626,33 @@ async function clearAllRecords() {
     const totalRecords = attendanceRecords.length;
     
     if (totalRecords === 0) {
-        alert('â„¹ï¸ No records to delete.\n\nThe database is already empty.');
+        alert('ℹ️ No records to delete.\n\nThe database is already empty.');
         return;
     }
     
     // FIRST WARNING - Explain the danger
     const confirmed1 = confirm(
-        `ðŸš¨ DANGER: CLEAR ALL RECORDS\n` +
-        `â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n\n` +
-        `âš ï¸ THIS WILL DELETE ALL ${totalRecords} RECORDS!\n\n` +
+        `🚨 DANGER: CLEAR ALL RECORDS\n` +
+        `═══════════════════════════════\n\n` +
+        `⚠️ THIS WILL DELETE ALL ${totalRecords} RECORDS!\n\n` +
         `This includes:\n` +
-        `â€¢ All attendance records\n` +
-        `â€¢ All scanned QR codes\n` +
-        `â€¢ All visitor entries\n` +
-        `â€¢ All dates and times\n\n` +
-        `âŒ THIS CANNOT BE UNDONE!\n\n` +
+        `• All attendance records\n` +
+        `• All scanned QR codes\n` +
+        `• All visitor entries\n` +
+        `• All dates and times\n\n` +
+        `❌ THIS CANNOT BE UNDONE!\n\n` +
         `Are you sure you want to continue?`
     );
     
     if (!confirmed1) {
-        console.log('âŒ Clear all cancelled by user');
+        console.log('❌ Clear all cancelled by user');
         return;
     }
     
     // SECOND WARNING - Type confirmation
     const typeConfirm = prompt(
-        `ðŸš¨ FINAL SAFETY CHECK\n` +
-        `â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n\n` +
+        `🚨 FINAL SAFETY CHECK\n` +
+        `═══════════════════════════════\n\n` +
         `You are about to PERMANENTLY DELETE\n` +
         `ALL ${totalRecords} attendance records!\n\n` +
         `To confirm, type exactly:\n` +
@@ -662,38 +662,38 @@ async function clearAllRecords() {
     
     if (typeConfirm !== 'DELETE ALL') {
         if (typeConfirm !== null) {
-            alert('âŒ Incorrect confirmation text.\n\nDelete cancelled for your safety.');
+            alert('❌ Incorrect confirmation text.\n\nDelete cancelled for your safety.');
         }
-        console.log('âŒ Clear all cancelled - wrong confirmation text');
+        console.log('❌ Clear all cancelled - wrong confirmation text');
         return;
     }
     
     // THIRD WARNING - Last chance
     const confirmed3 = confirm(
-        `ðŸš¨ LAST CHANCE TO CANCEL\n` +
-        `â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n\n` +
+        `🚨 LAST CHANCE TO CANCEL\n` +
+        `═══════════════════════════════\n\n` +
         `This is your FINAL warning!\n\n` +
         `Clicking OK will:\n` +
-        `âŒ Delete ALL ${totalRecords} records\n` +
-        `âŒ Remove from ALL devices\n` +
-        `âŒ PERMANENTLY destroy the data\n\n` +
+        `❌ Delete ALL ${totalRecords} records\n` +
+        `❌ Remove from ALL devices\n` +
+        `❌ PERMANENTLY destroy the data\n\n` +
         `Click OK to DELETE EVERYTHING\n` +
         `Click Cancel to KEEP your data`
     );
     
     if (!confirmed3) {
-        console.log('âŒ Clear all cancelled at final warning');
+        console.log('❌ Clear all cancelled at final warning');
         return;
     }
     
     // Proceed with deletion
-    console.log('âŒ Clearing ALL records...');
+    console.log('❌ Clearing ALL records...');
     
     try {
         // Delete from Firebase
         if (firebaseInitialized && db) {
             const deletedCount = await clearAllRecordsFromCloud();
-            console.log('âœ… Cleared from Firebase:', deletedCount, 'records');
+            console.log('✅ Cleared from Firebase:', deletedCount, 'records');
         }
         
         // Clear local array
@@ -714,21 +714,21 @@ async function clearAllRecords() {
         
         // Success message
         alert(
-            `âœ… ALL RECORDS DELETED\n` +
-            `â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n\n` +
+            `✅ ALL RECORDS DELETED\n` +
+            `═══════════════════════════════\n\n` +
             `Successfully deleted ${deletedCount} records.\n\n` +
             `The database is now empty.\n` +
             `All data has been permanently removed\n` +
             `from all devices.`
         );
         
-        console.log('âœ… Clear all operation completed');
+        console.log('✅ Clear all operation completed');
         
     } catch (error) {
-        console.error('âŒ Error during clear all operation:', error);
+        console.error('❌ Error during clear all operation:', error);
         alert(
-            `âŒ DELETION FAILED\n` +
-            `â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n\n` +
+            `❌ DELETION FAILED\n` +
+            `═══════════════════════════════\n\n` +
             `Error: ${error.message}\n\n` +
             `Some records may not have been deleted.\n` +
             `Please check your internet connection\n` +
@@ -779,7 +779,7 @@ function clearAllRecords() {
         return;
     }
     
-    const warningMsg = `âš ï¸ WARNING: DELETE ALL RECORDS âš ï¸\n\nYou are about to permanently delete:\nâ€¢ Total Records: ${totalRecords}\n\nThis will remove ALL attendance data from the system.\n\nThis action CANNOT be undone!\n\nAre you absolutely sure you want to continue?`;
+    const warningMsg = `⚠️ WARNING: DELETE ALL RECORDS ⚠️\n\nYou are about to permanently delete:\n• Total Records: ${totalRecords}\n\nThis will remove ALL attendance data from the system.\n\nThis action CANNOT be undone!\n\nAre you absolutely sure you want to continue?`;
     
     if (confirm(warningMsg)) {
         const finalConfirm = confirm(`FINAL CONFIRMATION:\n\nDelete all ${totalRecords} records?\n\nClick OK to permanently delete all data.`);
@@ -805,14 +805,14 @@ function displayRecords(filteredRecords = null) {
     
     currentDisplayedRecords = records;
     
-    console.log('ðŸ“Š Displaying records:', records.length);
+    console.log('📊 Displaying records:', records.length);
     
     if (records.length === 0) {
         // Show helpful message based on Firebase status
         if (!firebaseInitialized) {
             recordsList.innerHTML = `
                 <p class="empty-state">
-                    â³ <strong>Loading data...</strong><br><br>
+                    ⏳ <strong>Loading data...</strong><br><br>
                     Connecting to cloud database...<br>
                     Please wait a moment.
                 </p>
@@ -820,11 +820,11 @@ function displayRecords(filteredRecords = null) {
         } else {
             recordsList.innerHTML = `
                 <p class="empty-state">
-                    ðŸ“­ <strong>No attendance records found.</strong><br><br>
+                    📭 <strong>No attendance records found.</strong><br><br>
                     Start scanning QR codes to record attendance!<br><br>
                     <small>If you expect to see records, try:<br>
-                    â€¢ Check your internet connection<br>
-                    â€¢ <a href="#" onclick="recoverData(); return false;">ðŸ”„ Reload from cloud</a></small>
+                    • Check your internet connection<br>
+                    • <a href="#" onclick="recoverData(); return false;">🔄 Reload from cloud</a></small>
                 </p>
             `;
         }
@@ -833,7 +833,7 @@ function displayRecords(filteredRecords = null) {
     
     recordsList.innerHTML = records.map(record => `
         <div class="record-item ${record.isVisitor ? 'visitor-record' : ''}">
-            <h4>${record.name} ${record.isVisitor ? 'ðŸ‘¤' : ''}</h4>
+            <h4>${record.name} ${record.isVisitor ? '👤' : ''}</h4>
             <p><strong>Cluster:</strong> ${record.cluster}</p>
             <p><strong>Category:</strong> ${record.category || record.visitorType || 'N/A'}</p>
             ${record.isVisitor ? `<p><strong>Visitor Type:</strong> ${record.visitorType || 'N/A'}</p>` : ''}
@@ -1002,7 +1002,7 @@ function generateReport() {
         return;
     }
     
-    console.log('ðŸ“Š Generating report...');
+    console.log('📊 Generating report...');
     console.log('   Date input:', dateInput);
     console.log('   Service filter:', serviceFilter || 'All Services');
     console.log('   Total records available:', attendanceRecords.length);
@@ -1019,23 +1019,23 @@ function generateReport() {
     }
     
     if (filtered.length === 0) {
-        console.log('âŒ No records found for the selected criteria');
+        console.log('❌ No records found for the selected criteria');
         document.getElementById('report-content').innerHTML = `
             <p class="empty-state">
-                âš ï¸ No attendance records found.<br><br>
+                ⚠️ No attendance records found.<br><br>
                 <strong>Date:</strong> ${reportDate}<br>
                 <strong>Service:</strong> ${serviceFilter || 'All Services'}<br><br>
                 Please check if:<br>
-                â€¢ Records were scanned on this date<br>
-                â€¢ The correct service type is selected<br>
-                â€¢ Data has loaded from Firebase<br><br>
-                <button onclick="recoverData()" class="btn btn-primary">ðŸ”„ Reload Data</button>
+                • Records were scanned on this date<br>
+                • The correct service type is selected<br>
+                • Data has loaded from Firebase<br><br>
+                <button onclick="recoverData()" class="btn btn-primary">🔄 Reload Data</button>
             </p>
         `;
         return;
     }
     
-    console.log('âœ… Generating report with', filtered.length, 'records');
+    console.log('✅ Generating report with', filtered.length, 'records');
     
     // Separate members and visitors
     const members = filtered.filter(r => !r.isVisitor);
@@ -1065,7 +1065,7 @@ function generateReport() {
     let reportHTML = `
         <div class="report-header-enhanced">
             <div class="report-title">
-                <span class="report-icon">ðŸ“Š</span>
+                <span class="report-icon">📊</span>
                 <h2>Attendance Report</h2>
             </div>
             <div class="report-metadata">
@@ -1383,11 +1383,15 @@ function switchMemberType() {
             document.getElementById('member-category').required = true;
             document.getElementById('member-status').required = true;
             document.getElementById('member-visitor-type').required = false;
+            document.getElementById('member-cluster').required = true;
+            if (document.getElementById('cluster-label')) {
+                document.getElementById('cluster-label').innerHTML = 'Cluster:';
+            }
             if (document.getElementById('member-date-baptised')) {
                 document.getElementById('member-date-baptised').required = false;
             }
         } else {
-            // Visitors: Hide Category and Status, Show Visitor Type and Date Baptised
+            // Visitors: Hide Category and Status, Show Visitor Type and Date Baptised, Make Cluster optional
             categoryField.style.display = 'none';
             statusField.style.display = 'none';
             visitorTypeField.style.display = 'block';
@@ -1402,6 +1406,10 @@ function switchMemberType() {
             document.getElementById('member-category').required = false;
             document.getElementById('member-status').required = false;
             document.getElementById('member-visitor-type').required = true;
+            document.getElementById('member-cluster').required = false;
+            if (document.getElementById('cluster-label')) {
+                document.getElementById('cluster-label').innerHTML = 'Cluster: <span style="font-weight: normal; color: #666;">(Optional)</span>';
+            }
         }
         
         if (typeof clearSearch === 'function') clearSearch();
@@ -1489,7 +1497,8 @@ function viewMember(memberId) {
         document.getElementById('member-birthday').value = member.birthday || '';
         document.getElementById('member-age').value = member.age || '';
         document.getElementById('member-contact').value = member.contactNumber || '';
-        document.getElementById('member-cluster').value = member.cluster;
+        document.getElementById('member-facebook').value = member.facebookAccount || '';
+        document.getElementById('member-cluster').value = member.cluster || '';
         
         // Calculate age if birthday exists but age is not stored
         if (member.birthday && !member.age) {
@@ -1523,6 +1532,7 @@ function addNewMember() {
     document.getElementById('member-birthday').value = '';
     document.getElementById('member-age').value = '';
     document.getElementById('member-contact').value = '';
+    document.getElementById('member-facebook').value = '';
     document.getElementById('member-cluster').value = '';
     document.getElementById('member-category').value = '';
     document.getElementById('member-status').value = 'Active';
@@ -1547,6 +1557,7 @@ async function saveMember() {
     const name = document.getElementById('member-name').value.trim();
     const birthday = document.getElementById('member-birthday').value;
     const contactNumber = document.getElementById('member-contact').value.trim();
+    const facebookAccount = document.getElementById('member-facebook').value.trim();
     const cluster = document.getElementById('member-cluster').value;
     const age = document.getElementById('member-age').value;
     
@@ -1555,6 +1566,7 @@ async function saveMember() {
         birthday: birthday,
         age: age,
         contactNumber: contactNumber,
+        facebookAccount: facebookAccount || '',
         cluster: cluster,
         type: currentMemberType,
         updatedAt: new Date().toISOString()
@@ -1567,7 +1579,7 @@ async function saveMember() {
         
         // Validation for members
         if (!name || !birthday || !contactNumber || !cluster || !category || !status) {
-            alert('Please fill in all fields!');
+            alert('Please fill in all required fields!');
             return;
         }
         
@@ -1577,9 +1589,9 @@ async function saveMember() {
         const visitorType = document.getElementById('member-visitor-type').value;
         const dateBaptised = document.getElementById('member-date-baptised').value;
         
-        // Validation for visitors
-        if (!name || !birthday || !contactNumber || !cluster || !visitorType) {
-            alert('Please fill in all fields!');
+        // Validation for visitors (cluster is optional)
+        if (!name || !birthday || !contactNumber || !visitorType) {
+            alert('Please fill in all required fields!');
             return;
         }
         
@@ -1599,15 +1611,15 @@ async function saveMember() {
                 // Update in local arrays if offline
                 updateLocalMember(currentEditingId, memberData);
             }
-            alert('âœ… Member information updated successfully!' + 
-                  (savedToCloud ? '' : '\nâš ï¸ Saved offline - will sync when online'));
+            alert('✅ Member information updated successfully!' + 
+                  (savedToCloud ? '' : '\n⚠️ Saved offline - will sync when online'));
         } else {
             // Add new member
             memberData.createdAt = new Date().toISOString();
             
             if (firebaseInitialized && db) {
                 const docRef = await db.collection('members').add(memberData);
-                console.log('âœ… Member saved to Firebase with ID:', docRef.id);
+                console.log('✅ Member saved to Firebase with ID:', docRef.id);
                 savedToCloud = true;
             } else {
                 // Save locally if offline
@@ -1616,8 +1628,8 @@ async function saveMember() {
                 addLocalMember(memberData);
             }
             
-            alert('âœ… New member added successfully!' + 
-                  (savedToCloud ? '' : '\nâš ï¸ Saved offline - will sync when online'));
+            alert('✅ New member added successfully!' + 
+                  (savedToCloud ? '' : '\n⚠️ Saved offline - will sync when online'));
         }
         
         // Save to localStorage as backup
@@ -1631,7 +1643,7 @@ async function saveMember() {
         clearSearch();
         
     } catch (error) {
-        console.error('âŒ Error saving member:', error);
+        console.error('❌ Error saving member:', error);
         
         // Fallback to local save
         if (!currentEditingId) {
@@ -1640,11 +1652,11 @@ async function saveMember() {
             memberData.createdAt = new Date().toISOString();
             addLocalMember(memberData);
             saveMembersToLocalStorage();
-            alert('âœ… Member saved offline!\nâš ï¸ Will sync to cloud when connection is available.');
+            alert('✅ Member saved offline!\n⚠️ Will sync to cloud when connection is available.');
             cancelEdit();
             clearSearch();
         } else {
-            alert('âŒ Error saving member: ' + error.message);
+            alert('❌ Error saving member: ' + error.message);
         }
     }
 }
@@ -1671,31 +1683,114 @@ function updateLocalMember(id, updatedData) {
 function saveMembersToLocalStorage() {
     localStorage.setItem('membersData', JSON.stringify(membersData));
     localStorage.setItem('visitorsData', JSON.stringify(visitorsData));
-    console.log('ðŸ’¾ Members saved to localStorage:', membersData.length, 'members,', visitorsData.length, 'visitors');
+    console.log('💾 Members saved to localStorage:', membersData.length, 'members,', visitorsData.length, 'visitors');
 }
 
 // Delete member
 async function deleteMember() {
-    if (!currentEditingId) return;
+    if (!currentEditingId) {
+        alert('⚠️ No member selected for deletion.');
+        return;
+    }
     
-    const member = document.getElementById('member-name').value;
-    const confirmMsg = `Are you sure you want to delete the member record for:\n\n${member}?\n\nThis action cannot be undone!`;
+    const memberName = document.getElementById('member-name').value;
+    const memberType = currentMemberType === 'members' ? 'Member' : 'Visitor';
     
-    if (confirm(confirmMsg)) {
-        try {
-            if (firebaseInitialized && db) {
-                await db.collection('members').doc(currentEditingId).delete();
-            }
-            
-            alert('Member deleted successfully!');
-            loadMembersFromCloud();
-            cancelEdit();
-            clearSearch();
-            
-        } catch (error) {
-            console.error('Error deleting member:', error);
-            alert('Error deleting member: ' + error.message);
+    // FIRST WARNING - Show what will be deleted
+    const confirmed1 = confirm(
+        `⚠️ DELETE ${memberType.toUpperCase()} RECORD\n` +
+        `═══════════════════════════════\n\n` +
+        `You are about to DELETE the record for:\n\n` +
+        `📋 Name: ${memberName}\n` +
+        `👤 Type: ${memberType}\n\n` +
+        `This action CANNOT be undone!\n\n` +
+        `Do you want to proceed?`
+    );
+    
+    if (!confirmed1) {
+        console.log('❌ Delete cancelled by user');
+        return;
+    }
+    
+    // SECOND WARNING - Final confirmation
+    const confirmed2 = confirm(
+        `🚨 FINAL CONFIRMATION\n` +
+        `═══════════════════════════════\n\n` +
+        `Are you ABSOLUTELY SURE you want to\n` +
+        `permanently delete this ${memberType.toLowerCase()} record?\n\n` +
+        `Name: ${memberName}\n\n` +
+        `This will remove from:\n` +
+        `• Cloud database (Firebase)\n` +
+        `• Local storage\n` +
+        `• All connected devices\n\n` +
+        `Click OK to DELETE PERMANENTLY\n` +
+        `Click Cancel to keep the record`
+    );
+    
+    if (!confirmed2) {
+        console.log('❌ Delete cancelled at final confirmation');
+        return;
+    }
+    
+    console.log('🗑️ Deleting member:', memberName);
+    
+    try {
+        let deletedFromCloud = false;
+        
+        // Delete from Firebase
+        if (firebaseInitialized && db) {
+            await db.collection('members').doc(currentEditingId).delete();
+            console.log('✅ Deleted from Firebase:', currentEditingId);
+            deletedFromCloud = true;
         }
+        
+        // Delete from local arrays (for immediate feedback and offline support)
+        const dataSource = currentMemberType === 'members' ? membersData : visitorsData;
+        const index = dataSource.findIndex(m => m.id === currentEditingId);
+        if (index !== -1) {
+            if (currentMemberType === 'members') {
+                membersData.splice(index, 1);
+            } else {
+                visitorsData.splice(index, 1);
+            }
+            console.log('✅ Deleted from local array');
+        }
+        
+        // Update localStorage
+        saveMembersToLocalStorage();
+        
+        // Update UI
+        updateMemberStats();
+        
+        // Success message
+        alert(
+            `✅ ${memberType.toUpperCase()} DELETED\n` +
+            `═══════════════════════════════\n\n` +
+            `Successfully deleted: ${memberName}\n\n` +
+            (deletedFromCloud 
+                ? `The record has been permanently removed\nfrom all devices.`
+                : `⚠️ Deleted locally.\nWill sync to cloud when online.`)
+        );
+        
+        console.log('✅ Delete operation completed');
+        
+        // Reload from cloud and clear form
+        if (firebaseInitialized) {
+            loadMembersFromCloud();
+        }
+        cancelEdit();
+        clearSearch();
+        
+    } catch (error) {
+        console.error('❌ Error deleting member:', error);
+        alert(
+            `❌ DELETE FAILED\n` +
+            `═══════════════════════════════\n\n` +
+            `Error: ${error.message}\n\n` +
+            `The record may not have been deleted.\n` +
+            `Please check your internet connection\n` +
+            `and try again.`
+        );
     }
 }
 
@@ -1708,6 +1803,7 @@ function cancelEdit() {
     document.getElementById('member-birthday').value = '';
     document.getElementById('member-age').value = '';
     document.getElementById('member-contact').value = '';
+    document.getElementById('member-facebook').value = '';
     document.getElementById('member-cluster').value = '';
     document.getElementById('member-category').value = '';
     document.getElementById('member-status').value = '';
@@ -1728,7 +1824,7 @@ function clearSearch() {
 async function loadMembersFromCloud() {
     if (firebaseInitialized && db) {
         try {
-            console.log('ðŸ“¥ Loading members from Firebase...');
+            console.log('📥 Loading members from Firebase...');
             const snapshot = await db.collection('members').get();
             membersData = [];
             visitorsData = [];
@@ -1746,15 +1842,15 @@ async function loadMembersFromCloud() {
             saveMembersToLocalStorage();
             
             updateMemberStats();
-            console.log('âœ… Members loaded from Firebase:', membersData.length, 'members,', visitorsData.length, 'visitors');
+            console.log('✅ Members loaded from Firebase:', membersData.length, 'members,', visitorsData.length, 'visitors');
             
         } catch (error) {
-            console.error('âŒ Error loading members from Firebase:', error);
+            console.error('❌ Error loading members from Firebase:', error);
             // Fallback to localStorage
             loadMembersFromLocalStorage();
         }
     } else {
-        console.log('âš ï¸ Firebase not available, loading from localStorage');
+        console.log('⚠️ Firebase not available, loading from localStorage');
         loadMembersFromLocalStorage();
     }
 }
@@ -1767,17 +1863,17 @@ function loadMembersFromLocalStorage() {
         
         if (savedMembers) {
             membersData = JSON.parse(savedMembers);
-            console.log('ðŸ“‚ Loaded members from localStorage:', membersData.length);
+            console.log('📂 Loaded members from localStorage:', membersData.length);
         }
         
         if (savedVisitors) {
             visitorsData = JSON.parse(savedVisitors);
-            console.log('ðŸ“‚ Loaded visitors from localStorage:', visitorsData.length);
+            console.log('📂 Loaded visitors from localStorage:', visitorsData.length);
         }
         
         updateMemberStats();
     } catch (error) {
-        console.error('âŒ Error loading from localStorage:', error);
+        console.error('❌ Error loading from localStorage:', error);
         membersData = [];
         visitorsData = [];
     }
@@ -1864,10 +1960,10 @@ function exportToExcel() {
     // Members Section (only if not filtered to VISITORS only)
     if (typeFilter !== 'VISITORS' && filteredMembers.length > 0) {
         csvContent += '"=== REGULAR MEMBERS ==="\n';
-        csvContent += '"Name","Birthday","Age","Contact Number","Cluster","Category","Status"\n';
+        csvContent += '"Name","Birthday","Age","Contact Number","Facebook Account","Cluster","Category","Status"\n';
     
         filteredMembers.forEach(member => {
-            csvContent += `"${member.name}","${member.birthday || 'N/A'}","${member.age || 'N/A'}","${member.contactNumber || 'N/A'}","${member.cluster}","${member.category}","${member.status}"\n`;
+            csvContent += `"${member.name}","${member.birthday || 'N/A'}","${member.age || 'N/A'}","${member.contactNumber || 'N/A'}","${member.facebookAccount || 'N/A'}","${member.cluster}","${member.category}","${member.status}"\n`;
         });
         
         csvContent += '\n';
@@ -1888,10 +1984,10 @@ function exportToExcel() {
     // Visitors Section (only if not filtered to MEMBERS only)
     if (typeFilter !== 'MEMBERS' && filteredVisitors.length > 0) {
         csvContent += '"=== VISITORS ==="\n';
-        csvContent += '"Name","Birthday","Age","Contact Number","Cluster","Visitor Type","Date Baptised"\n';
+        csvContent += '"Name","Birthday","Age","Contact Number","Facebook Account","Cluster","Visitor Type","Date Baptised"\n';
         
         filteredVisitors.forEach(visitor => {
-            csvContent += `"${visitor.name}","${visitor.birthday || 'N/A'}","${visitor.age || 'N/A'}","${visitor.contactNumber || 'N/A'}","${visitor.cluster}","${visitor.visitorType || 'N/A'}","${visitor.dateBaptised || 'N/A'}"\n`;
+            csvContent += `"${visitor.name}","${visitor.birthday || 'N/A'}","${visitor.age || 'N/A'}","${visitor.contactNumber || 'N/A'}","${visitor.facebookAccount || 'N/A'}","${visitor.cluster || 'N/A'}","${visitor.visitorType || 'N/A'}","${visitor.dateBaptised || 'N/A'}"\n`;
         });
         
         csvContent += '\n';
@@ -1947,7 +2043,7 @@ function exportToExcel() {
         document.body.removeChild(link);
     }
     
-    let summaryMsg = 'âœ… Report exported successfully!\n\n';
+    let summaryMsg = '✅ Report exported successfully!\n\n';
     if (typeFilter !== 'VISITORS') summaryMsg += `Members: ${filteredMembers.length}\n`;
     if (typeFilter !== 'MEMBERS') summaryMsg += `Visitors: ${filteredVisitors.length}\n`;
     summaryMsg += `Total: ${filteredMembers.length + filteredVisitors.length}`;
@@ -2004,6 +2100,7 @@ function printMembersReport() {
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Birthday</th>
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Age</th>
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Contact</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Facebook</th>
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Category</th>
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Status</th>
@@ -2020,6 +2117,7 @@ function printMembersReport() {
                     <td style="border: 1px solid #ddd; padding: 8px;">${member.birthday || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${member.age || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${member.contactNumber || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.facebookAccount || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${member.cluster}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${member.category}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${member.status}</td>
@@ -2046,6 +2144,7 @@ function printMembersReport() {
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Birthday</th>
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Age</th>
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Contact</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Facebook</th>
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitor Type</th>
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Date Baptised</th>
@@ -2062,7 +2161,8 @@ function printMembersReport() {
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.birthday || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.age || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.contactNumber || 'N/A'}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.cluster}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.facebookAccount || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.cluster || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.visitorType || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.dateBaptised || 'N/A'}</td>
                 </tr>
@@ -2114,4 +2214,3 @@ function printMembersReport() {
         printWindow.print();
     }, 500);
 }
-
