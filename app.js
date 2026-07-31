@@ -670,98 +670,108 @@ function generateReport() {
         clusterGroups[record.cluster].push(record);
     });
     
-    // Count visitors by type
-    const visitorTypes = [...new Set(visitors.map(v => v.visitorType))];
-    const visitorCounts = {};
-    visitorTypes.forEach(type => {
-        visitorCounts[type] = visitors.filter(v => v.visitorType === type).length;
+    // Get current date and time for "Generated" timestamp
+    const generatedTimestamp = new Date().toLocaleString('en-US', { 
+        month: 'numeric', 
+        day: 'numeric', 
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true 
     });
     
-    // Build report HTML
+    // Build report HTML with enhanced header
     let reportHTML = `
-        <div class="report-header">
-            <h3>Attendance Report</h3>
-            <p><strong>Date:</strong> ${reportDate}</p>
-            <p><strong>Service:</strong> ${serviceFilter || 'All Services'}</p>
-            <p><strong>Total Attendance:</strong> ${filtered.length}</p>
+        <div class="report-header-enhanced">
+            <div class="report-title">
+                <span class="report-icon">📊</span>
+                <h2>Attendance Report</h2>
+            </div>
+            <div class="report-metadata">
+                <p><strong>Date:</strong> ${reportDate}</p>
+                <p><strong>Service Type:</strong> ${serviceFilter || 'All Services'}</p>
+                <p><strong>Total Attendance:</strong> ${filtered.length}</p>
+                <p><strong>Members:</strong> ${members.length} | <strong>Visitors:</strong> ${visitors.length}</p>
+                <p class="generated-time"><strong>Generated:</strong> ${generatedTimestamp}</p>
+            </div>
         </div>
         
-        <h4 style="margin-top: 25px; margin-bottom: 15px;">Summary by Cluster</h4>
+        <h4 style="margin-top: 30px; margin-bottom: 15px; color: #333; font-size: 16px; font-weight: 600;">Summary by Cluster</h4>
         <table class="report-table">
             <thead>
                 <tr>
-                    <th>Cluster</th>
-                    <th>Count</th>
+                    <th style="text-align: left;">Cluster</th>
+                    <th style="text-align: center; width: 100px;">Count</th>
                 </tr>
             </thead>
             <tbody>
     `;
     
-    // Add member clusters
+    // Add member clusters sorted alphabetically
     Object.keys(clusterGroups).sort().forEach(cluster => {
         reportHTML += `
             <tr>
                 <td>${cluster}</td>
-                <td>${clusterGroups[cluster].length}</td>
+                <td style="text-align: center;">${clusterGroups[cluster].length}</td>
             </tr>
         `;
     });
     
-    // Add visitor rows
-    Object.keys(visitorCounts).sort().forEach(type => {
-        if (visitorCounts[type] > 0) {
-            reportHTML += `
-                <tr>
-                    <td>${type}</td>
-                    <td>${visitorCounts[type]}</td>
-                </tr>
-            `;
-        }
-    });
+    // Add visitors row if there are visitors
+    if (visitors.length > 0) {
+        reportHTML += `
+            <tr>
+                <td><strong>VISITORS</strong></td>
+                <td style="text-align: center;"><strong>${visitors.length}</strong></td>
+            </tr>
+        `;
+    }
     
     reportHTML += `
             </tbody>
         </table>
         
-        <h4 style="margin-top: 30px; margin-bottom: 15px;">Detailed Attendance List</h4>
+        <h4 style="margin-top: 35px; margin-bottom: 20px; color: #333; font-size: 16px; font-weight: 600;">Detailed Attendance by Cluster</h4>
     `;
     
-    // Add detailed lists by cluster
+    // Add detailed lists by cluster with numbered entries and time
     Object.keys(clusterGroups).sort().forEach(cluster => {
         const sortedMembers = clusterGroups[cluster].sort((a, b) => a.name.localeCompare(b.name));
         
         reportHTML += `
-            <div class="cluster-section">
-                <h5>${cluster} (${sortedMembers.length})</h5>
-                <ul class="attendee-list">
+            <div class="cluster-detail-section">
+                <h5 style="color: #333; font-size: 15px; font-weight: 600; margin-bottom: 10px;">${cluster} (${sortedMembers.length} attendees)</h5>
+                <ol class="attendee-detail-list" style="margin: 0; padding-left: 20px;">
         `;
         
-        sortedMembers.forEach(record => {
-            reportHTML += `<li>${record.name} - <em>${record.category || 'N/A'}</em></li>`;
+        sortedMembers.forEach((record, index) => {
+            reportHTML += `<li style="margin-bottom: 5px;">${record.name} - ${record.time}</li>`;
         });
         
         reportHTML += `
-                </ul>
+                </ol>
             </div>
         `;
     });
     
-    // Add visitors section
+    // Add visitors section if there are visitors
     if (visitors.length > 0) {
         const sortedVisitors = visitors.sort((a, b) => a.name.localeCompare(b.name));
         
         reportHTML += `
-            <div class="cluster-section">
-                <h5>VISITORS (${visitors.length})</h5>
-                <ul class="attendee-list">
+            <div class="cluster-detail-section" style="margin-top: 25px;">
+                <h5 style="color: #FF9800; font-size: 15px; font-weight: 600; margin-bottom: 5px;">VISITORS (${visitors.length} total)</h5>
+                <p style="color: #FF9800; font-weight: 600; font-size: 14px; margin-bottom: 10px;">Visitor:</p>
+                <ol class="attendee-detail-list" style="margin: 0; padding-left: 20px;">
         `;
         
-        sortedVisitors.forEach(record => {
-            reportHTML += `<li>${record.name} - <em>${record.visitorType}</em></li>`;
+        sortedVisitors.forEach((record, index) => {
+            reportHTML += `<li style="margin-bottom: 5px;">${record.name} - ${record.time}</li>`;
         });
         
         reportHTML += `
-                </ul>
+                </ol>
             </div>
         `;
     }
@@ -785,16 +795,71 @@ function printReport() {
             <title>Attendance Report</title>
             <style>
                 body { font-family: Arial, sans-serif; padding: 20px; }
-                h3, h4, h5 { color: #333; }
-                .report-header { margin-bottom: 20px; border-bottom: 2px solid #2196F3; padding-bottom: 10px; }
+                h2, h3, h4, h5 { color: #333; }
+                
+                /* Enhanced Report Header */
+                .report-header-enhanced {
+                    background: #fff;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 8px;
+                    padding: 20px;
+                    margin-bottom: 25px;
+                }
+                .report-title {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    margin-bottom: 15px;
+                    padding-bottom: 15px;
+                    border-bottom: 2px solid #e0e0e0;
+                }
+                .report-icon { font-size: 24px; }
+                .report-title h2 {
+                    margin: 0;
+                    font-size: 20px;
+                    font-weight: 600;
+                    color: #333;
+                }
+                .report-metadata { line-height: 1.8; }
+                .report-metadata p {
+                    margin: 5px 0;
+                    color: #555;
+                    font-size: 14px;
+                }
+                .generated-time {
+                    margin-top: 10px;
+                    padding-top: 10px;
+                    border-top: 1px solid #f0f0f0;
+                    color: #777;
+                    font-size: 13px;
+                }
+                
                 .report-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
                 .report-table th { background: #2196F3; color: white; padding: 10px; text-align: left; }
                 .report-table td { border: 1px solid #ddd; padding: 8px; }
-                .cluster-section { margin-bottom: 20px; page-break-inside: avoid; }
-                .attendee-list { list-style: none; padding: 0; column-count: 2; }
-                .attendee-list li { padding: 5px 0; }
+                
+                .cluster-detail-section {
+                    margin-bottom: 25px;
+                    padding: 15px;
+                    background: #fafafa;
+                    border-radius: 6px;
+                    border-left: 3px solid #2196F3;
+                    page-break-inside: avoid;
+                }
+                
+                .attendee-detail-list {
+                    list-style-position: inside;
+                    color: #333;
+                }
+                .attendee-detail-list li {
+                    padding: 3px 0;
+                    color: #444;
+                    font-size: 14px;
+                }
+                
                 @media print {
                     body { padding: 10px; }
+                    .cluster-detail-section { page-break-inside: avoid; }
                 }
             </style>
         </head>
