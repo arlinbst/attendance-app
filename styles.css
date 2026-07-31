@@ -95,6 +95,11 @@ header h1 {
     margin: 5px;
     min-width: 150px;
     white-space: nowrap;
+    pointer-events: auto;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
 }
 
 .btn-primary {
