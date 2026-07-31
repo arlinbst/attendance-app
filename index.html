@@ -145,7 +145,12 @@
                     
                     <div class="form-group" style="margin-top: 15px;">
                         <label for="member-birthday" style="display: block; margin-bottom: 8px; font-weight: bold;">Birthday:</label>
-                        <input type="date" id="member-birthday" class="input-field" required>
+                        <input type="date" id="member-birthday" class="input-field" required onchange="calculateAge()">
+                    </div>
+                    
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="member-age" style="display: block; margin-bottom: 8px; font-weight: bold;">Age:</label>
+                        <input type="text" id="member-age" class="input-field" readonly style="background-color: #f0f0f0; cursor: not-allowed;" placeholder="Auto-calculated">
                     </div>
                     
                     <div class="form-group" style="margin-top: 15px;">
@@ -201,6 +206,12 @@
                         </select>
                     </div>
                     
+                    <!-- Date Baptised Field (for Visitors only) -->
+                    <div class="form-group" id="date-baptised-field" style="margin-top: 15px; display: none;">
+                        <label for="member-date-baptised" style="display: block; margin-bottom: 8px; font-weight: bold;">Date Baptised:</label>
+                        <input type="date" id="member-date-baptised" class="input-field">
+                    </div>
+                    
                     <!-- Status Field (for Members only) -->
                     <div class="form-group" id="status-field" style="margin-top: 15px;">
                         <label for="member-status" style="display: block; margin-bottom: 8px; font-weight: bold;">Status:</label>
@@ -227,6 +238,15 @@
                 <!-- Export Report Section -->
                 <div style="margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 10px;">
                     <h4 style="color: #2196F3; margin-bottom: 15px;">📊 Generate Members Report</h4>
+                    
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 15px;">
+                        <label style="font-weight: bold;">Type:</label>
+                        <select id="export-type-filter" class="input-field" style="flex: 1; min-width: 150px;">
+                            <option value="ALL">Both (Members & Visitors)</option>
+                            <option value="MEMBERS">Members Only</option>
+                            <option value="VISITORS">Visitors Only</option>
+                        </select>
+                    </div>
                     
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 15px;">
                         <label style="font-weight: bold;">Filter by Cluster:</label>
