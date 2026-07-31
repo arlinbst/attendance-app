@@ -280,6 +280,14 @@
                 <button onclick="generateReport()" class="btn btn-primary" style="margin-top: 20px;">Generate Report</button>
                 <button onclick="printReport()" class="btn btn-success" style="margin-top: 20px;">Print Report</button>
                 
+                <!-- DATA MANAGEMENT SECTION -->
+                <div style="margin-top: 30px; padding: 20px; border: 2px solid #ff9800; border-radius: 8px; background-color: #fff3e0;">
+                    <h4 style="color: #f57c00; margin-top: 0; margin-bottom: 15px;">⚠️ Data Management</h4>
+                    <p style="font-size: 13px; color: #666; margin-bottom: 15px;">Carefully manage attendance records. Deleted data cannot be recovered.</p>
+                    <button onclick="deleteRecordsForDate()" class="btn" style="background-color: #ff9800; margin-right: 10px;">🗑️ Delete Records for Selected Date</button>
+                    <button onclick="clearAllRecords()" class="btn" style="background-color: #f44336;">❌ Clear ALL Records</button>
+                </div>
+                
                 <div id="report-content" style="margin-top: 30px;">
                     <p class="empty-state">Select date and service type, then click "Generate Report" to view attendance summary.</p>
                 </div>
