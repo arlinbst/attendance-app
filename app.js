@@ -872,6 +872,30 @@ let currentEditingId = null;
 function switchMemberType() {
     const selectedType = document.querySelector('input[name="member-type"]:checked').value;
     currentMemberType = selectedType;
+    
+    // Show/hide fields based on type
+    const categoryField = document.getElementById('category-field');
+    const visitorTypeField = document.getElementById('visitor-type-field');
+    const statusField = document.getElementById('status-field');
+    
+    if (currentMemberType === 'members') {
+        // Members: Show Category and Status, Hide Visitor Type
+        categoryField.style.display = 'block';
+        statusField.style.display = 'block';
+        visitorTypeField.style.display = 'none';
+        document.getElementById('member-category').required = true;
+        document.getElementById('member-status').required = true;
+        document.getElementById('member-visitor-type').required = false;
+    } else {
+        // Visitors: Hide Category and Status, Show Visitor Type
+        categoryField.style.display = 'none';
+        statusField.style.display = 'none';
+        visitorTypeField.style.display = 'block';
+        document.getElementById('member-category').required = false;
+        document.getElementById('member-status').required = false;
+        document.getElementById('member-visitor-type').required = true;
+    }
+    
     clearSearch();
     updateMemberStats();
 }
@@ -897,14 +921,26 @@ function searchMember() {
         resultsDiv.innerHTML = '<p class="empty-state">No members found matching your search.</p>';
         searchResults.style.display = 'block';
     } else {
-        resultsDiv.innerHTML = results.map(member => `
-            <div class="result-item" onclick="viewMember('${member.id}')">
-                <h4>${member.name}</h4>
-                <p><strong>Cluster:</strong> ${member.cluster}</p>
-                <p><strong>Category:</strong> ${member.category}</p>
-                <p><strong>Status:</strong> <span class="status-badge ${member.status.toLowerCase().replace(' ', '-')}">${member.status}</span></p>
-            </div>
-        `).join('');
+        resultsDiv.innerHTML = results.map(member => {
+            if (currentMemberType === 'members') {
+                return `
+                    <div class="result-item" onclick="viewMember('${member.id}')">
+                        <h4>${member.name}</h4>
+                        <p><strong>Cluster:</strong> ${member.cluster}</p>
+                        <p><strong>Category:</strong> ${member.category}</p>
+                        <p><strong>Status:</strong> <span class="status-badge ${member.status.toLowerCase().replace(' ', '-')}">${member.status}</span></p>
+                    </div>
+                `;
+            } else {
+                return `
+                    <div class="result-item" onclick="viewMember('${member.id}')">
+                        <h4>${member.name}</h4>
+                        <p><strong>Cluster:</strong> ${member.cluster}</p>
+                        <p><strong>Visitor Type:</strong> ${member.visitorType || 'N/A'}</p>
+                    </div>
+                `;
+            }
+        }).join('');
         searchResults.style.display = 'block';
     }
 }
@@ -921,8 +957,13 @@ function viewMember(memberId) {
         document.getElementById('member-birthday').value = member.birthday || '';
         document.getElementById('member-contact').value = member.contactNumber || '';
         document.getElementById('member-cluster').value = member.cluster;
-        document.getElementById('member-category').value = member.category;
-        document.getElementById('member-status').value = member.status;
+        
+        if (currentMemberType === 'members') {
+            document.getElementById('member-category').value = member.category;
+            document.getElementById('member-status').value = member.status;
+        } else {
+            document.getElementById('member-visitor-type').value = member.visitorType || '';
+        }
         
         document.getElementById('form-title').textContent = 'Edit Member Information';
         document.getElementById('delete-btn').style.display = 'inline-block';
@@ -943,6 +984,7 @@ function addNewMember() {
     document.getElementById('member-cluster').value = '';
     document.getElementById('member-category').value = '';
     document.getElementById('member-status').value = 'Active';
+    document.getElementById('member-visitor-type').value = '';
     
     document.getElementById('form-title').textContent = 'Add New Member';
     document.getElementById('delete-btn').style.display = 'none';
@@ -958,25 +1000,40 @@ async function saveMember() {
     const birthday = document.getElementById('member-birthday').value;
     const contactNumber = document.getElementById('member-contact').value.trim();
     const cluster = document.getElementById('member-cluster').value;
-    const category = document.getElementById('member-category').value;
-    const status = document.getElementById('member-status').value;
     
-    // Validation
-    if (!name || !birthday || !contactNumber || !cluster || !category || !status) {
-        alert('Please fill in all fields!');
-        return;
-    }
-    
-    const memberData = {
+    let memberData = {
         name: name,
         birthday: birthday,
         contactNumber: contactNumber,
         cluster: cluster,
-        category: category,
-        status: status,
         type: currentMemberType,
         updatedAt: new Date().toISOString()
     };
+    
+    // Add type-specific fields
+    if (currentMemberType === 'members') {
+        const category = document.getElementById('member-category').value;
+        const status = document.getElementById('member-status').value;
+        
+        // Validation for members
+        if (!name || !birthday || !contactNumber || !cluster || !category || !status) {
+            alert('Please fill in all fields!');
+            return;
+        }
+        
+        memberData.category = category;
+        memberData.status = status;
+    } else {
+        const visitorType = document.getElementById('member-visitor-type').value;
+        
+        // Validation for visitors
+        if (!name || !birthday || !contactNumber || !cluster || !visitorType) {
+            alert('Please fill in all fields!');
+            return;
+        }
+        
+        memberData.visitorType = visitorType;
+    }
     
     try {
         if (currentEditingId) {
@@ -1041,6 +1098,7 @@ function cancelEdit() {
     document.getElementById('member-cluster').value = '';
     document.getElementById('member-category').value = '';
     document.getElementById('member-status').value = '';
+    document.getElementById('member-visitor-type').value = '';
 }
 
 // Clear search
@@ -1081,3 +1139,127 @@ function updateMemberStats() {
     document.getElementById('total-members').textContent = membersData.length;
     document.getElementById('total-visitors').textContent = visitorsData.length;
 }
+
+// Export to Excel Function
+function exportToExcel() {
+    const clusterFilter = document.getElementById('export-cluster-filter').value;
+    const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    
+    // Filter data by cluster if not "ALL"
+    let filteredMembers = membersData;
+    let filteredVisitors = visitorsData;
+    
+    if (clusterFilter !== 'ALL') {
+        filteredMembers = membersData.filter(m => m.cluster === clusterFilter);
+        filteredVisitors = visitorsData.filter(v => v.cluster === clusterFilter);
+    }
+    
+    // Sort by name
+    filteredMembers.sort((a, b) => a.name.localeCompare(b.name));
+    filteredVisitors.sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Calculate category totals for members
+    const categoryTotals = {
+        'Pastoral': 0,
+        'Elder': 0,
+        'Adult': 0,
+        'Youth': 0,
+        'Cadets': 0
+    };
+    
+    filteredMembers.forEach(member => {
+        if (categoryTotals.hasOwnProperty(member.category)) {
+            categoryTotals[member.category]++;
+        }
+    });
+    
+    // Calculate visitor type totals
+    const visitorTypeTotals = {};
+    filteredVisitors.forEach(visitor => {
+        const vType = visitor.visitorType || 'N/A';
+        visitorTypeTotals[vType] = (visitorTypeTotals[vType] || 0) + 1;
+    });
+    
+    // Build CSV content
+    let csvContent = '';
+    
+    // Header
+    csvContent += '\"UP Diliman Locale Active Members Information List\"\\n';
+    csvContent += `\"As of ${currentDate}\"\\n`;
+    if (clusterFilter !== 'ALL') {
+        csvContent += `\"Cluster: ${clusterFilter}\"\\n`;
+    }
+    csvContent += '\\n';
+    
+    // Members Section
+    csvContent += '\"=== REGULAR MEMBERS ===\"\\n';
+    csvContent += '\"Name\",\"Cluster\",\"Category\",\"Status\"\\n';
+    
+    filteredMembers.forEach(member => {
+        csvContent += `\"${member.name}\",\"${member.cluster}\",\"${member.category}\",\"${member.status}\"\\n`;
+    });
+    
+    csvContent += '\\n';
+    csvContent += `\"Total Members: ${filteredMembers.length}\"\\n`;
+    csvContent += '\\n';
+    
+    // Members Category Summary
+    csvContent += '\"Members by Category:\"\\n';
+    Object.keys(categoryTotals).forEach(category => {
+        csvContent += `\"${category}\",\"${categoryTotals[category]}\"\\n`;
+    });
+    
+    csvContent += '\\n';
+    csvContent += '\"=====================================\"\\n';
+    csvContent += '\\n';
+    
+    // Visitors Section
+    csvContent += '\"=== VISITORS ===\"\\n';
+    csvContent += '\"Name\",\"Cluster\",\"Visitor Type\"\\n';
+    
+    filteredVisitors.forEach(visitor => {
+        csvContent += `\"${visitor.name}\",\"${visitor.cluster}\",\"${visitor.visitorType || 'N/A'}\"\\n`;
+    });
+    
+    csvContent += '\\n';
+    csvContent += `\"Total Visitors: ${filteredVisitors.length}\"\\n`;
+    csvContent += '\\n';
+    
+    // Visitors Type Summary
+    csvContent += '\"Visitors by Type:\"\\n';
+    Object.keys(visitorTypeTotals).forEach(type => {
+        csvContent += `\"${type}\",\"${visitorTypeTotals[type]}\"\\n`;
+    });
+    
+    csvContent += '\\n';
+    csvContent += '\"=====================================\"\\n';
+    csvContent += '\\n';
+    
+    // Grand Totals
+    csvContent += '\"SUMMARY\"\\n';
+    csvContent += `\"Total Members:\",\"${filteredMembers.length}\"\\n`;
+    csvContent += `\"Total Visitors:\",\"${filteredVisitors.length}\"\\n`;
+    csvContent += `\"Grand Total:\",\"${filteredMembers.length + filteredVisitors.length}\"\\n`;
+    
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    let filename = 'UP_Diliman_Members_Report';
+    if (clusterFilter !== 'ALL') {
+        filename += `_${clusterFilter.replace(/\\s+/g, '_')}`;
+    }
+    filename += `_${new Date().toISOString().split('T')[0]}.csv`;
+    
+    if (navigator.msSaveBlob) { // IE 10+
+        navigator.msSaveBlob(blob, filename);
+    } else {
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    
+    alert(`Report exported successfully!\\n\\nMembers: ${filteredMembers.length}\\nVisitors: ${filteredVisitors.length}\\nTotal: ${filteredMembers.length + filteredVisitors.length}`);
