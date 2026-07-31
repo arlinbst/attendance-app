@@ -31,6 +31,9 @@ document.addEventListener('DOMContentLoaded', function() {
         updateStats();
     });
     
+    // Initialize member type field visibility
+    switchMemberType();
+    
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js')
             .then(() => console.log('Service Worker registered'))
