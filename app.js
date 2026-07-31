@@ -23,17 +23,12 @@ let firebaseInitialized = false;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-filtering on input change
-    document.getElementById('filter-date').addEventListener('change', filterRecords);
-    document.getElementById('filter-cluster').addEventListener('change', filterRecords);
-    document.getElementById('filter-service').addEventListener('change', filterRecords);
-    
     initializeFirebase().then(() => {
         loadRecordsFromCloud();
+        loadMembersFromCloud(); // Load member master data
     }).catch(() => {
         loadRecords();
         updateStats();
-        populateClusterFilter();
     });
     
     if ('serviceWorker' in navigator) {
@@ -862,4 +857,227 @@ function downloadBlobFromCanvas(blob, filename) {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+}
+
+// ============================================
+// MEMBER MANAGEMENT SYSTEM
+// ============================================
+
+let membersData = [];
+let visitorsData = [];
+let currentMemberType = 'members';
+let currentEditingId = null;
+
+// Switch between Members and Visitors
+function switchMemberType() {
+    const selectedType = document.querySelector('input[name="member-type"]:checked').value;
+    currentMemberType = selectedType;
+    clearSearch();
+    updateMemberStats();
+}
+
+// Search for member by name
+function searchMember() {
+    const searchName = document.getElementById('search-name').value.trim().toLowerCase();
+    
+    if (!searchName) {
+        alert('Please enter a name to search!');
+        return;
+    }
+    
+    const dataSource = currentMemberType === 'members' ? membersData : visitorsData;
+    const results = dataSource.filter(member => 
+        member.name.toLowerCase().includes(searchName)
+    );
+    
+    const resultsDiv = document.getElementById('results-list');
+    const searchResults = document.getElementById('search-results');
+    
+    if (results.length === 0) {
+        resultsDiv.innerHTML = '<p class="empty-state">No members found matching your search.</p>';
+        searchResults.style.display = 'block';
+    } else {
+        resultsDiv.innerHTML = results.map(member => `
+            <div class="result-item" onclick="viewMember('${member.id}')">
+                <h4>${member.name}</h4>
+                <p><strong>Cluster:</strong> ${member.cluster}</p>
+                <p><strong>Category:</strong> ${member.category}</p>
+                <p><strong>Status:</strong> <span class="status-badge ${member.status.toLowerCase().replace(' ', '-')}">${member.status}</span></p>
+            </div>
+        `).join('');
+        searchResults.style.display = 'block';
+    }
+}
+
+// View member details
+function viewMember(memberId) {
+    const dataSource = currentMemberType === 'members' ? membersData : visitorsData;
+    const member = dataSource.find(m => m.id === memberId);
+    
+    if (member) {
+        currentEditingId = memberId;
+        document.getElementById('member-id').value = memberId;
+        document.getElementById('member-name').value = member.name;
+        document.getElementById('member-birthday').value = member.birthday || '';
+        document.getElementById('member-contact').value = member.contactNumber || '';
+        document.getElementById('member-cluster').value = member.cluster;
+        document.getElementById('member-category').value = member.category;
+        document.getElementById('member-status').value = member.status;
+        
+        document.getElementById('form-title').textContent = 'Edit Member Information';
+        document.getElementById('delete-btn').style.display = 'inline-block';
+        document.getElementById('member-details-section').style.display = 'block';
+        
+        // Scroll to form
+        document.getElementById('member-details-section').scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+// Add new member
+function addNewMember() {
+    currentEditingId = null;
+    document.getElementById('member-id').value = '';
+    document.getElementById('member-name').value = '';
+    document.getElementById('member-birthday').value = '';
+    document.getElementById('member-contact').value = '';
+    document.getElementById('member-cluster').value = '';
+    document.getElementById('member-category').value = '';
+    document.getElementById('member-status').value = 'Active';
+    
+    document.getElementById('form-title').textContent = 'Add New Member';
+    document.getElementById('delete-btn').style.display = 'none';
+    document.getElementById('member-details-section').style.display = 'block';
+    
+    // Scroll to form
+    document.getElementById('member-details-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Save member (Add or Update)
+async function saveMember() {
+    const name = document.getElementById('member-name').value.trim();
+    const birthday = document.getElementById('member-birthday').value;
+    const contactNumber = document.getElementById('member-contact').value.trim();
+    const cluster = document.getElementById('member-cluster').value;
+    const category = document.getElementById('member-category').value;
+    const status = document.getElementById('member-status').value;
+    
+    // Validation
+    if (!name || !birthday || !contactNumber || !cluster || !category || !status) {
+        alert('Please fill in all fields!');
+        return;
+    }
+    
+    const memberData = {
+        name: name,
+        birthday: birthday,
+        contactNumber: contactNumber,
+        cluster: cluster,
+        category: category,
+        status: status,
+        type: currentMemberType,
+        updatedAt: new Date().toISOString()
+    };
+    
+    try {
+        if (currentEditingId) {
+            // Update existing member
+            if (firebaseInitialized && db) {
+                await db.collection('members').doc(currentEditingId).update(memberData);
+            }
+            alert('Member information updated successfully!');
+        } else {
+            // Add new member
+            memberData.createdAt = new Date().toISOString();
+            if (firebaseInitialized && db) {
+                await db.collection('members').add(memberData);
+            }
+            alert('New member added successfully!');
+        }
+        
+        // Reload members and clear form
+        loadMembersFromCloud();
+        cancelEdit();
+        clearSearch();
+        
+    } catch (error) {
+        console.error('Error saving member:', error);
+        alert('Error saving member: ' + error.message);
+    }
+}
+
+// Delete member
+async function deleteMember() {
+    if (!currentEditingId) return;
+    
+    const member = document.getElementById('member-name').value;
+    const confirmMsg = `Are you sure you want to delete the member record for:\n\n${member}?\n\nThis action cannot be undone!`;
+    
+    if (confirm(confirmMsg)) {
+        try {
+            if (firebaseInitialized && db) {
+                await db.collection('members').doc(currentEditingId).delete();
+            }
+            
+            alert('Member deleted successfully!');
+            loadMembersFromCloud();
+            cancelEdit();
+            clearSearch();
+            
+        } catch (error) {
+            console.error('Error deleting member:', error);
+            alert('Error deleting member: ' + error.message);
+        }
+    }
+}
+
+// Cancel edit
+function cancelEdit() {
+    currentEditingId = null;
+    document.getElementById('member-details-section').style.display = 'none';
+    document.getElementById('member-id').value = '';
+    document.getElementById('member-name').value = '';
+    document.getElementById('member-birthday').value = '';
+    document.getElementById('member-contact').value = '';
+    document.getElementById('member-cluster').value = '';
+    document.getElementById('member-category').value = '';
+    document.getElementById('member-status').value = '';
+}
+
+// Clear search
+function clearSearch() {
+    document.getElementById('search-name').value = '';
+    document.getElementById('search-results').style.display = 'none';
+    document.getElementById('results-list').innerHTML = '';
+}
+
+// Load members from Firebase
+async function loadMembersFromCloud() {
+    if (firebaseInitialized && db) {
+        try {
+            const snapshot = await db.collection('members').get();
+            membersData = [];
+            visitorsData = [];
+            
+            snapshot.forEach((doc) => {
+                const data = { id: doc.id, ...doc.data() };
+                if (data.type === 'members') {
+                    membersData.push(data);
+                } else {
+                    visitorsData.push(data);
+                }
+            });
+            
+            updateMemberStats();
+            console.log('Members loaded:', membersData.length, 'Visitors:', visitorsData.length);
+            
+        } catch (error) {
+            console.error('Error loading members:', error);
+        }
+    }
+}
+
+// Update member statistics
+function updateMemberStats() {
+    document.getElementById('total-members').textContent = membersData.length;
+    document.getElementById('total-visitors').textContent = visitorsData.length;
 }
