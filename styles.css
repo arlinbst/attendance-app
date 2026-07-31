@@ -360,12 +360,54 @@ header h1 {
     }
     
     .btn {
-        width: 100%;
-        margin: 5px 0;
+        min-width: auto;
+        padding: 10px 16px;
+        font-size: 14px;
+        margin: 3px;
     }
     
     .attendee-list {
         column-count: 1;
+    }
+    
+    /* Reduce stats card size */
+    .stat-card {
+        padding: 15px;
+    }
+    
+    .stat-card h3 {
+        font-size: 28px;
+    }
+    
+    .stat-card p {
+        font-size: 13px;
+    }
+    
+    /* Reduce container padding */
+    .tab-content {
+        padding: 15px;
+    }
+    
+    /* Smaller header */
+    header h1 {
+        font-size: 20px;
+    }
+    
+    .subtitle {
+        font-size: 12px;
+    }
+    
+    /* Make input fields full width on mobile */
+    .input-field {
+        font-size: 14px;
+    }
+    
+    /* Make member type radio buttons stack on very small screens */
+    @media (max-width: 400px) {
+        .member-type-radio {
+            flex-direction: column;
+            gap: 10px !important;
+        }
     }
 }
 
@@ -523,67 +565,6 @@ input[type="radio"] {
 /* ============================================
    RESPONSIVE DESIGN FOR MOBILE
    ============================================ */
-
-/* Reduce button minimum width on smaller screens */
-@media (max-width: 600px) {
-    .btn {
-        min-width: auto;
-        padding: 10px 16px;
-        font-size: 14px;
-        margin: 3px;
-    }
-    
-    /* Stack search buttons vertically on small screens */
-    .search-buttons {
-        flex-wrap: wrap;
-    }
-    
-    /* Reduce stats card size */
-    .stat-card {
-        padding: 15px;
-    }
-    
-    .stat-card h3 {
-        font-size: 28px;
-    }
-    
-    .stat-card p {
-        font-size: 13px;
-    }
-    
-    /* Smaller tabs on mobile */
-    .tab-btn {
-        padding: 12px 8px;
-        font-size: 12px;
-    }
-    
-    /* Reduce container padding */
-    .tab-content {
-        padding: 15px;
-    }
-    
-    /* Smaller header */
-    header h1 {
-        font-size: 20px;
-    }
-    
-    .subtitle {
-        font-size: 12px;
-    }
-    
-    /* Make input fields full width on mobile */
-    .input-field {
-        font-size: 14px;
-    }
-    
-    /* Make member type radio buttons stack on very small screens */
-    @media (max-width: 400px) {
-        .member-type-radio {
-            flex-direction: column;
-            gap: 10px !important;
-        }
-    }
-}
 
 /* Make stats cards responsive */
 .stats {
