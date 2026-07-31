@@ -23,14 +23,19 @@ let firebaseInitialized = false;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Page loaded - initializing...');
+    console.log('✅ Page loaded - initializing...');
+    console.log('📱 Device:', navigator.userAgent);
     
+    // STEP 1: Load from localStorage first (instant display if data exists)
+    loadRecords();
+    
+    // STEP 2: Initialize Firebase (onSnapshot will auto-sync from cloud)
     initializeFirebase().then(() => {
-        loadRecordsFromCloud();
+        console.log('✅ Firebase connected - real-time sync active');
         loadMembersFromCloud(); // Load member master data
-    }).catch(() => {
-        loadRecords();
-        updateStats();
+    }).catch((error) => {
+        console.error('❌ Firebase failed:', error);
+        console.log('⚠️ App will work in offline mode only');
     });
     
     // Initialize member type field visibility after small delay to ensure DOM is ready
@@ -38,17 +43,17 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             if (document.getElementById('category-field')) {
                 switchMemberType();
-                console.log('Member type initialized');
+                console.log('✅ Member type initialized');
             }
         } catch (error) {
-            console.log('Member type initialization skipped:', error);
+            console.log('⚠️ Member type initialization skipped:', error);
         }
     }, 100);
     
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js')
-            .then(() => console.log('Service Worker registered'))
-            .catch(err => console.log('Service Worker registration failed:', err));
+            .then(() => console.log('✅ Service Worker registered'))
+            .catch(err => console.log('❌ Service Worker registration failed:', err));
     }
 });
 
@@ -197,7 +202,7 @@ function onScanError(errorMessage) {
 }
 
 // Attendance Logging
-function logAttendance(name, cluster, serviceType, category) {
+async function logAttendance(name, cluster, serviceType, category) {
     const record = {
         name: name.trim(),
         cluster: cluster.trim(),
@@ -206,20 +211,18 @@ function logAttendance(name, cluster, serviceType, category) {
         timestamp: new Date().toISOString(),
         date: new Date().toLocaleDateString(),
         time: new Date().toLocaleTimeString(),
-        isVisitor: false
+        isVisitor: false,
+        scannedAt: new Date().toISOString() // Add timestamp when scanned
     };
     
-    saveRecordToCloud(record);
+    console.log('📝 Logging attendance:', record);
     
-    const tempRecord = { id: Date.now(), ...record };
-    attendanceRecords.unshift(tempRecord);
-    displayRecords();
-    updateStats();
-    populateClusterFilter();
+    // Save to cloud (this now handles adding to local array too)
+    await saveRecordToCloud(record);
 }
 
 // Add Visitor Function
-function addVisitor() {
+async function addVisitor() {
     const name = document.getElementById('visitor-name').value.trim();
     const visitorType = document.getElementById('visitor-type').value;
     const serviceType = document.getElementById('visitor-service').value;
@@ -253,16 +256,14 @@ function addVisitor() {
         date: today,
         time: new Date().toLocaleTimeString(),
         isVisitor: true,
-        visitorType: visitorType
+        visitorType: visitorType,
+        scannedAt: new Date().toISOString() // Add timestamp when added
     };
     
-    saveRecordToCloud(record);
+    console.log('📝 Adding visitor:', record);
     
-    const tempRecord = { id: Date.now(), ...record };
-    attendanceRecords.unshift(tempRecord);
-    displayRecords();
-    updateStats();
-    populateClusterFilter();
+    // Save to cloud (this now handles adding to local array too)
+    await saveRecordToCloud(record);
     
     // Show success message
     document.getElementById('visitor-result-name').textContent = name;
@@ -297,18 +298,33 @@ async function initializeFirebase() {
         
         db = firebase.firestore();
         firebaseInitialized = true;
-        console.log('Firebase initialized successfully');
+        console.log('✅ Firebase initialized successfully');
         
+        // Real-time listener for attendance records (syncs across all devices)
         db.collection('attendance').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
+            const recordCount = snapshot.size;
+            console.log('📡 Firebase snapshot update');
+            console.log('   Server records:', recordCount);
+            console.log('   Local records before sync:', attendanceRecords.length);
+            
             attendanceRecords = [];
             snapshot.forEach((doc) => {
                 attendanceRecords.push({ id: doc.id, ...doc.data() });
             });
+            
+            console.log('✅ Synced from Firebase:', attendanceRecords.length, 'records');
+            
+            // Update UI
             displayRecords();
             updateStats();
             populateClusterFilter();
             
+            // Save to localStorage as backup for offline access
             localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
+            console.log('💾 Saved to localStorage as backup');
+        }, (error) => {
+            console.error('❌ Firebase listener error:', error);
+            console.log('⚠️ Real-time sync interrupted. App will use cached data.');
         });
         
         return true;
@@ -322,35 +338,66 @@ async function initializeFirebase() {
 async function saveRecordToCloud(record) {
     if (firebaseInitialized && db) {
         try {
-            await db.collection('attendance').add(record);
-            console.log('Record saved to cloud');
-        } catch (error) {
-            console.error('Error saving to cloud:', error);
+            const docRef = await db.collection('attendance').add(record);
+            console.log('✅ Record saved to Firebase with ID:', docRef.id);
+            
+            // Firebase onSnapshot listener will automatically update the array
+            // No need to manually add here - just save to localStorage as backup
             saveRecords();
+            
+            return docRef.id;
+        } catch (error) {
+            console.error('❌ Error saving to Firebase:', error);
+            alert('⚠️ Warning: Could not save to cloud.\nData saved locally only.\n\nPlease check your internet connection.');
+            
+            // Fallback: save locally
+            const tempRecord = { id: 'local_' + Date.now(), ...record };
+            attendanceRecords.unshift(tempRecord);
+            saveRecords();
+            displayRecords();
+            updateStats();
+            populateClusterFilter();
+            return null;
         }
     } else {
+        console.log('⚠️ Firebase not initialized, saving locally only');
+        
+        // Save locally when Firebase is not available
+        const tempRecord = { id: 'local_' + Date.now(), ...record };
+        attendanceRecords.unshift(tempRecord);
         saveRecords();
+        displayRecords();
+        updateStats();
+        populateClusterFilter();
+        return null;
     }
 }
 
 async function loadRecordsFromCloud() {
+    // This function is kept for manual recovery via recoverData()
+    // Normal operation uses the onSnapshot listener in initializeFirebase()
     if (firebaseInitialized && db) {
         try {
+            console.log('🔄 Manual reload from Firebase...');
             const snapshot = await db.collection('attendance').orderBy('timestamp', 'desc').get();
             attendanceRecords = [];
             snapshot.forEach((doc) => {
                 attendanceRecords.push({ id: doc.id, ...doc.data() });
             });
+            console.log('✅ Manual reload complete:', attendanceRecords.length, 'records');
             displayRecords();
             updateStats();
             populateClusterFilter();
             
+            // Save to localStorage as backup
             localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
         } catch (error) {
-            console.error('Error loading from cloud:', error);
+            console.error('❌ Error loading from cloud:', error);
+            console.log('⚠️ Falling back to localStorage...');
             loadRecords();
         }
     } else {
+        console.log('⚠️ Firebase not initialized, loading from localStorage');
         loadRecords();
     }
 }
@@ -393,13 +440,59 @@ async function clearAllRecordsFromCloud() {
 // Local Storage Functions
 function saveRecords() {
     localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
+    console.log('Records saved to localStorage:', attendanceRecords.length);
 }
 
 function loadRecords() {
     const saved = localStorage.getItem('attendanceRecords');
     if (saved) {
-        attendanceRecords = JSON.parse(saved);
-        displayRecords();
+        try {
+            attendanceRecords = JSON.parse(saved);
+            console.log('📂 Loaded from localStorage:', attendanceRecords.length, 'records');
+            displayRecords();
+            updateStats();
+            populateClusterFilter();
+        } catch (error) {
+            console.error('❌ Error parsing localStorage data:', error);
+            attendanceRecords = [];
+        }
+    } else {
+        console.log('No records found in localStorage');
+        attendanceRecords = [];
+    }
+}
+
+// Manual data recovery function
+function recoverData() {
+    console.log('=== DATA RECOVERY ===');
+    
+    // Try localStorage first
+    const localData = localStorage.getItem('attendanceRecords');
+    if (localData) {
+        try {
+            const parsed = JSON.parse(localData);
+            console.log('Found in localStorage:', parsed.length, 'records');
+            attendanceRecords = parsed;
+            displayRecords();
+            updateStats();
+            populateClusterFilter();
+            alert(`Recovered ${parsed.length} records from local storage!`);
+            return;
+        } catch (e) {
+            console.error('localStorage data corrupted:', e);
+        }
+    }
+    
+    // Try reloading from Firebase
+    if (firebaseInitialized && db) {
+        loadRecordsFromCloud().then(() => {
+            alert(`Loaded ${attendanceRecords.length} records from Firebase!`);
+        }).catch((error) => {
+            console.error('Firebase reload failed:', error);
+            alert('Could not recover data from Firebase. Check console for details.');
+        });
+    } else {
+        alert('No data found in localStorage and Firebase is not connected.');
     }
 }
 
@@ -471,8 +564,29 @@ function displayRecords(filteredRecords = null) {
     
     currentDisplayedRecords = records;
     
+    console.log('📊 Displaying records:', records.length);
+    
     if (records.length === 0) {
-        recordsList.innerHTML = '<p class="empty-state">No attendance records found.</p>';
+        // Show helpful message based on Firebase status
+        if (!firebaseInitialized) {
+            recordsList.innerHTML = `
+                <p class="empty-state">
+                    ⏳ <strong>Loading data...</strong><br><br>
+                    Connecting to cloud database...<br>
+                    Please wait a moment.
+                </p>
+            `;
+        } else {
+            recordsList.innerHTML = `
+                <p class="empty-state">
+                    📭 <strong>No attendance records found.</strong><br><br>
+                    Start scanning QR codes to record attendance!<br><br>
+                    <small>If you expect to see records, try:<br>
+                    • Check your internet connection<br>
+                    • <a href="#" onclick="recoverData(); return false;">🔄 Reload from cloud</a></small>
+                </p>
+            `;
+        }
         return;
     }
     
@@ -492,6 +606,8 @@ function displayRecords(filteredRecords = null) {
 function updateStats() {
     const today = new Date().toLocaleDateString();
     const todayCount = attendanceRecords.filter(r => r.date === today).length;
+    
+    console.log('Stats - Today:', todayCount, 'Total:', attendanceRecords.length);
     
     document.getElementById('total-today').textContent = todayCount;
     document.getElementById('total-all').textContent = attendanceRecords.length;
@@ -645,17 +761,40 @@ function generateReport() {
         return;
     }
     
+    console.log('📊 Generating report...');
+    console.log('   Date input:', dateInput);
+    console.log('   Service filter:', serviceFilter || 'All Services');
+    console.log('   Total records available:', attendanceRecords.length);
+    
     const reportDate = new Date(dateInput).toLocaleDateString();
+    console.log('   Formatted date:', reportDate);
+    
     let filtered = attendanceRecords.filter(r => r.date === reportDate);
+    console.log('   Records for selected date:', filtered.length);
     
     if (serviceFilter) {
         filtered = filtered.filter(r => r.serviceType === serviceFilter);
+        console.log('   Records after service filter:', filtered.length);
     }
     
     if (filtered.length === 0) {
-        document.getElementById('report-content').innerHTML = '<p class="empty-state">No attendance records found for the selected date and service type.</p>';
+        console.log('❌ No records found for the selected criteria');
+        document.getElementById('report-content').innerHTML = `
+            <p class="empty-state">
+                ⚠️ No attendance records found.<br><br>
+                <strong>Date:</strong> ${reportDate}<br>
+                <strong>Service:</strong> ${serviceFilter || 'All Services'}<br><br>
+                Please check if:<br>
+                • Records were scanned on this date<br>
+                • The correct service type is selected<br>
+                • Data has loaded from Firebase<br><br>
+                <button onclick="recoverData()" class="btn btn-primary">🔄 Reload Data</button>
+            </p>
+        `;
         return;
     }
+    
+    console.log('✅ Generating report with', filtered.length, 'records');
     
     // Separate members and visitors
     const members = filtered.filter(r => !r.isVisitor);
