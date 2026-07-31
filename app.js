@@ -839,13 +839,20 @@ function generateQR() {
 
 function downloadQR() {
     const canvas = document.querySelector('#qrcode canvas');
-    if (!canvas) return;
+    if (!canvas) {
+        alert('Please generate a QR code first!');
+        return;
+    }
     
     const name = document.getElementById('employee-name').value.trim();
     const filename = `QR_${name.replace(/\s+/g, '_')}.png`;
     
+    // Detect if mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
     canvas.toBlob((blob) => {
-        if (navigator.share && navigator.canShare) {
+        // On mobile, try to share; on desktop, always download
+        if (isMobile && navigator.share && navigator.canShare) {
             const file = new File([blob], filename, { type: 'image/png' });
             if (navigator.canShare({ files: [file] })) {
                 navigator.share({
@@ -854,6 +861,7 @@ function downloadQR() {
                     text: `QR code for ${name}`
                 }).then(() => {
                     console.log('Shared successfully');
+                    clearQRForm(); // Clear form after successful share
                 }).catch((error) => {
                     console.log('Error sharing:', error);
                     downloadBlobFromCanvas(blob, filename);
@@ -862,6 +870,7 @@ function downloadQR() {
             }
         }
         
+        // Desktop or fallback: Direct download
         downloadBlobFromCanvas(blob, filename);
     }, 'image/png');
 }
@@ -871,8 +880,27 @@ function downloadBlobFromCanvas(blob, filename) {
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    
+    // Show success message
+    alert(`QR Code downloaded successfully!\n\nFile: ${filename}`);
+    
+    // Clear form after successful download
+    clearQRForm();
+}
+
+// Clear QR form after download
+function clearQRForm() {
+    document.getElementById('employee-name').value = '';
+    document.getElementById('employee-cluster').value = '';
+    document.getElementById('employee-category').value = '';
+    document.getElementById('qrcode').innerHTML = '';
+    document.getElementById('qr-output').style.display = 'none';
+    
+    console.log('QR form cleared - ready for next generation');
 }
 
 // ============================================
