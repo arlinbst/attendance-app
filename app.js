@@ -28,11 +28,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // STEP 1: Load from localStorage first (instant display if data exists)
     loadRecords();
+    loadMembersFromLocalStorage(); // Load members/visitors from localStorage
     
     // STEP 2: Initialize Firebase (onSnapshot will auto-sync from cloud)
     initializeFirebase().then(() => {
         console.log('✅ Firebase connected - real-time sync active');
-        loadMembersFromCloud(); // Load member master data
+        loadMembersFromCloud(); // Load member master data from cloud
     }).catch((error) => {
         console.error('❌ Firebase failed:', error);
         console.log('⚠️ App will work in offline mode only');
@@ -1365,6 +1366,7 @@ function switchMemberType() {
         // Show/hide fields based on type
         const categoryField = document.getElementById('category-field');
         const visitorTypeField = document.getElementById('visitor-type-field');
+        const dateBaptisedField = document.getElementById('date-baptised-field');
         const statusField = document.getElementById('status-field');
         
         if (!categoryField || !visitorTypeField || !statusField) {
@@ -1373,18 +1375,30 @@ function switchMemberType() {
         }
         
         if (currentMemberType === 'members') {
-            // Members: Show Category and Status, Hide Visitor Type
+            // Members: Show Category and Status, Hide Visitor Type and Date Baptised
             categoryField.style.display = 'block';
             statusField.style.display = 'block';
             visitorTypeField.style.display = 'none';
+            if (dateBaptisedField) dateBaptisedField.style.display = 'none';
             document.getElementById('member-category').required = true;
             document.getElementById('member-status').required = true;
             document.getElementById('member-visitor-type').required = false;
+            if (document.getElementById('member-date-baptised')) {
+                document.getElementById('member-date-baptised').required = false;
+            }
         } else {
-            // Visitors: Hide Category and Status, Show Visitor Type
+            // Visitors: Hide Category and Status, Show Visitor Type and Date Baptised
             categoryField.style.display = 'none';
             statusField.style.display = 'none';
             visitorTypeField.style.display = 'block';
+            if (dateBaptisedField) {
+                dateBaptisedField.style.display = 'block';
+                // Set default date to today
+                const today = new Date().toISOString().split('T')[0];
+                if (!document.getElementById('member-date-baptised').value) {
+                    document.getElementById('member-date-baptised').value = today;
+                }
+            }
             document.getElementById('member-category').required = false;
             document.getElementById('member-status').required = false;
             document.getElementById('member-visitor-type').required = true;
@@ -1395,6 +1409,27 @@ function switchMemberType() {
     } catch (error) {
         console.error('Error in switchMemberType:', error);
     }
+}
+
+// Calculate age from birthday
+function calculateAge() {
+    const birthday = document.getElementById('member-birthday').value;
+    if (!birthday) {
+        document.getElementById('member-age').value = '';
+        return;
+    }
+    
+    const birthDate = new Date(birthday);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    // Adjust if birthday hasn't occurred this year
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    
+    document.getElementById('member-age').value = age >= 0 ? age + ' years old' : '';
 }
 
 // Search for member by name
@@ -1452,14 +1487,23 @@ function viewMember(memberId) {
         document.getElementById('member-id').value = memberId;
         document.getElementById('member-name').value = member.name;
         document.getElementById('member-birthday').value = member.birthday || '';
+        document.getElementById('member-age').value = member.age || '';
         document.getElementById('member-contact').value = member.contactNumber || '';
         document.getElementById('member-cluster').value = member.cluster;
+        
+        // Calculate age if birthday exists but age is not stored
+        if (member.birthday && !member.age) {
+            calculateAge();
+        }
         
         if (currentMemberType === 'members') {
             document.getElementById('member-category').value = member.category;
             document.getElementById('member-status').value = member.status;
         } else {
             document.getElementById('member-visitor-type').value = member.visitorType || '';
+            if (document.getElementById('member-date-baptised')) {
+                document.getElementById('member-date-baptised').value = member.dateBaptised || '';
+            }
         }
         
         document.getElementById('form-title').textContent = 'Edit Member Information';
@@ -1477,11 +1521,18 @@ function addNewMember() {
     document.getElementById('member-id').value = '';
     document.getElementById('member-name').value = '';
     document.getElementById('member-birthday').value = '';
+    document.getElementById('member-age').value = '';
     document.getElementById('member-contact').value = '';
     document.getElementById('member-cluster').value = '';
     document.getElementById('member-category').value = '';
     document.getElementById('member-status').value = 'Active';
     document.getElementById('member-visitor-type').value = '';
+    
+    // Set default date baptised to today for visitors
+    if (document.getElementById('member-date-baptised')) {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('member-date-baptised').value = currentMemberType === 'visitors' ? today : '';
+    }
     
     document.getElementById('form-title').textContent = 'Add New Member';
     document.getElementById('delete-btn').style.display = 'none';
@@ -1497,10 +1548,12 @@ async function saveMember() {
     const birthday = document.getElementById('member-birthday').value;
     const contactNumber = document.getElementById('member-contact').value.trim();
     const cluster = document.getElementById('member-cluster').value;
+    const age = document.getElementById('member-age').value;
     
     let memberData = {
         name: name,
         birthday: birthday,
+        age: age,
         contactNumber: contactNumber,
         cluster: cluster,
         type: currentMemberType,
@@ -1522,6 +1575,7 @@ async function saveMember() {
         memberData.status = status;
     } else {
         const visitorType = document.getElementById('member-visitor-type').value;
+        const dateBaptised = document.getElementById('member-date-baptised').value;
         
         // Validation for visitors
         if (!name || !birthday || !contactNumber || !cluster || !visitorType) {
@@ -1530,33 +1584,94 @@ async function saveMember() {
         }
         
         memberData.visitorType = visitorType;
+        memberData.dateBaptised = dateBaptised || new Date().toISOString().split('T')[0];
     }
     
     try {
+        let savedToCloud = false;
+        
         if (currentEditingId) {
             // Update existing member
             if (firebaseInitialized && db) {
                 await db.collection('members').doc(currentEditingId).update(memberData);
+                savedToCloud = true;
+            } else {
+                // Update in local arrays if offline
+                updateLocalMember(currentEditingId, memberData);
             }
-            alert('Member information updated successfully!');
+            alert('✅ Member information updated successfully!' + 
+                  (savedToCloud ? '' : '\n⚠️ Saved offline - will sync when online'));
         } else {
             // Add new member
             memberData.createdAt = new Date().toISOString();
+            
             if (firebaseInitialized && db) {
-                await db.collection('members').add(memberData);
+                const docRef = await db.collection('members').add(memberData);
+                console.log('✅ Member saved to Firebase with ID:', docRef.id);
+                savedToCloud = true;
+            } else {
+                // Save locally if offline
+                const localId = 'local_' + Date.now();
+                memberData.id = localId;
+                addLocalMember(memberData);
             }
-            alert('New member added successfully!');
+            
+            alert('✅ New member added successfully!' + 
+                  (savedToCloud ? '' : '\n⚠️ Saved offline - will sync when online'));
         }
         
+        // Save to localStorage as backup
+        saveMembersToLocalStorage();
+        
         // Reload members and clear form
-        loadMembersFromCloud();
+        if (firebaseInitialized) {
+            loadMembersFromCloud();
+        }
         cancelEdit();
         clearSearch();
         
     } catch (error) {
-        console.error('Error saving member:', error);
-        alert('Error saving member: ' + error.message);
+        console.error('❌ Error saving member:', error);
+        
+        // Fallback to local save
+        if (!currentEditingId) {
+            const localId = 'local_' + Date.now();
+            memberData.id = localId;
+            memberData.createdAt = new Date().toISOString();
+            addLocalMember(memberData);
+            saveMembersToLocalStorage();
+            alert('✅ Member saved offline!\n⚠️ Will sync to cloud when connection is available.');
+            cancelEdit();
+            clearSearch();
+        } else {
+            alert('❌ Error saving member: ' + error.message);
+        }
     }
+}
+
+// Helper functions for offline support
+function addLocalMember(memberData) {
+    if (memberData.type === 'members') {
+        membersData.unshift(memberData);
+    } else {
+        visitorsData.unshift(memberData);
+    }
+    updateMemberStats();
+}
+
+function updateLocalMember(id, updatedData) {
+    const dataSource = currentMemberType === 'members' ? membersData : visitorsData;
+    const index = dataSource.findIndex(m => m.id === id);
+    if (index !== -1) {
+        dataSource[index] = { ...dataSource[index], ...updatedData };
+        updateMemberStats();
+    }
+}
+
+function saveMembersToLocalStorage() {
+    localStorage.setItem('membersData', JSON.stringify(membersData));
+    localStorage.setItem('visitorsData', JSON.stringify(visitorsData));
+    console.log('💾 Members saved to localStorage:', membersData.length, 'members,', visitorsData.length, 'visitors');
 }
 
 // Delete member
@@ -1591,11 +1706,15 @@ function cancelEdit() {
     document.getElementById('member-id').value = '';
     document.getElementById('member-name').value = '';
     document.getElementById('member-birthday').value = '';
+    document.getElementById('member-age').value = '';
     document.getElementById('member-contact').value = '';
     document.getElementById('member-cluster').value = '';
     document.getElementById('member-category').value = '';
     document.getElementById('member-status').value = '';
     document.getElementById('member-visitor-type').value = '';
+    if (document.getElementById('member-date-baptised')) {
+        document.getElementById('member-date-baptised').value = '';
+    }
 }
 
 // Clear search
@@ -1609,6 +1728,7 @@ function clearSearch() {
 async function loadMembersFromCloud() {
     if (firebaseInitialized && db) {
         try {
+            console.log('📥 Loading members from Firebase...');
             const snapshot = await db.collection('members').get();
             membersData = [];
             visitorsData = [];
@@ -1622,12 +1742,44 @@ async function loadMembersFromCloud() {
                 }
             });
             
+            // Save to localStorage as backup
+            saveMembersToLocalStorage();
+            
             updateMemberStats();
-            console.log('Members loaded:', membersData.length, 'Visitors:', visitorsData.length);
+            console.log('✅ Members loaded from Firebase:', membersData.length, 'members,', visitorsData.length, 'visitors');
             
         } catch (error) {
-            console.error('Error loading members:', error);
+            console.error('❌ Error loading members from Firebase:', error);
+            // Fallback to localStorage
+            loadMembersFromLocalStorage();
         }
+    } else {
+        console.log('⚠️ Firebase not available, loading from localStorage');
+        loadMembersFromLocalStorage();
+    }
+}
+
+// Load members from localStorage (offline support)
+function loadMembersFromLocalStorage() {
+    try {
+        const savedMembers = localStorage.getItem('membersData');
+        const savedVisitors = localStorage.getItem('visitorsData');
+        
+        if (savedMembers) {
+            membersData = JSON.parse(savedMembers);
+            console.log('📂 Loaded members from localStorage:', membersData.length);
+        }
+        
+        if (savedVisitors) {
+            visitorsData = JSON.parse(savedVisitors);
+            console.log('📂 Loaded visitors from localStorage:', visitorsData.length);
+        }
+        
+        updateMemberStats();
+    } catch (error) {
+        console.error('❌ Error loading from localStorage:', error);
+        membersData = [];
+        visitorsData = [];
     }
 }
 
@@ -1639,16 +1791,25 @@ function updateMemberStats() {
 
 // Export to Excel Function
 function exportToExcel() {
+    const typeFilter = document.getElementById('export-type-filter').value;
     const clusterFilter = document.getElementById('export-cluster-filter').value;
     const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     
-    // Filter data by cluster if not "ALL"
+    // Filter data by type and cluster
     let filteredMembers = membersData;
     let filteredVisitors = visitorsData;
     
+    // Apply type filter
+    if (typeFilter === 'MEMBERS') {
+        filteredVisitors = []; // Exclude visitors
+    } else if (typeFilter === 'VISITORS') {
+        filteredMembers = []; // Exclude members
+    }
+    
+    // Apply cluster filter
     if (clusterFilter !== 'ALL') {
-        filteredMembers = membersData.filter(m => m.cluster === clusterFilter);
-        filteredVisitors = visitorsData.filter(v => v.cluster === clusterFilter);
+        filteredMembers = filteredMembers.filter(m => m.cluster === clusterFilter);
+        filteredVisitors = filteredVisitors.filter(v => v.cluster === clusterFilter);
     }
     
     // Sort by name
@@ -1680,69 +1841,96 @@ function exportToExcel() {
     // Build CSV content
     let csvContent = '';
     
-    // Header
-    csvContent += '"UP Diliman Locale Active Members Information List"\n';
+    // Header - Dynamic based on type
+    let reportTitle = 'UP Diliman Locale Active Members Information List';
+    if (typeFilter === 'VISITORS') {
+        reportTitle = 'UP Diliman Locale Visitors Information List';
+    } else if (typeFilter === 'MEMBERS') {
+        reportTitle = 'UP Diliman Locale Active Members Information List';
+    } else {
+        reportTitle = 'UP Diliman Locale Members & Visitors Information List';
+    }
+    
+    csvContent += `"${reportTitle}"\n`;
     csvContent += `"As of ${currentDate}"\n`;
+    if (typeFilter !== 'ALL') {
+        csvContent += `"Type: ${typeFilter}"\n`;
+    }
     if (clusterFilter !== 'ALL') {
         csvContent += `"Cluster: ${clusterFilter}"\n`;
     }
     csvContent += '\n';
     
-    // Members Section
-    csvContent += '"=== REGULAR MEMBERS ==="\n';
-    csvContent += '"Name","Cluster","Category","Status"\n';
+    // Members Section (only if not filtered to VISITORS only)
+    if (typeFilter !== 'VISITORS' && filteredMembers.length > 0) {
+        csvContent += '"=== REGULAR MEMBERS ==="\n';
+        csvContent += '"Name","Birthday","Age","Contact Number","Cluster","Category","Status"\n';
     
-    filteredMembers.forEach(member => {
-        csvContent += `"${member.name}","${member.cluster}","${member.category}","${member.status}"\n`;
-    });
+        filteredMembers.forEach(member => {
+            csvContent += `"${member.name}","${member.birthday || 'N/A'}","${member.age || 'N/A'}","${member.contactNumber || 'N/A'}","${member.cluster}","${member.category}","${member.status}"\n`;
+        });
+        
+        csvContent += '\n';
+        csvContent += `"Total Members: ${filteredMembers.length}"\n`;
+        csvContent += '\n';
+        
+        // Members Category Summary
+        csvContent += '"Members by Category:"\n';
+        Object.keys(categoryTotals).forEach(category => {
+            csvContent += `"${category}","${categoryTotals[category]}"\n`;
+        });
+        
+        csvContent += '\n';
+        csvContent += '"====================================="\n';
+        csvContent += '\n';
+    }
     
-    csvContent += '\n';
-    csvContent += `"Total Members: ${filteredMembers.length}"\n`;
-    csvContent += '\n';
-    
-    // Members Category Summary
-    csvContent += '"Members by Category:"\n';
-    Object.keys(categoryTotals).forEach(category => {
-        csvContent += `"${category}","${categoryTotals[category]}"\n`;
-    });
-    
-    csvContent += '\n';
-    csvContent += '"====================================="\n';
-    csvContent += '\n';
-    
-    // Visitors Section
-    csvContent += '"=== VISITORS ==="\n';
-    csvContent += '"Name","Cluster","Visitor Type"\n';
-    
-    filteredVisitors.forEach(visitor => {
-        csvContent += `"${visitor.name}","${visitor.cluster}","${visitor.visitorType || 'N/A'}"\n`;
-    });
-    
-    csvContent += '\n';
-    csvContent += `"Total Visitors: ${filteredVisitors.length}"\n`;
-    csvContent += '\n';
-    
-    // Visitors Type Summary
-    csvContent += '"Visitors by Type:"\n';
-    Object.keys(visitorTypeTotals).forEach(type => {
-        csvContent += `"${type}","${visitorTypeTotals[type]}"\n`;
-    });
-    
-    csvContent += '\n';
-    csvContent += '"====================================="\n';
-    csvContent += '\n';
+    // Visitors Section (only if not filtered to MEMBERS only)
+    if (typeFilter !== 'MEMBERS' && filteredVisitors.length > 0) {
+        csvContent += '"=== VISITORS ==="\n';
+        csvContent += '"Name","Birthday","Age","Contact Number","Cluster","Visitor Type","Date Baptised"\n';
+        
+        filteredVisitors.forEach(visitor => {
+            csvContent += `"${visitor.name}","${visitor.birthday || 'N/A'}","${visitor.age || 'N/A'}","${visitor.contactNumber || 'N/A'}","${visitor.cluster}","${visitor.visitorType || 'N/A'}","${visitor.dateBaptised || 'N/A'}"\n`;
+        });
+        
+        csvContent += '\n';
+        csvContent += `"Total Visitors: ${filteredVisitors.length}"\n`;
+        csvContent += '\n';
+        
+        // Visitors Type Summary
+        csvContent += '"Visitors by Type:"\n';
+        Object.keys(visitorTypeTotals).forEach(type => {
+            csvContent += `"${type}","${visitorTypeTotals[type]}"\n`;
+        });
+        
+        csvContent += '\n';
+        csvContent += '"====================================="\n';
+        csvContent += '\n';
+    }
     
     // Grand Totals
     csvContent += '"SUMMARY"\n';
-    csvContent += `"Total Members:","${filteredMembers.length}"\n`;
-    csvContent += `"Total Visitors:","${filteredVisitors.length}"\n`;
+    if (typeFilter !== 'VISITORS') {
+        csvContent += `"Total Members:","${filteredMembers.length}"\n`;
+    }
+    if (typeFilter !== 'MEMBERS') {
+        csvContent += `"Total Visitors:","${filteredVisitors.length}"\n`;
+    }
     csvContent += `"Grand Total:","${filteredMembers.length + filteredVisitors.length}"\n`;
     
     // Create and download file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     
-    let filename = 'UP_Diliman_Members_Report';
+    let filename = 'UP_Diliman_';
+    if (typeFilter === 'MEMBERS') {
+        filename += 'Members_Report';
+    } else if (typeFilter === 'VISITORS') {
+        filename += 'Visitors_Report';
+    } else {
+        filename += 'Members_Report';
+    }
     if (clusterFilter !== 'ALL') {
         filename += `_${clusterFilter.replace(/\s+/g, '_')}`;
     }
@@ -1759,5 +1947,170 @@ function exportToExcel() {
         document.body.removeChild(link);
     }
     
-    alert(`Report exported successfully!\n\nMembers: ${filteredMembers.length}\nVisitors: ${filteredVisitors.length}\nTotal: ${filteredMembers.length + filteredVisitors.length}`);
+    let summaryMsg = '✅ Report exported successfully!\n\n';
+    if (typeFilter !== 'VISITORS') summaryMsg += `Members: ${filteredMembers.length}\n`;
+    if (typeFilter !== 'MEMBERS') summaryMsg += `Visitors: ${filteredVisitors.length}\n`;
+    summaryMsg += `Total: ${filteredMembers.length + filteredVisitors.length}`;
+    
+    alert(summaryMsg);
+}
+
+// Print Members Report
+function printMembersReport() {
+    const typeFilter = document.getElementById('export-type-filter').value;
+    const clusterFilter = document.getElementById('export-cluster-filter').value;
+    const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    
+    // Filter data
+    let filteredMembers = membersData;
+    let filteredVisitors = visitorsData;
+    
+    if (typeFilter === 'MEMBERS') {
+        filteredVisitors = [];
+    } else if (typeFilter === 'VISITORS') {
+        filteredMembers = [];
+    }
+    
+    if (clusterFilter !== 'ALL') {
+        filteredMembers = filteredMembers.filter(m => m.cluster === clusterFilter);
+        filteredVisitors = filteredVisitors.filter(v => v.cluster === clusterFilter);
+    }
+    
+    // Sort by name
+    filteredMembers.sort((a, b) => a.name.localeCompare(b.name));
+    filteredVisitors.sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Build print content
+    let printContent = `
+        <div style="padding: 20px; font-family: Arial, sans-serif;">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h2>UP Diliman Locale</h2>
+                <h3>Members Information Report</h3>
+                <p>As of ${currentDate}</p>
+                ${typeFilter !== 'ALL' ? `<p><strong>Type:</strong> ${typeFilter}</p>` : ''}
+                ${clusterFilter !== 'ALL' ? `<p><strong>Cluster:</strong> ${clusterFilter}</p>` : ''}
+            </div>
+    `;
+    
+    // Members Table
+    if (typeFilter !== 'VISITORS' && filteredMembers.length > 0) {
+        printContent += `
+            <h3 style="color: #2196F3; border-bottom: 2px solid #2196F3; padding-bottom: 10px;">REGULAR MEMBERS</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+                <thead>
+                    <tr style="background-color: #2196F3; color: white;">
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">#</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Name</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Birthday</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Age</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Contact</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Category</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        filteredMembers.forEach((member, index) => {
+            printContent += `
+                <tr>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${index + 1}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.name}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.birthday || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.age || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.contactNumber || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.cluster}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.category}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.status}</td>
+                </tr>
+            `;
+        });
+        
+        printContent += `
+                </tbody>
+            </table>
+            <p style="font-weight: bold; margin-top: 10px;">Total Members: ${filteredMembers.length}</p>
+        `;
+    }
+    
+    // Visitors Table
+    if (typeFilter !== 'MEMBERS' && filteredVisitors.length > 0) {
+        printContent += `
+            <h3 style="color: #ff9800; border-bottom: 2px solid #ff9800; padding-bottom: 10px; margin-top: 30px;">VISITORS</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+                <thead>
+                    <tr style="background-color: #ff9800; color: white;">
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">#</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Name</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Birthday</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Age</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Contact</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitor Type</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Date Baptised</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        filteredVisitors.forEach((visitor, index) => {
+            printContent += `
+                <tr>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${index + 1}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.name}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.birthday || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.age || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.contactNumber || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.cluster}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.visitorType || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.dateBaptised || 'N/A'}</td>
+                </tr>
+            `;
+        });
+        
+        printContent += `
+                </tbody>
+            </table>
+            <p style="font-weight: bold; margin-top: 10px;">Total Visitors: ${filteredVisitors.length}</p>
+        `;
+    }
+    
+    // Summary
+    printContent += `
+            <div style="margin-top: 30px; padding: 20px; background-color: #f5f5f5; border-radius: 8px;">
+                <h4>SUMMARY</h4>
+                ${typeFilter !== 'VISITORS' ? `<p>Total Members: <strong>${filteredMembers.length}</strong></p>` : ''}
+                ${typeFilter !== 'MEMBERS' ? `<p>Total Visitors: <strong>${filteredVisitors.length}</strong></p>` : ''}
+                <p style="font-size: 18px; margin-top: 15px;">Grand Total: <strong>${filteredMembers.length + filteredVisitors.length}</strong></p>
+            </div>
+        </div>
+    `;
+    
+    // Open print window
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Members Report - ${currentDate}</title>
+            <style>
+                @media print {
+                    body { padding: 10px; }
+                    table { page-break-inside: auto; }
+                    tr { page-break-inside: avoid; page-break-after: auto; }
+                }
+            </style>
+        </head>
+        <body>
+            ${printContent}
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    
+    // Auto-print after content loads
+    setTimeout(() => {
+        printWindow.print();
+    }, 500);
 }
