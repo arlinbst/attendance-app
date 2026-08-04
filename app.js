@@ -258,6 +258,7 @@ async function logAttendance(name, cluster, serviceType, category) {
 async function addVisitor() {
     const name = document.getElementById('visitor-name').value.trim();
     const visitorType = document.getElementById('visitor-type').value;
+    const visitorCluster = document.getElementById('visitor-cluster').value.trim();
     const serviceType = document.getElementById('visitor-service').value;
     
     if (!name) {
@@ -280,9 +281,12 @@ async function addVisitor() {
         return;
     }
     
+    // Use the selected cluster or default to 'VISITOR' if none selected
+    const clusterValue = visitorCluster || 'VISITOR';
+    
     const record = {
         name: name,
-        cluster: 'VISITOR',
+        cluster: clusterValue,
         serviceType: serviceType,
         category: visitorType,
         timestamp: new Date().toISOString(),
@@ -301,12 +305,14 @@ async function addVisitor() {
     // Show success message
     document.getElementById('visitor-result-name').textContent = name;
     document.getElementById('visitor-result-type').textContent = visitorType;
+    document.getElementById('visitor-result-cluster').textContent = clusterValue;
     document.getElementById('visitor-result-service').textContent = serviceType;
     document.getElementById('visitor-result-time').textContent = new Date().toLocaleString();
     document.getElementById('visitor-result').style.display = 'block';
     
     // Clear form
     document.getElementById('visitor-name').value = '';
+    document.getElementById('visitor-cluster').value = '';
     
     // Vibrate on success
     if (navigator.vibrate) {
@@ -557,7 +563,7 @@ async function deleteRecordsForDate() {
         return;
     }
     
-    const deleteDate = new Date(dateInput).toLocaleDateString();
+    const deleteDate = dateInput; // Already in local date format from selectReportDate
     
     // Count records for this date
     const recordsToDelete = attendanceRecords.filter(r => r.date === deleteDate);
@@ -1024,6 +1030,124 @@ function downloadBlob(blob, filename) {
     window.URL.revokeObjectURL(url);
 }
 
+// Open Date Lookup Modal
+function openDateLookup() {
+    console.log('📅 Opening date lookup modal...');
+    
+    // Get unique dates with their service types from attendance records
+    const dateServiceMap = {};
+    
+    attendanceRecords.forEach(record => {
+        const date = record.date; // Already in local date format
+        const serviceType = record.serviceType;
+        
+        if (!dateServiceMap[date]) {
+            dateServiceMap[date] = new Set();
+        }
+        dateServiceMap[date].add(serviceType);
+    });
+    
+    // Sort dates in descending order (most recent first)
+    const sortedDates = Object.keys(dateServiceMap).sort((a, b) => {
+        const dateA = new Date(a);
+        const dateB = new Date(b);
+        return dateB - dateA; // Descending order
+    });
+    
+    console.log('   Available dates:', sortedDates.length);
+    
+    let lookupHTML = '';
+    
+    if (sortedDates.length === 0) {
+        lookupHTML = '<p style="text-align: center; color: #666; padding: 40px 20px;">No attendance records found.<br><br>Please scan or add attendance first.</p>';
+    } else {
+        lookupHTML = `
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background-color: #2196F3; color: white;">
+                        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; width: 50%;">Date</th>
+                        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; width: 50%;">Service Type(s)</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        sortedDates.forEach((date, index) => {
+            const services = Array.from(dateServiceMap[date]).sort();
+            const serviceDisplay = services.join(', ');
+            const bgColor = index % 2 === 0 ? '#f9f9f9' : 'white';
+            
+            // Format date for display (convert back to readable format)
+            const dateObj = new Date(date);
+            const formattedDate = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+            
+            lookupHTML += `
+                <tr style="background: ${bgColor}; cursor: pointer; transition: background 0.3s;" 
+                    onmouseover="this.style.background='#e3f2fd'" 
+                    onmouseout="this.style.background='${bgColor}'"
+                    onclick="selectReportDate('${date}', '${services[0]}')">
+                    <td style="border: 1px solid #ddd; padding: 12px;">${formattedDate}</td>
+                    <td style="border: 1px solid #ddd; padding: 12px;">${serviceDisplay}</td>
+                </tr>
+            `;
+        });
+        
+        lookupHTML += `
+                </tbody>
+            </table>
+            <p style="margin-top: 15px; color: #666; font-size: 13px; text-align: center;">
+                <em>Click on any date to select it for reporting</em>
+            </p>
+        `;
+    }
+    
+    document.getElementById('date-lookup-content').innerHTML = lookupHTML;
+    document.getElementById('date-lookup-modal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+// Close Date Lookup Modal
+function closeDateLookup() {
+    document.getElementById('date-lookup-modal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Select Report Date from Lookup
+function selectReportDate(date, primaryService) {
+    console.log('📅 Date selected:', date, 'Primary service:', primaryService);
+    
+    // Set the hidden date field (in original format for processing)
+    document.getElementById('report-date').value = date;
+    
+    // Format date for display
+    const dateObj = new Date(date);
+    const formattedDate = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    document.getElementById('report-date-display').value = formattedDate;
+    
+    // Set the service type dropdown to the primary service for that date
+    document.getElementById('report-service').value = primaryService;
+    
+    // Close the modal
+    closeDateLookup();
+    
+    // Show success feedback
+    if (navigator.vibrate) {
+        navigator.vibrate(100);
+    }
+    
+    console.log('✅ Date set to:', formattedDate, '| Service:', primaryService);
+}
+
+// Close lookup on ESC key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' || event.key === 'Esc') {
+        const modal = document.getElementById('date-lookup-modal');
+        if (modal && modal.style.display === 'block') {
+            closeDateLookup();
+        }
+    }
+});
+
 // Generate Report Function
 function generateReport() {
     const dateInput = document.getElementById('report-date').value;
@@ -1039,8 +1163,8 @@ function generateReport() {
     console.log('   Service filter:', serviceFilter || 'All Services');
     console.log('   Total records available:', attendanceRecords.length);
     
-    const reportDate = new Date(dateInput).toLocaleDateString();
-    console.log('   Formatted date:', reportDate);
+    const reportDate = dateInput; // Already in local date format from selectReportDate
+    console.log('   Report date:', reportDate);
     
     let filtered = attendanceRecords.filter(r => r.date === reportDate);
     console.log('   Records for selected date:', filtered.length);
@@ -1173,6 +1297,7 @@ function generateReport() {
                                 <thead>
                                     <tr style="background-color: #FF9800; color: white;">
                                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitors Name</th>
+                                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
                                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitors Type</th>
                                     </tr>
                                 </thead>
@@ -1181,10 +1306,12 @@ function generateReport() {
                     
                     sortedVisitors.forEach((record, index) => {
                         const visitorType = record.visitorType || 'Visitor';
+                        const visitorCluster = record.cluster || 'N/A';
                         const bgColor = index % 2 === 0 ? '#fff3e0' : 'white';
                         reportHTML += `
                             <tr style="background: ${bgColor};">
                                 <td style="border: 1px solid #ddd; padding: 8px;">${record.name}</td>
+                                <td style="border: 1px solid #ddd; padding: 8px;">${visitorCluster}</td>
                                 <td style="border: 1px solid #ddd; padding: 8px;">${visitorType}</td>
                             </tr>
                         `;
@@ -1323,6 +1450,7 @@ function generateReport() {
                             <thead>
                                 <tr style="background-color: #FF9800; color: white;">
                                     <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitors Name</th>
+                                    <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
                                     <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitors Type</th>
                                 </tr>
                             </thead>
@@ -1331,10 +1459,12 @@ function generateReport() {
                 
                 sortedVisitors.forEach((record, index) => {
                     const visitorType = record.visitorType || 'Visitor';
+                    const visitorCluster = record.cluster || 'N/A';
                     const bgColor = index % 2 === 0 ? '#fff3e0' : 'white';
                     reportHTML += `
                         <tr style="background: ${bgColor};">
                             <td style="border: 1px solid #ddd; padding: 8px;">${record.name}</td>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${visitorCluster}</td>
                             <td style="border: 1px solid #ddd; padding: 8px;">${visitorType}</td>
                         </tr>
                     `;
