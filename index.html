@@ -58,7 +58,7 @@
 
         <!-- SCAN TAB -->
         <div id="scan-tab" class="tab-content active">
-            <div class="scan-section">
+            <div class="scan-section" style="position: relative;">
                 <div class="form-section">
                     <label for="service-type" style="display: block; margin-bottom: 8px; font-weight: bold;">Type of Service:</label>
                     <select id="service-type" class="input-field" style="margin-bottom: 15px;">
@@ -70,10 +70,8 @@
                         <option value="Church Anniversary">Church Anniversary</option>
                     </select>
                 </div>
-                <div style="position: relative;">
-                    <div id="reader"></div>
-                    <button id="camera-flip-btn" class="btn" style="position: absolute; top: 10px; right: 10px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.9); color: #2196F3; font-size: 28px; padding: 0; display: none; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 1000; border: 2px solid #2196F3;" onclick="flipCamera()" title="Flip Camera">🔄</button>
-                </div>
+                <div id="reader" style="position: relative;"></div>
+                <button id="camera-flip-btn" style="position: absolute; top: 90px; right: 25px; width: 55px; height: 55px; border-radius: 50%; background: rgba(33, 150, 243, 0.95); color: white; font-size: 32px; padding: 0; display: none; align-items: center; justify-content: center; box-shadow: 0 6px 16px rgba(0,0,0,0.4); z-index: 9999; border: 3px solid white; cursor: pointer; transition: all 0.3s;" onclick="flipCamera()" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" title="Switch Camera">🔄</button>
                 <button id="start-scan-btn" class="btn btn-primary">Start Scanner</button>
                 <button id="stop-scan-btn" class="btn btn-danger" style="display: none;">Stop Scanner</button>
                 
@@ -422,7 +420,7 @@
                 Developed By: <strong style="color: #8B1538;">ABSJ</strong>
             </p>
             <p style="margin: 0; color: #999; font-size: 11px;">
-                © 2026 | Version 1.1
+                © 2026 | Version 1.2
             </p>
         </footer>
     </div>
