@@ -175,7 +175,7 @@
                         <input type="text" id="search-name" class="input-field" placeholder="Enter name (Lastname, Firstname)" style="flex: 1; min-width: 200px;">
                         <button onclick="searchMember()" class="btn btn-primary" style="flex-shrink: 0;">🔍 Search</button>
                         <button onclick="clearSearch()" class="btn btn-secondary" style="flex-shrink: 0;">Clear</button>
-                        <button onclick="addNewMember()" class="btn btn-success" style="flex-shrink: 0;">➕ New</button>
+                        <button onclick="addNewMember()" class="btn btn-success" id="add-new-btn" style="flex-shrink: 0;">➕ New</button>
                     </div>
                 </div>
                 
@@ -262,6 +262,18 @@
                     <div class="form-group" id="date-baptised-field" style="margin-top: 15px; display: none;">
                         <label for="member-date-baptised" style="display: block; margin-bottom: 8px; font-weight: bold;">Date Baptised:</label>
                         <input type="date" id="member-date-baptised" class="input-field">
+                    </div>
+                    
+                    <!-- Invited By Field (for Visitors only) -->
+                    <div class="form-group" id="invited-by-field" style="margin-top: 15px; display: none;">
+                        <label for="member-invited-by" style="display: block; margin-bottom: 8px; font-weight: bold;">Invited By: <span style="font-weight: normal; color: #666;">(Optional)</span></label>
+                        <input type="text" id="member-invited-by" class="input-field" placeholder="Name of person who invited">
+                    </div>
+                    
+                    <!-- Baptised By Field (for Visitors only) -->
+                    <div class="form-group" id="baptised-by-field" style="margin-top: 15px; display: none;">
+                        <label for="member-baptised-by" style="display: block; margin-bottom: 8px; font-weight: bold;">Baptised By: <span style="font-weight: normal; color: #666;">(Optional)</span></label>
+                        <input type="text" id="member-baptised-by" class="input-field" placeholder="Name of minister who baptised">
                     </div>
                     
                     <!-- Status Field (for Members only) -->
@@ -464,7 +476,7 @@
                 Developed By: <strong style="color: #8B1538;">ABSJ</strong>
             </p>
             <p style="margin: 0; color: #999; font-size: 11px;">
-                © 2026 | Version 2.4
+                © 2026 | Version 2.5
             </p>
         </footer>
     </div>
