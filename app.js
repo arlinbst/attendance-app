@@ -6,6 +6,7 @@ let isProcessingScan = false;
 let lastScannedData = null;
 let lastScanTime = 0;
 let currentDisplayedRecords = [];
+let currentCamera = "environment"; // Track current camera: "environment" (back) or "user" (front)
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -107,13 +108,14 @@ function startScanner() {
     html5QrcodeScanner = new Html5Qrcode("reader");
     
     html5QrcodeScanner.start(
-        { facingMode: "environment" },
+        { facingMode: currentCamera },
         config,
         onScanSuccess,
         onScanError
     ).then(() => {
         document.getElementById('start-scan-btn').style.display = 'none';
         document.getElementById('stop-scan-btn').style.display = 'inline-block';
+        document.getElementById('camera-flip-btn').style.display = 'flex';
         document.getElementById('scan-result').style.display = 'none';
     }).catch(err => {
         alert('Error starting camera: ' + err);
@@ -126,10 +128,29 @@ function stopScanner() {
             html5QrcodeScanner = null;
             document.getElementById('start-scan-btn').style.display = 'inline-block';
             document.getElementById('stop-scan-btn').style.display = 'none';
+            document.getElementById('camera-flip-btn').style.display = 'none';
         }).catch(err => {
             console.error('Error stopping scanner:', err);
         });
     }
+}
+
+// Flip camera between front and back
+function flipCamera() {
+    if (!html5QrcodeScanner) return;
+    
+    // Toggle camera
+    currentCamera = currentCamera === "environment" ? "user" : "environment";
+    
+    // Stop current scanner
+    html5QrcodeScanner.stop().then(() => {
+        html5QrcodeScanner = null;
+        // Restart with new camera
+        startScanner();
+    }).catch(err => {
+        console.error('Error flipping camera:', err);
+        alert('Error switching camera. Please try again.');
+    });
 }
 
 function onScanSuccess(decodedText, decodedResult) {
