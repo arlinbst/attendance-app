@@ -110,6 +110,19 @@
                     <option value="Extension Cadets">Extension Cadets</option>
                 </select>
                 
+                <label for="visitor-cluster" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Cluster: <span style="font-weight: normal; color: #666;">(Optional)</span></label>
+                <select id="visitor-cluster" class="input-field">
+                    <option value="">No Cluster</option>
+                    <option value="CAMP AGUINALDO">CAMP AGUINALDO</option>
+                    <option value="CENTRAL">CENTRAL</option>
+                    <option value="KAINGIN">KAINGIN</option>
+                    <option value="KNL 1">KNL 1</option>
+                    <option value="KNL 2">KNL 2</option>
+                    <option value="PANSOL">PANSOL</option>
+                    <option value="UP CAMPUS/CP GARCIA">UP CAMPUS/CP GARCIA</option>
+                    <option value="WHITE">WHITE</option>
+                </select>
+                
                 <label for="visitor-service" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Service Type:</label>
                 <select id="visitor-service" class="input-field">
                     <option value="Sunday Worship">Sunday Worship</option>
@@ -127,6 +140,7 @@
                     <h3>✅ Visitor Added!</h3>
                     <p><strong>Name:</strong> <span id="visitor-result-name"></span></p>
                     <p><strong>Type:</strong> <span id="visitor-result-type"></span></p>
+                    <p><strong>Cluster:</strong> <span id="visitor-result-cluster"></span></p>
                     <p><strong>Service:</strong> <span id="visitor-result-service"></span></p>
                     <p><strong>Time:</strong> <span id="visitor-result-time"></span></p>
                 </div>
@@ -338,7 +352,11 @@
                 <h3>Attendance Report</h3>
                 
                 <label for="report-date" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Select Date:</label>
-                <input type="date" id="report-date" class="input-field">
+                <div style="display: flex; gap: 8px; align-items: stretch;">
+                    <input type="text" id="report-date-display" class="input-field" placeholder="Click lookup to select date" readonly style="flex: 1; cursor: pointer; background-color: #f0f0f0;" onclick="openDateLookup()">
+                    <input type="hidden" id="report-date" value="">
+                    <button onclick="openDateLookup()" class="btn btn-primary" style="flex-shrink: 0; min-width: 100px;">🔍 Lookup</button>
+                </div>
                 
                 <label for="report-service" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Service Type:</label>
                 <select id="report-service" class="input-field">
@@ -365,6 +383,21 @@
                 
                 <div id="report-content" style="margin-top: 30px;">
                     <p class="empty-state">Select date and service type, then click "Generate Report" to view attendance summary.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Date Lookup Modal -->
+        <div id="date-lookup-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; overflow: auto;" onclick="if(event.target.id === 'date-lookup-modal') closeDateLookup();">
+            <div style="background: white; margin: 50px auto; max-width: 700px; border-radius: 10px; position: relative;">
+                <div style="padding: 20px; border-bottom: 2px solid #2196F3; display: flex; justify-content: space-between; align-items: center; background: #2196F3; color: white; border-radius: 10px 10px 0 0;">
+                    <h3 style="margin: 0; color: white;">📅 Select Report Date</h3>
+                    <button onclick="closeDateLookup()" style="background: white; color: #2196F3; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 18px; transition: all 0.3s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">✖️ Close</button>
+                </div>
+                <div style="padding: 30px; max-height: 60vh; overflow-y: auto;">
+                    <div id="date-lookup-content">
+                        <p style="text-align: center; color: #666;">Loading available dates...</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -423,7 +456,7 @@
                 Developed By: <strong style="color: #8B1538;">ABSJ</strong>
             </p>
             <p style="margin: 0; color: #999; font-size: 11px;">
-                © 2026 | Version 1.9
+                © 2026 | Version 2.1
             </p>
         </footer>
     </div>
