@@ -2785,9 +2785,6 @@ function printMembersReport() {
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.baptisedBy || 'N/A'}</td>
                 </tr>
             `;
-                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.dateBaptised || 'N/A'}</td>
-                </tr>
-            `;
         });
         
         printContent += `
