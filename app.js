@@ -1754,6 +1754,13 @@ function switchMemberType() {
             statusField.style.display = 'block';
             visitorTypeField.style.display = 'none';
             if (dateBaptisedField) dateBaptisedField.style.display = 'none';
+            
+            // Hide Invited By and Baptised By fields for members
+            const invitedByField = document.getElementById('invited-by-field');
+            const baptisedByField = document.getElementById('baptised-by-field');
+            if (invitedByField) invitedByField.style.display = 'none';
+            if (baptisedByField) baptisedByField.style.display = 'none';
+            
             document.getElementById('member-category').required = true;
             document.getElementById('member-status').required = true;
             document.getElementById('member-visitor-type').required = false;
@@ -1763,6 +1770,12 @@ function switchMemberType() {
             }
             if (document.getElementById('member-date-baptised')) {
                 document.getElementById('member-date-baptised').required = false;
+            }
+            
+            // Update button label
+            const addNewBtn = document.getElementById('add-new-btn');
+            if (addNewBtn) {
+                addNewBtn.innerHTML = '➕ New';
             }
         } else {
             // Visitors: Hide Category and Status, Show Visitor Type and Date Baptised, Make Cluster optional
@@ -1777,12 +1790,25 @@ function switchMemberType() {
                     document.getElementById('member-date-baptised').value = today;
                 }
             }
+            
+            // Show Invited By and Baptised By fields for visitors
+            const invitedByField = document.getElementById('invited-by-field');
+            const baptisedByField = document.getElementById('baptised-by-field');
+            if (invitedByField) invitedByField.style.display = 'block';
+            if (baptisedByField) baptisedByField.style.display = 'block';
+            
             document.getElementById('member-category').required = false;
             document.getElementById('member-status').required = false;
             document.getElementById('member-visitor-type').required = true;
             document.getElementById('member-cluster').required = false;
             if (document.getElementById('cluster-label')) {
                 document.getElementById('cluster-label').innerHTML = 'Cluster: <span style="font-weight: normal; color: #666;">(Optional)</span>';
+            }
+            
+            // Update button label
+            const addNewBtn = document.getElementById('add-new-btn');
+            if (addNewBtn) {
+                addNewBtn.innerHTML = '➕ New Visitor';
             }
         }
         
@@ -1887,9 +1913,16 @@ function viewMember(memberId) {
             if (document.getElementById('member-date-baptised')) {
                 document.getElementById('member-date-baptised').value = member.dateBaptised || '';
             }
+            if (document.getElementById('member-invited-by')) {
+                document.getElementById('member-invited-by').value = member.invitedBy || '';
+            }
+            if (document.getElementById('member-baptised-by')) {
+                document.getElementById('member-baptised-by').value = member.baptisedBy || '';
+            }
         }
         
-        document.getElementById('form-title').textContent = 'Edit Member Information';
+        const formTitle = currentMemberType === 'visitors' ? 'Edit Visitor Information' : 'Edit Member Information';
+        document.getElementById('form-title').textContent = formTitle;
         document.getElementById('delete-btn').style.display = 'inline-block';
         document.getElementById('member-details-section').style.display = 'block';
         
@@ -1912,13 +1945,23 @@ function addNewMember() {
     document.getElementById('member-status').value = 'Active';
     document.getElementById('member-visitor-type').value = '';
     
+    // Clear new visitor fields
+    if (document.getElementById('member-invited-by')) {
+        document.getElementById('member-invited-by').value = '';
+    }
+    if (document.getElementById('member-baptised-by')) {
+        document.getElementById('member-baptised-by').value = '';
+    }
+    
     // Set default date baptised to today for visitors
     if (document.getElementById('member-date-baptised')) {
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('member-date-baptised').value = currentMemberType === 'visitors' ? today : '';
     }
     
-    document.getElementById('form-title').textContent = 'Add New Member';
+    // Update form title based on type
+    const formTitle = currentMemberType === 'visitors' ? 'Add New Visitor' : 'Add New Member';
+    document.getElementById('form-title').textContent = formTitle;
     document.getElementById('delete-btn').style.display = 'none';
     document.getElementById('member-details-section').style.display = 'block';
     
@@ -1962,6 +2005,8 @@ async function saveMember() {
     } else {
         const visitorType = document.getElementById('member-visitor-type').value;
         const dateBaptised = document.getElementById('member-date-baptised').value;
+        const invitedBy = document.getElementById('member-invited-by') ? document.getElementById('member-invited-by').value.trim() : '';
+        const baptisedBy = document.getElementById('member-baptised-by') ? document.getElementById('member-baptised-by').value.trim() : '';
         
         // Validation for visitors (cluster is optional)
         if (!name || !birthday || !contactNumber || !visitorType) {
@@ -1971,6 +2016,8 @@ async function saveMember() {
         
         memberData.visitorType = visitorType;
         memberData.dateBaptised = dateBaptised || new Date().toISOString().split('T')[0];
+        memberData.invitedBy = invitedBy || '';
+        memberData.baptisedBy = baptisedBy || '';
     }
     
     try {
@@ -2358,10 +2405,10 @@ function exportToExcel() {
     // Visitors Section (only if not filtered to MEMBERS only)
     if (typeFilter !== 'MEMBERS' && filteredVisitors.length > 0) {
         csvContent += '"=== VISITORS ==="\n';
-        csvContent += '"Name","Birthday","Age","Contact Number","Facebook Account","Cluster","Visitor Type","Date Baptised"\n';
+        csvContent += '"Name","Birthday","Age","Contact Number","Facebook Account","Cluster","Visitor Type","Date Baptised","Invited By","Baptised By"\n';
         
         filteredVisitors.forEach(visitor => {
-            csvContent += `"${visitor.name}","${visitor.birthday || 'N/A'}","${visitor.age || 'N/A'}","${visitor.contactNumber || 'N/A'}","${visitor.facebookAccount || 'N/A'}","${visitor.cluster || 'N/A'}","${visitor.visitorType || 'N/A'}","${visitor.dateBaptised || 'N/A'}"\n`;
+            csvContent += `"${visitor.name}","${visitor.birthday || 'N/A'}","${visitor.age || 'N/A'}","${visitor.contactNumber || 'N/A'}","${visitor.facebookAccount || 'N/A'}","${visitor.cluster || 'N/A'}","${visitor.visitorType || 'N/A'}","${visitor.dateBaptised || 'N/A'}","${visitor.invitedBy || 'N/A'}","${visitor.baptisedBy || 'N/A'}"\n`;
         });
         
         csvContent += '\n';
@@ -2550,6 +2597,8 @@ function previewMembersReport() {
                             <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
                             <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitor Type</th>
                             <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Date Baptised</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Invited By</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Baptised By</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2568,6 +2617,8 @@ function previewMembersReport() {
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.cluster || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.visitorType || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.dateBaptised || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.invitedBy || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.baptisedBy || 'N/A'}</td>
                 </tr>
             `;
         });
@@ -2710,6 +2761,8 @@ function printMembersReport() {
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitor Type</th>
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Date Baptised</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Invited By</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Baptised By</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -2727,6 +2780,11 @@ function printMembersReport() {
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.facebookAccount || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.cluster || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.visitorType || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.dateBaptised || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.invitedBy || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.baptisedBy || 'N/A'}</td>
+                </tr>
+            `;
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.dateBaptised || 'N/A'}</td>
                 </tr>
             `;
