@@ -6,53 +6,19 @@
     <meta name="theme-color" content="#2196F3">
     <title>Attendance Monitoring System</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon-192.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
     <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==">
 </head>
 <body>
     <div class="container">
-        <!-- Beautiful Header Banner -->
-        <div style="background: linear-gradient(135deg, #8B1538 0%, #5D0E29 100%); padding: 20px 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 6px 15px rgba(139, 21, 56, 0.3); position: relative; overflow: hidden;">
-            <!-- Decorative background pattern -->
-            <div style="position: absolute; top: 0; right: 0; opacity: 0.1; font-size: 100px; line-height: 1;">📋</div>
-            
-            <!-- Main Header Content -->
-            <div style="position: relative; z-index: 1;">
-                <div style="text-align: center; margin-bottom: 12px;">
-                    <p style="color: #FFD700; font-size: 11px; font-weight: 600; letter-spacing: 2px; margin: 0 0 5px 0; text-transform: uppercase;">— Welcome to —</p>
-                    <h1 style="color: white; font-size: 24px; font-weight: bold; margin: 0 0 3px 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); line-height: 1.2;">UP DILIMAN</h1>
-                    <h2 style="color: #FFD700; font-size: 18px; font-weight: bold; margin: 0 0 8px 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); letter-spacing: 1px;">ATTENDANCE HUB</h2>
-                    <p style="color: rgba(255,255,255,0.95); font-size: 12px; margin: 0; font-weight: 400; line-height: 1.4;">Accurate attendance. Stronger community. Together in service.</p>
-                </div>
-                
-                <!-- Feature Highlights -->
-                <div style="display: flex; justify-content: center; gap: 8px; margin-top: 15px;">
-                    <div style="flex: 0 1 auto; text-align: center; padding: 10px 12px; background: rgba(255,255,255,0.15); border-radius: 8px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);">
-                        <div style="font-size: 24px; margin-bottom: 4px;">🔒</div>
-                        <h4 style="color: white; font-size: 13px; font-weight: bold; margin: 0 0 3px 0;">Secure</h4>
-                        <p style="color: rgba(255,255,255,0.9); font-size: 10px; margin: 0; line-height: 1.3;">Data protected</p>
-                    </div>
-                    <div style="flex: 0 1 auto; text-align: center; padding: 10px 12px; background: rgba(255,255,255,0.15); border-radius: 8px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);">
-                        <div style="font-size: 24px; margin-bottom: 4px;">⚡</div>
-                        <h4 style="color: white; font-size: 13px; font-weight: bold; margin: 0 0 3px 0;">Reliable</h4>
-                        <p style="color: rgba(255,255,255,0.9); font-size: 10px; margin: 0; line-height: 1.3;">Real-time</p>
-                    </div>
-                    <div style="flex: 0 1 auto; text-align: center; padding: 10px 12px; background: rgba(255,255,255,0.15); border-radius: 8px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);">
-                        <div style="font-size: 24px; margin-bottom: 4px;">📊</div>
-                        <h4 style="color: white; font-size: 13px; font-weight: bold; margin: 0 0 3px 0;">Efficient</h4>
-                        <p style="color: rgba(255,255,255,0.9); font-size: 10px; margin: 0; line-height: 1.3;">Easy tracking</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <header>
+            <h1>📋 Attendance Monitor</h1>
+            <p class="subtitle">QR Code Scanner</p>
+        </header>
 
         <div class="tabs">
             <button class="tab-btn active" onclick="showTab('scan')">🔍 Scan</button>
-            <button class="tab-btn" onclick="showTab('visitors')">👥 Visitors</button>
             <button class="tab-btn" onclick="showTab('records')">📊 Records</button>
-            <button class="tab-btn" onclick="showTab('reports')">📈 Reports</button>
             <button class="tab-btn" onclick="showTab('generate')">🎫 Generate QR</button>
         </div>
 
@@ -63,12 +29,19 @@
                     <label for="service-type" style="display: block; margin-bottom: 8px; font-weight: bold;">Type of Service:</label>
                     <select id="service-type" class="input-field" style="margin-bottom: 15px;">
                         <option value="Sunday Worship">Sunday Worship</option>
-                        <option value="Evangelistic Service">Evangelistic Service</option>
                         <option value="Bible Study">Bible Study</option>
                         <option value="Prayer Meeting">Prayer Meeting</option>
                         <option value="Family Devotion">Family Devotion</option>
                         <option value="Church Anniversary">Church Anniversary</option>
+                        <option value="Camp">Camp</option>
+                        <option value="International Convention">International Convention</option>
+                        <option value="Elders Conference">Elders Conference</option>
                     </select>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <button id="camera-toggle-btn" class="btn btn-secondary" style="min-width: auto; padding: 10px 20px;">
+                        📷 Switch to Front Camera
+                    </button>
                 </div>
                 <div id="reader"></div>
                 <button id="start-scan-btn" class="btn btn-primary">Start Scanner</button>
@@ -84,284 +57,42 @@
             </div>
         </div>
 
-        <!-- VISITORS TAB -->
-        <div id="visitors-tab" class="tab-content">
-            <div class="form-section">
-                <h3>Add Visitor Attendance</h3>
-                <p style="color: #666; margin-bottom: 20px;">For visitors without QR codes</p>
-                
-                <input type="text" id="visitor-name" class="input-field" placeholder="Enter visitor name (Lastname, Firstname)" required>
-                
-                <label for="visitor-type" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Visitor Type:</label>
-                <select id="visitor-type" class="input-field">
-                    <option value="Visiting Member">Visiting Member</option>
-                    <option value="Visitor">Visitor</option>
-                    <option value="Balik-loob">Balik-loob</option>
-                    <option value="New Believer">New Believer</option>
-                    <option value="HFGC Baptism">HFGC Baptism</option>
-                    <option value="New Baptism">New Baptism</option>
-                    <option value="Extension Member">Extension Member</option>
-                    <option value="Extension Visitors">Extension Visitors</option>
-                    <option value="Extension Balik-loob">Extension Balik-loob</option>
-                    <option value="Extension New Believer">Extension New Believer</option>
-                    <option value="Extension New Baptism">Extension New Baptism</option>
-                    <option value="Extension Cadets">Extension Cadets</option>
-                </select>
-                
-                <label for="visitor-service" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Service Type:</label>
-                <select id="visitor-service" class="input-field">
-                    <option value="Sunday Worship">Sunday Worship</option>
-                    <option value="Evangelistic Service">Evangelistic Service</option>
-                    <option value="Bible Study">Bible Study</option>
-                    <option value="Prayer Meeting">Prayer Meeting</option>
-                    <option value="Family Devotion">Family Devotion</option>
-                    <option value="Church Anniversary">Church Anniversary</option>
-                </select>
-                
-                <button onclick="addVisitor()" class="btn btn-primary" style="margin-top: 20px;">Add Visitor</button>
-                
-                <div id="visitor-result" class="result-box" style="display: none; margin-top: 20px;">
-                    <h3>✅ Visitor Added!</h3>
-                    <p><strong>Name:</strong> <span id="visitor-result-name"></span></p>
-                    <p><strong>Type:</strong> <span id="visitor-result-type"></span></p>
-                    <p><strong>Service:</strong> <span id="visitor-result-service"></span></p>
-                    <p><strong>Time:</strong> <span id="visitor-result-time"></span></p>
-                </div>
-            </div>
-        </div>
-
-        <!-- RECORDS TAB - MEMBER MANAGEMENT -->
+        <!-- RECORDS TAB -->
         <div id="records-tab" class="tab-content">
-            <div class="form-section" style="max-width: 800px;">
-                <h3>📝 Member Information Management</h3>
-                <p style="color: #666; margin-bottom: 20px;">Search, view, and update member details</p>
-                
-                <!-- Member Type Selection -->
-                <div style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
-                    <label style="font-weight: bold; display: block; margin-bottom: 10px;">Select Type:</label>
-                    <div class="member-type-radio" style="display: flex; gap: 20px; flex-wrap: wrap;">
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="radio" name="member-type" value="members" checked onchange="switchMemberType()">
-                            <span style="margin-left: 8px;">👥 Members (with QR Code)</span>
-                        </label>
-                        <label style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="radio" name="member-type" value="visitors" onchange="switchMemberType()">
-                            <span style="margin-left: 8px;">🚶 Visitors (without QR Code)</span>
-                        </label>
-                    </div>
-                </div>
-                
-                <!-- Search Section -->
-                <div style="margin-bottom: 25px; padding: 15px; background: #e3f2fd; border-radius: 8px;">
-                    <label for="search-name" style="display: block; margin-bottom: 8px; font-weight: bold;">Search by Name:</label>
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch;">
-                        <input type="text" id="search-name" class="input-field" placeholder="Enter name (Lastname, Firstname)" style="flex: 1; min-width: 200px;">
-                        <button onclick="searchMember()" class="btn btn-primary" style="flex-shrink: 0;">🔍 Search</button>
-                        <button onclick="clearSearch()" class="btn btn-secondary" style="flex-shrink: 0;">Clear</button>
-                        <button onclick="addNewMember()" class="btn btn-success" style="flex-shrink: 0;">➕ New</button>
-                    </div>
-                </div>
-                
-                <!-- Member Details Form -->
-                <div id="member-details-section" style="display: none; padding: 20px; background: #fff; border: 2px solid #2196F3; border-radius: 10px; margin-bottom: 20px;">
-                    <h4 style="color: #2196F3; margin-bottom: 20px;" id="form-title">Member Information</h4>
-                    
-                    <input type="hidden" id="member-id" value="">
-                    
-                    <div class="form-group">
-                        <label for="member-name" style="display: block; margin-bottom: 8px; font-weight: bold;">Name:</label>
-                        <input type="text" id="member-name" class="input-field" placeholder="Lastname, Firstname Middlename" required>
-                    </div>
-                    
-                    <div class="form-group" style="margin-top: 15px;">
-                        <label for="member-birthday" style="display: block; margin-bottom: 8px; font-weight: bold;">Birthday:</label>
-                        <input type="date" id="member-birthday" class="input-field" required onchange="calculateAge()">
-                    </div>
-                    
-                    <div class="form-group" style="margin-top: 15px;">
-                        <label for="member-age" style="display: block; margin-bottom: 8px; font-weight: bold;">Age:</label>
-                        <input type="text" id="member-age" class="input-field" readonly style="background-color: #f0f0f0; cursor: not-allowed;" placeholder="Auto-calculated">
-                    </div>
-                    
-                    <div class="form-group" style="margin-top: 15px;">
-                        <label for="member-contact" style="display: block; margin-bottom: 8px; font-weight: bold;">Contact Number:</label>
-                        <input type="tel" id="member-contact" class="input-field" placeholder="09XXXXXXXXX" required>
-                    </div>
-                    
-                    <div class="form-group" style="margin-top: 15px;">
-                        <label for="member-facebook" style="display: block; margin-bottom: 8px; font-weight: bold;">Facebook Account Name: <span style="font-weight: normal; color: #666;">(Optional)</span></label>
-                        <input type="text" id="member-facebook" class="input-field" placeholder="Facebook name or profile link">
-                    </div>
-                    
-                    <div class="form-group" style="margin-top: 15px;">
-                        <label for="member-cluster" id="cluster-label" style="display: block; margin-bottom: 8px; font-weight: bold;">Cluster:</label>
-                        <select id="member-cluster" class="input-field" required>
-                            <option value="">Select Cluster</option>
-                            <option value="CAMP AGUINALDO">CAMP AGUINALDO</option>
-                            <option value="CENTRAL">CENTRAL</option>
-                            <option value="KAINGIN">KAINGIN</option>
-                            <option value="KNL 1">KNL 1</option>
-                            <option value="KNL 2">KNL 2</option>
-                            <option value="PANSOL">PANSOL</option>
-                            <option value="UP CAMPUS/CP GARCIA">UP CAMPUS/CP GARCIA</option>
-                            <option value="WHITE">WHITE</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Category Field (for Members only) -->
-                    <div class="form-group" id="category-field" style="margin-top: 15px;">
-                        <label for="member-category" style="display: block; margin-bottom: 8px; font-weight: bold;">Category:</label>
-                        <select id="member-category" class="input-field" required>
-                            <option value="">Select Category</option>
-                            <option value="Pastoral">Pastoral</option>
-                            <option value="Elder">Elder</option>
-                            <option value="Adult">Adult</option>
-                            <option value="Youth">Youth</option>
-                            <option value="Cadets">Cadets</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Visitor Type Field (for Visitors only) -->
-                    <div class="form-group" id="visitor-type-field" style="margin-top: 15px; display: none;">
-                        <label for="member-visitor-type" style="display: block; margin-bottom: 8px; font-weight: bold;">Visitor Type:</label>
-                        <select id="member-visitor-type" class="input-field">
-                            <option value="">Select Visitor Type</option>
-                            <option value="Visiting Member">Visiting Member</option>
-                            <option value="Visitor">Visitor</option>
-                            <option value="Balik-loob">Balik-loob</option>
-                            <option value="New Believer">New Believer</option>
-                            <option value="HFGC Baptism">HFGC Baptism</option>
-                            <option value="New Baptism">New Baptism</option>
-                            <option value="Extension Member">Extension Member</option>
-                            <option value="Extension Visitors">Extension Visitors</option>
-                            <option value="Extension Balik-loob">Extension Balik-loob</option>
-                            <option value="Extension New Believer">Extension New Believer</option>
-                            <option value="Extension New Baptism">Extension New Baptism</option>
-                            <option value="Extension Cadets">Extension Cadets</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Date Baptised Field (for Visitors only) -->
-                    <div class="form-group" id="date-baptised-field" style="margin-top: 15px; display: none;">
-                        <label for="member-date-baptised" style="display: block; margin-bottom: 8px; font-weight: bold;">Date Baptised:</label>
-                        <input type="date" id="member-date-baptised" class="input-field">
-                    </div>
-                    
-                    <!-- Status Field (for Members only) -->
-                    <div class="form-group" id="status-field" style="margin-top: 15px;">
-                        <label for="member-status" style="display: block; margin-bottom: 8px; font-weight: bold;">Status:</label>
-                        <select id="member-status" class="input-field" required>
-                            <option value="">Select Status</option>
-                            <option value="Active">Active</option>
-                            <option value="Inactive">Inactive</option>
-                        </select>
-                    </div>
-                    
-                    <div style="margin-top: 25px; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
-                        <button onclick="saveMember()" class="btn btn-success" style="min-width: 100px;">💾 Save</button>
-                        <button onclick="deleteMember()" class="btn btn-danger" id="delete-btn" style="display: none; min-width: 100px;">🗑️ Delete</button>
-                        <button onclick="cancelEdit()" class="btn btn-secondary" style="min-width: 100px;">✖️ Cancel</button>
-                    </div>
-                </div>
-                
-                <!-- Search Results -->
-                <div id="search-results" style="display: none; margin-top: 20px;">
-                    <h4 style="margin-bottom: 15px;">Search Results:</h4>
-                    <div id="results-list" class="results-container"></div>
-                </div>
-                
-                <!-- Export Report Section -->
-                <div style="margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 10px;">
-                    <h4 style="color: #2196F3; margin-bottom: 15px;">📊 Generate Members Report</h4>
-                    
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 15px;">
-                        <label style="font-weight: bold;">Type:</label>
-                        <select id="export-type-filter" class="input-field" style="flex: 1; min-width: 150px;">
-                            <option value="ALL">Both (Members & Visitors)</option>
-                            <option value="MEMBERS">Members Only</option>
-                            <option value="VISITORS">Visitors Only</option>
-                        </select>
-                    </div>
-                    
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 15px;">
-                        <label style="font-weight: bold;">Filter by Cluster:</label>
-                        <select id="export-cluster-filter" class="input-field" style="flex: 1; min-width: 200px;">
-                            <option value="ALL">ALL Clusters</option>
-                            <option value="CAMP AGUINALDO">CAMP AGUINALDO</option>
-                            <option value="CENTRAL">CENTRAL</option>
-                            <option value="KAINGIN">KAINGIN</option>
-                            <option value="KNL 1">KNL 1</option>
-                            <option value="KNL 2">KNL 2</option>
-                            <option value="PANSOL">PANSOL</option>
-                            <option value="UP CAMPUS/CP GARCIA">UP CAMPUS/CP GARCIA</option>
-                            <option value="WHITE">WHITE</option>
-                        </select>
-                    </div>
-                    
-                    <div style="display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 15px;">
-                        <button onclick="previewMembersReport()" class="btn btn-primary" style="width: 60px; height: 60px; border-radius: 50%; font-size: 28px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Preview Report">👁️</button>
-                        <button onclick="printMembersReport()" class="btn btn-success" style="width: 60px; height: 60px; border-radius: 50%; font-size: 28px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Print Report">🖨️</button>
-                        <button onclick="exportToExcel()" class="btn btn-success" style="width: 60px; height: 60px; border-radius: 50%; font-size: 28px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Export to Excel">📥</button>
-                    </div>
-                </div>
-                
-                <!-- Preview Modal -->
-                <div id="preview-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; overflow: auto;" onclick="if(event.target.id === 'preview-modal') closePreview();">
-                    <div style="background: white; margin: 20px auto; max-width: 1000px; border-radius: 10px; position: relative;">
-                        <div style="padding: 20px; border-bottom: 2px solid #2196F3; display: flex; justify-content: space-between; align-items: center; background: #2196F3; color: white; border-radius: 10px 10px 0 0;">
-                            <h3 style="margin: 0; color: white;">📊 Members Report Preview</h3>
-                            <button onclick="closePreview()" style="background: white; color: #2196F3; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 18px; transition: all 0.3s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">✖️ Close</button>
-                        </div>
-                        <div id="preview-content" style="padding: 30px; max-height: 80vh; overflow-y: auto;"></div>
-                    </div>
-                </div>
-                
-                <!-- Stats -->
-                <div class="stats" style="margin-top: 25px;">
-                    <div class="stat-card">
-                        <h3 id="total-members">0</h3>
-                        <p>Total Members</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3 id="total-visitors">0</h3>
-                        <p>Total Visitors</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- REPORTS TAB -->
-        <div id="reports-tab" class="tab-content">
-            <div class="form-section">
-                <h3>Attendance Report</h3>
-                
-                <label for="report-date" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Select Date:</label>
-                <input type="date" id="report-date" class="input-field">
-                
-                <label for="report-service" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Service Type:</label>
-                <select id="report-service" class="input-field">
-                    <option value="">All Services</option>
+            <div class="controls">
+                <input type="date" id="filter-date" class="input-field">
+                <select id="filter-cluster" class="input-field">
+                    <option value="">All Clusters</option>
+                </select>
+                <select id="filter-service" class="input-field">
+                    <option value="">All Service Types</option>
                     <option value="Sunday Worship">Sunday Worship</option>
-                    <option value="Evangelistic Service">Evangelistic Service</option>
                     <option value="Bible Study">Bible Study</option>
                     <option value="Prayer Meeting">Prayer Meeting</option>
                     <option value="Family Devotion">Family Devotion</option>
                     <option value="Church Anniversary">Church Anniversary</option>
+                    <option value="Camp">Camp</option>
+                    <option value="International Convention">International Convention</option>
+                    <option value="Elders Conference">Elders Conference</option>
                 </select>
-                
-                <button onclick="generateReport()" class="btn btn-primary" style="margin-top: 20px;">Generate Report</button>
-                <button onclick="printReport()" class="btn btn-success" style="margin-top: 20px;">Print Report</button>
-                
-                <!-- DATA MANAGEMENT SECTION -->
-                <div style="margin-top: 30px; padding: 20px; border: 2px solid #ff9800; border-radius: 8px; background-color: #fff3e0;">
-                    <h4 style="color: #f57c00; margin-top: 0; margin-bottom: 15px;">⚠️ Data Management</h4>
-                    <p style="font-size: 13px; color: #666; margin-bottom: 15px;">Carefully manage attendance records. Deleted data cannot be recovered.</p>
-                    <button onclick="deleteRecordsForDate()" class="btn" style="background-color: #ff9800; margin-right: 10px;">🗑️ Delete Records for Selected Date</button>
-                    <button onclick="clearAllRecords()" class="btn" style="background-color: #f44336;">❌ Clear ALL Records</button>
+                <button onclick="filterRecords()" class="btn btn-secondary">Filter</button>
+                <button onclick="exportToCSV()" class="btn btn-success">📥 Export CSV</button>
+                <button onclick="clearAllRecords()" class="btn btn-danger">🗑️ Clear All</button>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-card">
+                    <h3 id="total-today">0</h3>
+                    <p>Today's Attendance</p>
                 </div>
-                
-                <div id="report-content" style="margin-top: 30px;">
-                    <p class="empty-state">Select date and service type, then click "Generate Report" to view attendance summary.</p>
+                <div class="stat-card">
+                    <h3 id="total-all">0</h3>
+                    <p>Total Records</p>
                 </div>
+            </div>
+
+            <div id="records-list" class="records-container">
+                <p class="empty-state">No attendance records yet. Start scanning QR codes!</p>
             </div>
         </div>
 
@@ -369,11 +100,7 @@
         <div id="generate-tab" class="tab-content">
             <div class="form-section">
                 <h3>Generate QR Code</h3>
-                
-                <label for="employee-name" style="display: block; margin-bottom: 8px; font-weight: bold;">Name:</label>
-                <input type="text" id="employee-name" class="input-field" placeholder="Enter name (Lastname, Firstname Middlename)" required>
-                
-                <label for="employee-cluster" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Cluster:</label>
+                <input type="text" id="employee-name" class="input-field" placeholder="Enter Lastname, Firstname Middlename)" required>
                 <select id="employee-cluster" class="input-field" required>
                     <option value="">Select Cluster</option>
                     <option value="CAMP AGUINALDO">CAMP AGUINALDO</option>
@@ -385,50 +112,28 @@
                     <option value="UP CAMPUS/CP GARCIA">UP CAMPUS/CP GARCIA</option>
                     <option value="WHITE">WHITE</option>
                 </select>
-                
-                <label for="employee-category" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Category:</label>
-                <select id="employee-category" class="input-field" required>
-                    <option value="">Select Category</option>
-                    <option value="Pastoral">Pastoral</option>
-                    <option value="Elder">Elder</option>
-                    <option value="Adult">Adult</option>
-                    <option value="Youth">Youth</option>
-                    <option value="Cadets">Cadets</option>
-                </select>
-                
-                <button onclick="generateQR()" class="btn btn-primary" style="margin-top: 20px;">Generate QR Code</button>
+                <button onclick="generateQR()" class="btn btn-primary">Generate QR Code</button>
                 
                 <div id="qr-output" style="display: none; margin-top: 20px;">
                     <h4>QR Code for <span id="qr-name"></span></h4>
-                    <p style="color: #666; font-size: 14px;">
-                        <strong>Cluster:</strong> <span id="qr-cluster"></span><br>
-                        <strong>Category:</strong> <span id="qr-category"></span>
-                    </p>
                     <div id="qrcode"></div>
                     <button onclick="downloadQR()" class="btn btn-success">Download QR Code</button>
                 </div>
             </div>
         </div>
-        
-        <!-- Footer -->
-        <footer style="text-align: center; padding: 20px 15px; margin-top: 30px; border-top: 2px solid #e0e0e0; background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%); border-radius: 10px;">
-            <p style="margin: 0 0 8px 0; color: #666; font-size: 13px; font-weight: 500;">
-                <span style="color: #2196F3; font-weight: bold;">UP Diliman Attendance Hub</span>
-            </p>
-            <p style="margin: 0 0 5px 0; color: #888; font-size: 12px;">
-                Developed By: <strong style="color: #8B1538;">ABSJ</strong>
-            </p>
-            <p style="margin: 0; color: #999; font-size: 11px;">
-                © 2026 | Version 1.0
-            </p>
-        </footer>
     </div>
 
     <!-- Scripts -->
+    <!-- Firebase App (the core Firebase SDK) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <!-- Firebase Firestore -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <!-- QR Code Libraries -->
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <!-- App Script -->
     <script src="app.js"></script>
 </body>
 </html>
