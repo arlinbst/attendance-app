@@ -70,7 +70,10 @@
                         <option value="Church Anniversary">Church Anniversary</option>
                     </select>
                 </div>
-                <div id="reader"></div>
+                <div style="position: relative;">
+                    <div id="reader"></div>
+                    <button id="camera-flip-btn" class="btn" style="position: absolute; top: 10px; right: 10px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.9); color: #2196F3; font-size: 28px; padding: 0; display: none; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 1000; border: 2px solid #2196F3;" onclick="flipCamera()" title="Flip Camera">🔄</button>
+                </div>
                 <button id="start-scan-btn" class="btn btn-primary">Start Scanner</button>
                 <button id="stop-scan-btn" class="btn btn-danger" style="display: none;">Stop Scanner</button>
                 
@@ -298,10 +301,10 @@
                         </select>
                     </div>
                     
-                    <div style="display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 15px;">
-                        <button onclick="previewMembersReport()" class="btn btn-primary" style="width: 60px; height: 60px; border-radius: 50%; font-size: 28px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Preview Report">👁️</button>
-                        <button onclick="printMembersReport()" class="btn btn-success" style="width: 60px; height: 60px; border-radius: 50%; font-size: 28px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Print Report">🖨️</button>
-                        <button onclick="exportToExcel()" class="btn btn-success" style="width: 60px; height: 60px; border-radius: 50%; font-size: 28px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Export to Excel">📥</button>
+                    <div style="display: flex; gap: 15px; justify-content: center; align-items: center; margin-top: 20px;">
+                        <button onclick="previewMembersReport()" class="btn btn-primary" style="width: 70px; height: 70px; border-radius: 50%; font-size: 36px; padding: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" title="Preview Report">👁️</button>
+                        <button onclick="printMembersReport()" class="btn btn-success" style="width: 70px; height: 70px; border-radius: 50%; font-size: 36px; padding: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" title="Print Report">🖨️</button>
+                        <button onclick="exportToExcel()" class="btn" style="width: 70px; height: 70px; border-radius: 50%; font-size: 36px; padding: 0; display: flex; align-items: center; justify-content: center; background: #FFC107; color: white; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" title="Export to Excel" onmouseover="this.style.background='#FFB300'" onmouseout="this.style.background='#FFC107'">📥</button>
                     </div>
                 </div>
                 
@@ -419,7 +422,7 @@
                 Developed By: <strong style="color: #8B1538;">ABSJ</strong>
             </p>
             <p style="margin: 0; color: #999; font-size: 11px;">
-                © 2026 | Version 1.0
+                © 2026 | Version 1.1
             </p>
         </footer>
     </div>
