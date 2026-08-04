@@ -2083,6 +2083,22 @@ function exportToExcel() {
     alert(summaryMsg);
 }
 
+// Helper function to calculate age from birthday
+function calculateAgeFromBirthday(birthdayString) {
+    if (!birthdayString) return 'N/A';
+    
+    const birthday = new Date(birthdayString);
+    const today = new Date();
+    let age = today.getFullYear() - birthday.getFullYear();
+    const monthDiff = today.getMonth() - birthday.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthday.getDate())) {
+        age--;
+    }
+    
+    return age;
+}
+
 // Preview Members Report
 function previewMembersReport() {
     const typeFilter = document.getElementById('export-type-filter').value;
@@ -2151,12 +2167,13 @@ function previewMembersReport() {
         
         filteredMembers.forEach((member, index) => {
             const statusClass = member.status === 'Active' ? 'background: #4CAF50; color: white;' : 'background: #f44336; color: white;';
+            const calculatedAge = calculateAgeFromBirthday(member.birthday);
             previewContent += `
                 <tr style="${index % 2 === 0 ? 'background: #f9f9f9;' : 'background: white;'}">
                     <td style="border: 1px solid #ddd; padding: 8px;">${index + 1}</td>
                     <td style="border: 1px solid #ddd; padding: 8px; font-weight: bold;">${member.name}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${member.birthday || 'N/A'}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${member.age || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${calculatedAge}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${member.contactNumber || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${member.facebookAccount || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${member.cluster}</td>
@@ -2197,12 +2214,13 @@ function previewMembersReport() {
         `;
         
         filteredVisitors.forEach((visitor, index) => {
+            const calculatedAge = calculateAgeFromBirthday(visitor.birthday);
             previewContent += `
                 <tr style="${index % 2 === 0 ? 'background: #fff3e0;' : 'background: white;'}">
                     <td style="border: 1px solid #ddd; padding: 8px;">${index + 1}</td>
                     <td style="border: 1px solid #ddd; padding: 8px; font-weight: bold;">${visitor.name}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.birthday || 'N/A'}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.age || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${calculatedAge}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.contactNumber || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.facebookAccount || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.cluster || 'N/A'}</td>
@@ -2311,12 +2329,13 @@ function printMembersReport() {
         `;
         
         filteredMembers.forEach((member, index) => {
+            const calculatedAge = calculateAgeFromBirthday(member.birthday);
             printContent += `
                 <tr>
                     <td style="border: 1px solid #ddd; padding: 8px;">${index + 1}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${member.name}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${member.birthday || 'N/A'}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${member.age || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${calculatedAge}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${member.contactNumber || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${member.facebookAccount || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${member.cluster}</td>
@@ -2355,12 +2374,13 @@ function printMembersReport() {
         `;
         
         filteredVisitors.forEach((visitor, index) => {
+            const calculatedAge = calculateAgeFromBirthday(visitor.birthday);
             printContent += `
                 <tr>
                     <td style="border: 1px solid #ddd; padding: 8px;">${index + 1}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.name}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.birthday || 'N/A'}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.age || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${calculatedAge}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.contactNumber || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.facebookAccount || 'N/A'}</td>
                     <td style="border: 1px solid #ddd; padding: 8px;">${visitor.cluster || 'N/A'}</td>
