@@ -305,7 +305,7 @@ header h1 {
 
 /* Desktop - Larger font size for dropdowns */
 @media (min-width: 601px) {
-    /* ALL select/dropdown elements - much larger font */
+    /* ALL select/dropdown elements - VERY LARGE font like screenshots */
     select,
     select.input-field,
     select#visitor-type,
@@ -320,18 +320,20 @@ header h1 {
     select#type-filter,
     select#cluster-filter,
     select#report-service-type {
-        font-size: 20px !important;
-        padding: 14px !important;
-        min-height: 50px !important;
-        line-height: 1.5 !important;
+        font-size: 26px !important;
+        padding: 16px !important;
+        min-height: 60px !important;
+        line-height: 1.6 !important;
+        font-weight: 500 !important;
     }
     
-    /* Dropdown options - larger font */
+    /* Dropdown options - VERY LARGE font like screenshots */
     select option,
     select.input-field option {
-        font-size: 20px !important;
-        padding: 10px !important;
-        line-height: 1.5 !important;
+        font-size: 26px !important;
+        padding: 12px !important;
+        line-height: 1.6 !important;
+        font-weight: 400 !important;
     }
     
     /* Input fields - also increase for consistency */
@@ -339,7 +341,14 @@ header h1 {
     input[type="text"],
     input[type="date"],
     input[type="tel"] {
+        font-size: 22px !important;
+        padding: 16px !important;
+        min-height: 55px !important;
+    }
+    
+    /* Labels - increase for better readability */
+    label {
         font-size: 18px !important;
-        padding: 14px !important;
+        font-weight: 500 !important;
     }
 }
