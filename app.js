@@ -281,8 +281,9 @@ async function addVisitor() {
         return;
     }
     
-    // Use the selected cluster or default to 'VISITOR' if none selected
-    const clusterValue = visitorCluster || 'VISITOR';
+    // Use the selected cluster value directly, even if empty (for "No Cluster")
+    // If truly empty, use 'No Cluster' as the display value
+    const clusterValue = visitorCluster || 'No Cluster';
     
     console.log('📝 Visitor Cluster Debug:');
     console.log('   Selected from dropdown:', visitorCluster);
@@ -660,9 +661,11 @@ async function deleteRecordsForDate() {
         updateStats();
         populateClusterFilter();
         
-        // Clear report content
-        document.getElementById('report-content').innerHTML = 
-            '<p class="empty-state">Records deleted. Select a new date to generate report.</p>';
+        // Clear report content if on Reports tab
+        const reportContentElement = document.getElementById('report-content');
+        if (reportContentElement) {
+            reportContentElement.innerHTML = '<p class="empty-state">Records deleted. Select a new date to generate report.</p>';
+        }
         
         // Success message
         const serviceMsg = deleteServiceType ? ` (${deleteServiceType})` : ' (All Services)';
