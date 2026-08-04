@@ -284,6 +284,11 @@ async function addVisitor() {
     // Use the selected cluster or default to 'VISITOR' if none selected
     const clusterValue = visitorCluster || 'VISITOR';
     
+    console.log('📝 Visitor Cluster Debug:');
+    console.log('   Selected from dropdown:', visitorCluster);
+    console.log('   Final cluster value:', clusterValue);
+    console.log('   Service Type:', serviceType);
+    
     const record = {
         name: name,
         cluster: clusterValue,
@@ -441,24 +446,28 @@ async function loadRecordsFromCloud() {
     }
 }
 
-async function deleteRecordsByDateFromCloud(dateToDelete) {
+async function deleteRecordsByDateFromCloud(dateToDelete, serviceTypeToDelete = null) {
     if (firebaseInitialized && db) {
         try {
-            console.log('🗑️ Deleting records from Firebase for date:', dateToDelete);
+            console.log('🗑️ Deleting records from Firebase for date:', dateToDelete, 'service type:', serviceTypeToDelete || 'All Services');
             const batch = db.batch();
             const snapshot = await db.collection('attendance').get();
             let deleteCount = 0;
             
             snapshot.docs.forEach((doc) => {
                 const record = doc.data();
-                if (record.date === dateToDelete) {
+                // Filter by date and optionally by service type
+                const matchesDate = record.date === dateToDelete;
+                const matchesService = !serviceTypeToDelete || record.serviceType === serviceTypeToDelete;
+                
+                if (matchesDate && matchesService) {
                     batch.delete(doc.ref);
                     deleteCount++;
                 }
             });
             
             await batch.commit();
-            console.log('✅ Deleted', deleteCount, 'records from Firebase for date:', dateToDelete);
+            console.log('✅ Deleted', deleteCount, 'records from Firebase');
             return deleteCount;
         } catch (error) {
             console.error('❌ Error deleting records from Firebase:', error);
@@ -557,6 +566,7 @@ function recoverData() {
 // DELETE RECORDS FOR SELECTED DATE (with strong warning)
 async function deleteRecordsForDate() {
     const dateInput = document.getElementById('report-date').value;
+    const serviceTypeInput = document.getElementById('report-service').value;
     
     if (!dateInput) {
         alert('⚠️ Please select a date first!');
@@ -564,21 +574,34 @@ async function deleteRecordsForDate() {
     }
     
     const deleteDate = dateInput; // Already in local date format from selectReportDate
+    const deleteServiceType = serviceTypeInput; // Empty string means "All Services"
     
-    // Count records for this date
-    const recordsToDelete = attendanceRecords.filter(r => r.date === deleteDate);
+    // Count records for this date and service type
+    let recordsToDelete;
+    if (deleteServiceType) {
+        // Specific service type
+        recordsToDelete = attendanceRecords.filter(r => r.date === deleteDate && r.serviceType === deleteServiceType);
+    } else {
+        // All services for this date
+        recordsToDelete = attendanceRecords.filter(r => r.date === deleteDate);
+    }
     
     if (recordsToDelete.length === 0) {
-        alert(`ℹ️ No records found for ${deleteDate}\n\nNothing to delete.`);
+        const serviceMsg = deleteServiceType ? ` (${deleteServiceType})` : ' (All Services)';
+        alert(`ℹ️ No records found for ${deleteDate}${serviceMsg}\n\nNothing to delete.`);
         return;
     }
+    
+    // Build service type display string
+    const serviceDisplay = deleteServiceType ? deleteServiceType : 'All Services';
     
     // FIRST WARNING - Show what will be deleted
     const confirmed1 = confirm(
         `⚠️ DELETE CONFIRMATION\n` +
         `═══════════════════════════════\n\n` +
         `You are about to DELETE ${recordsToDelete.length} record(s) for:\n\n` +
-        `📅 Date: ${deleteDate}\n\n` +
+        `📅 Date: ${deleteDate}\n` +
+        `🎯 Service Type: ${serviceDisplay}\n\n` +
         `This action CANNOT be undone!\n\n` +
         `Do you want to proceed?`
     );
@@ -594,6 +617,8 @@ async function deleteRecordsForDate() {
         `═══════════════════════════════\n\n` +
         `Are you ABSOLUTELY SURE you want to\n` +
         `permanently delete ${recordsToDelete.length} records?\n\n` +
+        `Date: ${deleteDate}\n` +
+        `Service: ${serviceDisplay}\n\n` +
         `This will delete from:\n` +
         `• Cloud database (Firebase)\n` +
         `• Local storage\n` +
@@ -608,18 +633,22 @@ async function deleteRecordsForDate() {
     }
     
     // Show loading message
-    console.log('🗑️ Deleting records for date:', deleteDate);
+    console.log('🗑️ Deleting records for date:', deleteDate, 'service type:', serviceDisplay);
     
     try {
         // Delete from Firebase
         if (firebaseInitialized && db) {
-            const deletedCount = await deleteRecordsByDateFromCloud(deleteDate);
+            const deletedCount = await deleteRecordsByDateFromCloud(deleteDate, deleteServiceType);
             console.log('✅ Deleted from Firebase:', deletedCount);
         }
         
         // Delete from local array (onSnapshot will handle this, but do it anyway for immediate feedback)
         const beforeCount = attendanceRecords.length;
-        attendanceRecords = attendanceRecords.filter(r => r.date !== deleteDate);
+        if (deleteServiceType) {
+            attendanceRecords = attendanceRecords.filter(r => !(r.date === deleteDate && r.serviceType === deleteServiceType));
+        } else {
+            attendanceRecords = attendanceRecords.filter(r => r.date !== deleteDate);
+        }
         const afterCount = attendanceRecords.length;
         const localDeleted = beforeCount - afterCount;
         
@@ -636,10 +665,13 @@ async function deleteRecordsForDate() {
             '<p class="empty-state">Records deleted. Select a new date to generate report.</p>';
         
         // Success message
+        const serviceMsg = deleteServiceType ? ` (${deleteServiceType})` : ' (All Services)';
         alert(
             `✅ DELETION SUCCESSFUL\n` +
             `═══════════════════════════════\n\n` +
-            `Deleted ${localDeleted} record(s) for ${deleteDate}\n\n` +
+            `Deleted ${localDeleted} record(s) for:\n` +
+            `Date: ${deleteDate}\n` +
+            `Service: ${serviceDisplay}\n\n` +
             `The records have been permanently removed\n` +
             `from all devices and cannot be recovered.`
         );
@@ -1173,6 +1205,22 @@ function generateReport() {
         filtered = filtered.filter(r => r.serviceType === serviceFilter);
         console.log('   Records after service filter:', filtered.length);
     }
+    
+    // Debug cluster information for filtered records
+    console.log('📊 Cluster Debug for Report:');
+    const clusterSummary = {};
+    filtered.forEach(r => {
+        const cluster = r.cluster || 'N/A';
+        if (!clusterSummary[cluster]) {
+            clusterSummary[cluster] = { members: 0, visitors: 0 };
+        }
+        if (r.isVisitor) {
+            clusterSummary[cluster].visitors++;
+        } else {
+            clusterSummary[cluster].members++;
+        }
+    });
+    console.log('   Cluster breakdown:', clusterSummary);
     
     if (filtered.length === 0) {
         console.log('❌ No records found for the selected criteria');
