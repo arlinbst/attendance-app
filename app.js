@@ -1069,19 +1069,6 @@ function generateReport() {
     
     console.log('✅ Generating report with', filtered.length, 'records');
     
-    // Separate members and visitors
-    const members = filtered.filter(r => !r.isVisitor);
-    const visitors = filtered.filter(r => r.isVisitor);
-    
-    // Group members by cluster
-    const clusterGroups = {};
-    members.forEach(record => {
-        if (!clusterGroups[record.cluster]) {
-            clusterGroups[record.cluster] = [];
-        }
-        clusterGroups[record.cluster].push(record);
-    });
-    
     // Get current date and time for "Generated" timestamp
     const generatedTimestamp = new Date().toLocaleString('en-US', { 
         month: 'numeric', 
@@ -1093,99 +1080,214 @@ function generateReport() {
         hour12: true 
     });
     
-    // Build report HTML with enhanced header
-    let reportHTML = `
-        <div class="report-header-enhanced">
-            <div class="report-title">
-                <span class="report-icon">📊</span>
-                <h2>Attendance Report</h2>
-            </div>
-            <div class="report-metadata">
-                <p><strong>Date:</strong> ${reportDate}</p>
-                <p><strong>Service Type:</strong> ${serviceFilter || 'All Services'}</p>
-                <p><strong>Total Attendance:</strong> ${filtered.length}</p>
-                <p><strong>Members:</strong> ${members.length} | <strong>Visitors:</strong> ${visitors.length}</p>
-                <p class="generated-time"><strong>Generated:</strong> ${generatedTimestamp}</p>
-            </div>
-        </div>
+    let reportHTML = '';
+    
+    // Check if "All Services" is selected
+    if (!serviceFilter) {
+        // Group by Service Type first
+        const serviceTypeGroups = {};
+        filtered.forEach(record => {
+            const serviceType = record.serviceType || 'Unknown';
+            if (!serviceTypeGroups[serviceType]) {
+                serviceTypeGroups[serviceType] = [];
+            }
+            serviceTypeGroups[serviceType].push(record);
+        });
         
-        <h4 style="margin-top: 30px; margin-bottom: 15px; color: #333; font-size: 16px; font-weight: 600;">Summary by Cluster</h4>
-        <table class="report-table">
-            <thead>
+        const serviceTypes = Object.keys(serviceTypeGroups).sort();
+        const totalMembers = filtered.filter(r => !r.isVisitor).length;
+        const totalVisitors = filtered.filter(r => r.isVisitor).length;
+        
+        // Build report header
+        reportHTML = `
+            <div class="report-header-enhanced">
+                <div class="report-title">
+                    <span class="report-icon">📊</span>
+                    <h2>Attendance Report - All Service Types</h2>
+                </div>
+                <div class="report-metadata">
+                    <p><strong>Date:</strong> ${reportDate}</p>
+                    <p><strong>Service Types:</strong> ${serviceTypes.join(', ')}</p>
+                    <p><strong>Total Attendance:</strong> ${filtered.length}</p>
+                    <p><strong>Members:</strong> ${totalMembers} | <strong>Visitors:</strong> ${totalVisitors}</p>
+                    <p class="generated-time"><strong>Generated:</strong> ${generatedTimestamp}</p>
+                </div>
+            </div>
+        `;
+        
+        // Generate report for each service type
+        serviceTypes.forEach((serviceType, serviceIndex) => {
+            const serviceRecords = serviceTypeGroups[serviceType];
+            const serviceMembers = serviceRecords.filter(r => !r.isVisitor);
+            const serviceVisitors = serviceRecords.filter(r => r.isVisitor);
+            
+            reportHTML += `
+                <div class="service-type-section" style="margin-top: ${serviceIndex > 0 ? '40px' : '20px'}; padding: 20px; border: 2px solid #2196F3; border-radius: 8px; background: #f9f9f9;">
+                    <h3 style="color: #2196F3; margin: 0 0 15px 0; font-size: 18px; text-transform: uppercase; border-bottom: 2px solid #2196F3; padding-bottom: 10px;">${serviceType}</h3>
+                    <p style="color: #666; margin-bottom: 20px;"><strong>Total Attendees:</strong> ${serviceRecords.length} (Members: ${serviceMembers.length}, Visitors: ${serviceVisitors.length})</p>
+            `;
+            
+            // Group members by cluster for this service
+            const clusterGroups = {};
+            serviceMembers.forEach(record => {
+                if (!clusterGroups[record.cluster]) {
+                    clusterGroups[record.cluster] = [];
+                }
+                clusterGroups[record.cluster].push(record);
+            });
+            
+            // Add members by cluster
+            Object.keys(clusterGroups).sort().forEach(cluster => {
+                const sortedMembers = clusterGroups[cluster].sort((a, b) => a.name.localeCompare(b.name));
+                
+                reportHTML += `
+                    <div style="margin-bottom: 20px;">
+                        <h5 style="color: #333; font-size: 15px; font-weight: 600; margin-bottom: 8px;">${cluster}</h5>
+                        <ul style="margin: 0; padding-left: 20px; list-style: none;">
+                `;
+                
+                sortedMembers.forEach(record => {
+                    reportHTML += `<li style="margin-bottom: 3px; color: #444;">• ${record.name}</li>`;
+                });
+                
+                reportHTML += `
+                        </ul>
+                    </div>
+                `;
+            });
+            
+            // Add visitors for this service
+            if (serviceVisitors.length > 0) {
+                const sortedVisitors = serviceVisitors.sort((a, b) => a.name.localeCompare(b.name));
+                
+                reportHTML += `
+                    <div style="margin-top: 20px; padding-top: 15px; border-top: 2px dashed #FF9800;">
+                        <h5 style="color: #FF9800; font-size: 15px; font-weight: 600; margin-bottom: 8px;">VISITORS (${serviceVisitors.length})</h5>
+                        <ul style="margin: 0; padding-left: 20px; list-style: none;">
+                `;
+                
+                sortedVisitors.forEach(record => {
+                    const visitorType = record.visitorType || 'Visitor';
+                    reportHTML += `<li style="margin-bottom: 3px; color: #FF9800;">• ${record.name} - <em>${visitorType}</em></li>`;
+                });
+                
+                reportHTML += `
+                        </ul>
+                    </div>
+                `;
+            }
+            
+            reportHTML += `</div>`; // Close service-type-section
+        });
+        
+    } else {
+        // Single service type - keep original behavior
+        const members = filtered.filter(r => !r.isVisitor);
+        const visitors = filtered.filter(r => r.isVisitor);
+        
+        // Group members by cluster
+        const clusterGroups = {};
+        members.forEach(record => {
+            if (!clusterGroups[record.cluster]) {
+                clusterGroups[record.cluster] = [];
+            }
+            clusterGroups[record.cluster].push(record);
+        });
+        
+        // Build report HTML with enhanced header
+        reportHTML = `
+            <div class="report-header-enhanced">
+                <div class="report-title">
+                    <span class="report-icon">📊</span>
+                    <h2>Attendance Report</h2>
+                </div>
+                <div class="report-metadata">
+                    <p><strong>Date:</strong> ${reportDate}</p>
+                    <p><strong>Service Type:</strong> ${serviceFilter}</p>
+                    <p><strong>Total Attendance:</strong> ${filtered.length}</p>
+                    <p><strong>Members:</strong> ${members.length} | <strong>Visitors:</strong> ${visitors.length}</p>
+                    <p class="generated-time"><strong>Generated:</strong> ${generatedTimestamp}</p>
+                </div>
+            </div>
+            
+            <h4 style="margin-top: 30px; margin-bottom: 15px; color: #333; font-size: 16px; font-weight: 600;">Summary by Cluster</h4>
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th style="text-align: left;">Cluster</th>
+                        <th style="text-align: center; width: 100px;">Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        // Add member clusters sorted alphabetically
+        Object.keys(clusterGroups).sort().forEach(cluster => {
+            reportHTML += `
                 <tr>
-                    <th style="text-align: left;">Cluster</th>
-                    <th style="text-align: center; width: 100px;">Count</th>
+                    <td>${cluster}</td>
+                    <td style="text-align: center;">${clusterGroups[cluster].length}</td>
                 </tr>
-            </thead>
-            <tbody>
-    `;
-    
-    // Add member clusters sorted alphabetically
-    Object.keys(clusterGroups).sort().forEach(cluster => {
-        reportHTML += `
-            <tr>
-                <td>${cluster}</td>
-                <td style="text-align: center;">${clusterGroups[cluster].length}</td>
-            </tr>
-        `;
-    });
-    
-    // Add visitors row if there are visitors
-    if (visitors.length > 0) {
-        reportHTML += `
-            <tr>
-                <td><strong>VISITORS</strong></td>
-                <td style="text-align: center;"><strong>${visitors.length}</strong></td>
-            </tr>
-        `;
-    }
-    
-    reportHTML += `
-            </tbody>
-        </table>
-        
-        <h4 style="margin-top: 35px; margin-bottom: 20px; color: #333; font-size: 16px; font-weight: 600;">Detailed Attendance by Cluster</h4>
-    `;
-    
-    // Add detailed lists by cluster with numbered entries and time
-    Object.keys(clusterGroups).sort().forEach(cluster => {
-        const sortedMembers = clusterGroups[cluster].sort((a, b) => a.name.localeCompare(b.name));
-        
-        reportHTML += `
-            <div class="cluster-detail-section">
-                <h5 style="color: #333; font-size: 15px; font-weight: 600; margin-bottom: 10px;">${cluster} (${sortedMembers.length} attendees)</h5>
-                <ol class="attendee-detail-list" style="margin: 0; padding-left: 20px;">
-        `;
-        
-        sortedMembers.forEach((record, index) => {
-            reportHTML += `<li style="margin-bottom: 5px;">${record.name} - ${record.time}</li>`;
+            `;
         });
         
-        reportHTML += `
-                </ol>
-            </div>
-        `;
-    });
-    
-    // Add visitors section if there are visitors
-    if (visitors.length > 0) {
-        const sortedVisitors = visitors.sort((a, b) => a.name.localeCompare(b.name));
+        // Add visitors row if there are visitors
+        if (visitors.length > 0) {
+            reportHTML += `
+                <tr>
+                    <td><strong>VISITORS</strong></td>
+                    <td style="text-align: center;"><strong>${visitors.length}</strong></td>
+                </tr>
+            `;
+        }
         
         reportHTML += `
-            <div class="cluster-detail-section" style="margin-top: 25px;">
-                <h5 style="color: #FF9800; font-size: 15px; font-weight: 600; margin-bottom: 5px;">VISITORS (${visitors.length} total)</h5>
-                <p style="color: #FF9800; font-weight: 600; font-size: 14px; margin-bottom: 10px;">Visitor:</p>
-                <ol class="attendee-detail-list" style="margin: 0; padding-left: 20px;">
+                </tbody>
+            </table>
+            
+            <h4 style="margin-top: 35px; margin-bottom: 20px; color: #333; font-size: 16px; font-weight: 600;">Detailed Attendance by Cluster</h4>
         `;
         
-        sortedVisitors.forEach((record, index) => {
-            reportHTML += `<li style="margin-bottom: 5px;">${record.name} - ${record.time}</li>`;
+        // Add detailed lists by cluster with numbered entries and time
+        Object.keys(clusterGroups).sort().forEach(cluster => {
+            const sortedMembers = clusterGroups[cluster].sort((a, b) => a.name.localeCompare(b.name));
+            
+            reportHTML += `
+                <div class="cluster-detail-section">
+                    <h5 style="color: #333; font-size: 15px; font-weight: 600; margin-bottom: 10px;">${cluster} (${sortedMembers.length} attendees)</h5>
+                    <ol class="attendee-detail-list" style="margin: 0; padding-left: 20px;">
+            `;
+            
+            sortedMembers.forEach((record, index) => {
+                reportHTML += `<li style="margin-bottom: 5px;">${record.name} - ${record.time}</li>`;
+            });
+            
+            reportHTML += `
+                    </ol>
+                </div>
+            `;
         });
         
-        reportHTML += `
-                </ol>
-            </div>
-        `;
+        // Add visitors section if there are visitors
+        if (visitors.length > 0) {
+            const sortedVisitors = visitors.sort((a, b) => a.name.localeCompare(b.name));
+            
+            reportHTML += `
+                <div class="cluster-detail-section" style="margin-top: 25px;">
+                    <h5 style="color: #FF9800; font-size: 15px; font-weight: 600; margin-bottom: 5px;">VISITORS (${visitors.length} total)</h5>
+                    <p style="color: #FF9800; font-weight: 600; font-size: 14px; margin-bottom: 10px;">Visitor:</p>
+                    <ol class="attendee-detail-list" style="margin: 0; padding-left: 20px;">
+            `;
+            
+            sortedVisitors.forEach((record, index) => {
+                reportHTML += `<li style="margin-bottom: 5px;">${record.name} - ${record.time}</li>`;
+            });
+            
+            reportHTML += `
+                    </ol>
+                </div>
+            `;
+        }
     }
     
     document.getElementById('report-content').innerHTML = reportHTML;
@@ -1269,9 +1371,32 @@ function printReport() {
                     font-size: 14px;
                 }
                 
+                /* Service Type Section - Page Break */
+                .service-type-section {
+                    page-break-after: always;
+                    margin-bottom: 40px;
+                    padding: 20px;
+                    border: 2px solid #2196F3;
+                    border-radius: 8px;
+                    background: #f9f9f9;
+                }
+                .service-type-section:last-child {
+                    page-break-after: auto;
+                }
+                
                 @media print {
                     body { padding: 10px; }
                     .cluster-detail-section { page-break-inside: avoid; }
+                    .service-type-section { 
+                        page-break-after: always;
+                        margin-bottom: 0;
+                    }
+                    .service-type-section:last-child {
+                        page-break-after: auto;
+                    }
+                    .report-header-enhanced {
+                        page-break-after: avoid;
+                    }
                 }
             </style>
         </head>
