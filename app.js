@@ -1970,13 +1970,13 @@ function exportToExcel() {
     let csvContent = '';
     
     // Header - Dynamic based on type
-    let reportTitle = 'UP Diliman Locale Active Members Information List';
+    let reportTitle = 'Members Information List';
     if (typeFilter === 'VISITORS') {
-        reportTitle = 'UP Diliman Locale Visitors Information List';
+        reportTitle = 'Visitors Information List';
     } else if (typeFilter === 'MEMBERS') {
-        reportTitle = 'UP Diliman Locale Active Members Information List';
+        reportTitle = 'Members Information List';
     } else {
-        reportTitle = 'UP Diliman Locale Members & Visitors Information List';
+        reportTitle = 'Members & Visitors Information List';
     }
     
     csvContent += `"${reportTitle}"\n`;
@@ -2109,11 +2109,11 @@ function previewMembersReport() {
     filteredVisitors.sort((a, b) => a.name.localeCompare(b.name));
     
     // Determine report title based on type filter
-    let reportTitle = 'UP Diliman Locale Members & Visitors Information List';
+    let reportTitle = 'Members & Visitors Information List';
     if (typeFilter === 'MEMBERS') {
-        reportTitle = 'UP Diliman Locale Active Members Information List';
+        reportTitle = 'Members Information List';
     } else if (typeFilter === 'VISITORS') {
-        reportTitle = 'UP Diliman Locale Visitors Information List';
+        reportTitle = 'Visitors Information List';
     }
     
     // Build preview content
