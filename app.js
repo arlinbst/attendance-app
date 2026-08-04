@@ -1284,62 +1284,42 @@ function generateReport() {
             if (serviceVisitors.length > 0) {
                 const sortedVisitors = serviceVisitors.sort((a, b) => a.name.localeCompare(b.name));
                 
-                // Check if this is Sunday Worship or Evangelistic Service
-                const isWorshipService = serviceType === 'Sunday Worship' || serviceType === 'Evangelistic Service';
-                const visitorSectionTitle = isWorshipService ? 'WORSHIP VISITORS' : 'VISITORS';
+                // Generate dynamic visitor section title based on service type
+                const visitorSectionTitle = serviceType.toUpperCase() + ' VISITORS';
                 
-                if (isWorshipService) {
-                    // Table format for worship services
+                // Table format for ALL service types with visitors
+                reportHTML += `
+                    <div style="margin-top: 20px; padding-top: 15px; border-top: 2px dashed #FF9800;">
+                        <h5 style="color: #FF9800; font-size: 15px; font-weight: 600; margin-bottom: 12px;">${visitorSectionTitle} (${serviceVisitors.length})</h5>
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                            <thead>
+                                <tr style="background-color: #FF9800; color: white;">
+                                    <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitors Name</th>
+                                    <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
+                                    <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitors Type</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                sortedVisitors.forEach((record, index) => {
+                    const visitorType = record.visitorType || 'Visitor';
+                    const visitorCluster = record.cluster || 'N/A';
+                    const bgColor = index % 2 === 0 ? '#fff3e0' : 'white';
                     reportHTML += `
-                        <div style="margin-top: 20px; padding-top: 15px; border-top: 2px dashed #FF9800;">
-                            <h5 style="color: #FF9800; font-size: 15px; font-weight: 600; margin-bottom: 12px;">${visitorSectionTitle} (${serviceVisitors.length})</h5>
-                            <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
-                                <thead>
-                                    <tr style="background-color: #FF9800; color: white;">
-                                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitors Name</th>
-                                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
-                                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitors Type</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                        <tr style="background: ${bgColor};">
+                            <td style="border: 1px solid #ddd; padding: 8px;">${record.name}</td>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${visitorCluster}</td>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${visitorType}</td>
+                        </tr>
                     `;
-                    
-                    sortedVisitors.forEach((record, index) => {
-                        const visitorType = record.visitorType || 'Visitor';
-                        const visitorCluster = record.cluster || 'N/A';
-                        const bgColor = index % 2 === 0 ? '#fff3e0' : 'white';
-                        reportHTML += `
-                            <tr style="background: ${bgColor};">
-                                <td style="border: 1px solid #ddd; padding: 8px;">${record.name}</td>
-                                <td style="border: 1px solid #ddd; padding: 8px;">${visitorCluster}</td>
-                                <td style="border: 1px solid #ddd; padding: 8px;">${visitorType}</td>
-                            </tr>
-                        `;
-                    });
-                    
-                    reportHTML += `
-                                </tbody>
-                            </table>
-                        </div>
-                    `;
-                } else {
-                    // List format for other services
-                    reportHTML += `
-                        <div style="margin-top: 20px; padding-top: 15px; border-top: 2px dashed #FF9800;">
-                            <h5 style="color: #FF9800; font-size: 15px; font-weight: 600; margin-bottom: 8px;">${visitorSectionTitle} (${serviceVisitors.length})</h5>
-                            <ul style="margin: 0; padding-left: 20px; list-style: none;">
-                    `;
-                    
-                    sortedVisitors.forEach(record => {
-                        const visitorType = record.visitorType || 'Visitor';
-                        reportHTML += `<li style="margin-bottom: 3px; color: #FF9800;">• ${record.name} - <em>${visitorType}</em></li>`;
-                    });
-                    
-                    reportHTML += `
-                            </ul>
-                        </div>
-                    `;
-                }
+                });
+                
+                reportHTML += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
             }
             
             reportHTML += `</div>`; // Close service-type-section
@@ -1437,62 +1417,42 @@ function generateReport() {
         if (visitors.length > 0) {
             const sortedVisitors = visitors.sort((a, b) => a.name.localeCompare(b.name));
             
-            // Check if this is Sunday Worship or Evangelistic Service
-            const isWorshipService = serviceFilter === 'Sunday Worship' || serviceFilter === 'Evangelistic Service';
-            const visitorSectionTitle = isWorshipService ? 'WORSHIP VISITORS' : 'VISITORS';
+            // Generate dynamic visitor section title based on service type
+            const visitorSectionTitle = serviceFilter.toUpperCase() + ' VISITORS';
             
-            if (isWorshipService) {
-                // Table format for worship services
+            // Table format for ALL service types with visitors
+            reportHTML += `
+                <div class="cluster-detail-section" style="margin-top: 25px;">
+                    <h5 style="color: #FF9800; font-size: 15px; font-weight: 600; margin-bottom: 12px;">${visitorSectionTitle} (${visitors.length} total)</h5>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                        <thead>
+                            <tr style="background-color: #FF9800; color: white;">
+                                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitors Name</th>
+                                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
+                                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitors Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            sortedVisitors.forEach((record, index) => {
+                const visitorType = record.visitorType || 'Visitor';
+                const visitorCluster = record.cluster || 'N/A';
+                const bgColor = index % 2 === 0 ? '#fff3e0' : 'white';
                 reportHTML += `
-                    <div class="cluster-detail-section" style="margin-top: 25px;">
-                        <h5 style="color: #FF9800; font-size: 15px; font-weight: 600; margin-bottom: 12px;">${visitorSectionTitle} (${visitors.length} total)</h5>
-                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
-                            <thead>
-                                <tr style="background-color: #FF9800; color: white;">
-                                    <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitors Name</th>
-                                    <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
-                                    <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitors Type</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                    <tr style="background: ${bgColor};">
+                        <td style="border: 1px solid #ddd; padding: 8px;">${record.name}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${visitorCluster}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${visitorType}</td>
+                    </tr>
                 `;
-                
-                sortedVisitors.forEach((record, index) => {
-                    const visitorType = record.visitorType || 'Visitor';
-                    const visitorCluster = record.cluster || 'N/A';
-                    const bgColor = index % 2 === 0 ? '#fff3e0' : 'white';
-                    reportHTML += `
-                        <tr style="background: ${bgColor};">
-                            <td style="border: 1px solid #ddd; padding: 8px;">${record.name}</td>
-                            <td style="border: 1px solid #ddd; padding: 8px;">${visitorCluster}</td>
-                            <td style="border: 1px solid #ddd; padding: 8px;">${visitorType}</td>
-                        </tr>
-                    `;
-                });
-                
-                reportHTML += `
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-            } else {
-                // List format for other services
-                reportHTML += `
-                    <div class="cluster-detail-section" style="margin-top: 25px;">
-                        <h5 style="color: #FF9800; font-size: 15px; font-weight: 600; margin-bottom: 5px;">${visitorSectionTitle} (${visitors.length} total)</h5>
-                        <p style="color: #FF9800; font-weight: 600; font-size: 14px; margin-bottom: 10px;">Visitor:</p>
-                        <ol class="attendee-detail-list" style="margin: 0; padding-left: 20px;">
-                `;
-                
-                sortedVisitors.forEach((record, index) => {
-                    reportHTML += `<li style="margin-bottom: 5px;">${record.name} - ${record.time}</li>`;
-                });
-                
-                reportHTML += `
-                        </ol>
-                    </div>
-                `;
-            }
+            });
+            
+            reportHTML += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
         }
     }
     
