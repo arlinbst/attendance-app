@@ -377,8 +377,16 @@
                 <div style="margin-top: 30px; padding: 20px; border: 2px solid #ff9800; border-radius: 8px; background-color: #fff3e0;">
                     <h4 style="color: #f57c00; margin-top: 0; margin-bottom: 15px;">⚠️ Data Management</h4>
                     <p style="font-size: 13px; color: #666; margin-bottom: 15px;">Carefully manage attendance records. Deleted data cannot be recovered.</p>
-                    <button onclick="deleteRecordsForDate()" class="btn" style="background-color: #ff9800; margin-right: 10px;">🗑️ Delete Records for Selected Date & Service</button>
-                    <button onclick="clearAllRecords()" class="btn" style="background-color: #f44336;">❌ Clear ALL Records</button>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                        <button onclick="deleteRecordsForDate()" class="btn" style="background-color: #ff9800; color: white; padding: 12px 20px; font-size: 14px; font-weight: 600; border-radius: 8px; min-width: 200px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <span style="font-size: 18px;">🗑️</span>
+                            <span>Delete by Date & Service</span>
+                        </button>
+                        <button onclick="clearAllRecords()" class="btn" style="background-color: #f44336; color: white; padding: 12px 20px; font-size: 14px; font-weight: 600; border-radius: 8px; min-width: 200px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <span style="font-size: 18px;">❌</span>
+                            <span>Clear ALL Records</span>
+                        </button>
+                    </div>
                 </div>
                 
                 <div id="report-content" style="margin-top: 30px;">
@@ -456,7 +464,7 @@
                 Developed By: <strong style="color: #8B1538;">ABSJ</strong>
             </p>
             <p style="margin: 0; color: #999; font-size: 11px;">
-                © 2026 | Version 2.3
+                © 2026 | Version 2.4
             </p>
         </footer>
     </div>
