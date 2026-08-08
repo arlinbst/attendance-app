@@ -62,7 +62,8 @@
                 <div class="form-section">
                     <label for="service-type" style="display: block; margin-bottom: 8px; font-weight: bold;">Type of Service:</label>
                     <select id="service-type" class="input-field" style="margin-bottom: 15px;">
-                        <option value="Sunday Worship">Sunday Worship</option>
+                        <option value="First Worship">First Worship</option>
+                        <option value="Second Worship">Second Worship</option>
                         <option value="Evangelistic Service">Evangelistic Service</option>
                         <option value="Bible Study">Bible Study</option>
                         <option value="Prayer Meeting">Prayer Meeting</option>
@@ -125,7 +126,8 @@
                 
                 <label for="visitor-service" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Service Type:</label>
                 <select id="visitor-service" class="input-field">
-                    <option value="Sunday Worship">Sunday Worship</option>
+                    <option value="First Worship">First Worship</option>
+                    <option value="Second Worship">Second Worship</option>
                     <option value="Evangelistic Service">Evangelistic Service</option>
                     <option value="Bible Study">Bible Study</option>
                     <option value="Prayer Meeting">Prayer Meeting</option>
@@ -314,7 +316,7 @@
                     
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 15px;">
                         <label style="font-weight: bold;">Filter by Cluster:</label>
-                        <select id="export-cluster-filter" class="input-field" style="flex: 1; min-width: 200px;">
+                        <select id="export-cluster-filter" class="input-field" style="flex: 1; min-width: 200px;" onchange="updateMemberStats()">
                             <option value="ALL">ALL Clusters</option>
                             <option value="CAMP AGUINALDO">CAMP AGUINALDO</option>
                             <option value="CENTRAL">CENTRAL</option>
@@ -373,7 +375,8 @@
                 <label for="report-service" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Service Type:</label>
                 <select id="report-service" class="input-field">
                     <option value="">All Services</option>
-                    <option value="Sunday Worship">Sunday Worship</option>
+                    <option value="First Worship">First Worship</option>
+                    <option value="Second Worship">Second Worship</option>
                     <option value="Evangelistic Service">Evangelistic Service</option>
                     <option value="Bible Study">Bible Study</option>
                     <option value="Prayer Meeting">Prayer Meeting</option>
@@ -386,7 +389,7 @@
                 <button onclick="printReport()" class="btn btn-success" style="margin-top: 20px;">Print Report</button>
                 
                 <!-- DATA MANAGEMENT SECTION -->
-                <div style="margin-top: 30px; padding: 20px; border: 2px solid #ff9800; border-radius: 8px; background-color: #fff3e0;">
+                <div id="data-management-section" style="margin-top: 30px; padding: 20px; border: 2px solid #ff9800; border-radius: 8px; background-color: #fff3e0;">
                     <h4 style="color: #f57c00; margin-top: 0; margin-bottom: 15px;">⚠️ Data Management</h4>
                     <p style="font-size: 13px; color: #666; margin-bottom: 15px;">Carefully manage attendance records. Deleted data cannot be recovered.</p>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
@@ -476,7 +479,7 @@
                 Developed By: <strong style="color: #8B1538;">ABSJ</strong>
             </p>
             <p style="margin: 0; color: #999; font-size: 11px;">
-                © 2026 | Version 1.0
+                © 2026 | Version 1.1
             </p>
         </footer>
     </div>
@@ -486,6 +489,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- ✅ Authentication System (MUST load BEFORE app.js) -->
+    <script src="auth-system.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
