@@ -8,6 +8,65 @@ let lastScanTime = 0;
 let currentDisplayedRecords = [];
 let currentCamera = "environment"; // Track current camera: "environment" (back) or "user" (front)
 
+// ========================================
+// AUTHENTICATION WRAPPER FUNCTIONS
+// ========================================
+
+// Backup original functions
+let _original_addVisitor = null;
+let _original_deleteRecordsForDate = null;
+let _original_clearAllRecords = null;
+let _original_deleteMember = null;
+
+// Initialize auth wrappers after page load
+function initAuthWrappers() {
+    // Wait for AuthSystem to be available
+    if (typeof AuthSystem === 'undefined') {
+        console.error('❌ AuthSystem not loaded!');
+        return;
+    }
+    
+    console.log('✅ Initializing auth wrappers...');
+    
+    // Wrap addVisitor - requires Leader or Admin
+    _original_addVisitor = addVisitor;
+    window.addVisitor = function() {
+        if (AuthSystem.isGuest()) {
+            AuthSystem.showAuthModal(AuthSystem.USER_ROLES.LEADER, () => {
+                _original_addVisitor();
+            });
+            return;
+        }
+        _original_addVisitor();
+    };
+    
+    // Wrap deleteRecordsForDate - requires Admin only
+    _original_deleteRecordsForDate = deleteRecordsForDate;
+    window.deleteRecordsForDate = function() {
+        if (!AuthSystem.isAdmin()) {
+            AuthSystem.showAuthModal(AuthSystem.USER_ROLES.ADMIN, () => {
+                _original_deleteRecordsForDate();
+            });
+            return;
+        }
+        _original_deleteRecordsForDate();
+    };
+    
+    // Wrap clearAllRecords - requires Admin only
+    _original_clearAllRecords = clearAllRecords;
+    window.clearAllRecords = function() {
+        if (!AuthSystem.isAdmin()) {
+            AuthSystem.showAuthModal(AuthSystem.USER_ROLES.ADMIN, () => {
+                _original_clearAllRecords();
+            });
+            return;
+        }
+        _original_clearAllRecords();
+    };
+    
+    console.log('✅ Auth wrappers initialized');
+}
+
 // Firebase Configuration
 const firebaseConfig = {
     apiKey: "AIzaSyCbZI9mTieFtelvSRscgp2oWp9oA5cIYo",
@@ -57,6 +116,11 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(() => console.log('✅ Service Worker registered'))
             .catch(err => console.log('❌ Service Worker registration failed:', err));
     }
+    
+    // ✅ Initialize authentication wrappers
+    setTimeout(() => {
+        initAuthWrappers();
+    }, 500);
 });
 
 // Tab switching
@@ -182,6 +246,13 @@ function onScanSuccess(decodedText, decodedResult) {
     try {
         const data = JSON.parse(decodedText);
         
+        // ✅ SANITIZE QR CODE DATA (SECURITY)
+        if (typeof AuthSystem !== 'undefined' && AuthSystem.sanitizeInput) {
+            if (data.name) data.name = AuthSystem.sanitizeInput(data.name);
+            if (data.cluster) data.cluster = AuthSystem.sanitizeInput(data.cluster);
+            if (data.category) data.category = AuthSystem.sanitizeInput(data.category);
+        }
+        
         if (data.name && data.cluster) {
             stopScanner();
             
@@ -256,7 +327,10 @@ async function logAttendance(name, cluster, serviceType, category) {
 
 // Add Visitor Function
 async function addVisitor() {
-    const name = document.getElementById('visitor-name').value.trim();
+    const rawName = document.getElementById('visitor-name').value.trim();
+    const name = typeof AuthSystem !== 'undefined' && AuthSystem.sanitizeInput 
+        ? AuthSystem.sanitizeInput(rawName) 
+        : rawName;
     const visitorType = document.getElementById('visitor-type').value;
     const visitorCluster = document.getElementById('visitor-cluster').value.trim();
     const serviceType = document.getElementById('visitor-service').value;
@@ -781,9 +855,11 @@ async function clearAllRecords() {
         updateStats();
         populateClusterFilter();
         
-        // Clear report content
-        document.getElementById('report-content').innerHTML = 
-            '<p class="empty-state">All records have been deleted.</p>';
+        // Clear report content if element exists
+        const reportContent = document.getElementById('report-content');
+        if (reportContent) {
+            reportContent.innerHTML = '<p class="empty-state">All records have been deleted.</p>';
+        }
         
         // Success message
         alert(
@@ -874,6 +950,13 @@ function clearAllRecords() {
 // Display Functions
 function displayRecords(filteredRecords = null) {
     const recordsList = document.getElementById('records-list');
+    
+    // If element doesn't exist (e.g., on Reports tab), skip update
+    if (!recordsList) {
+        console.log('ℹ️ records-list element not found (may be on different tab)');
+        return;
+    }
+    
     const records = filteredRecords || attendanceRecords;
     
     currentDisplayedRecords = records;
@@ -923,13 +1006,24 @@ function updateStats() {
     
     console.log('Stats - Today:', todayCount, 'Total:', attendanceRecords.length);
     
-    document.getElementById('total-today').textContent = todayCount;
-    document.getElementById('total-all').textContent = attendanceRecords.length;
+    // Safely update elements if they exist
+    const todayElement = document.getElementById('total-today');
+    const allElement = document.getElementById('total-all');
+    
+    if (todayElement) todayElement.textContent = todayCount;
+    if (allElement) allElement.textContent = attendanceRecords.length;
 }
 
 function populateClusterFilter() {
     const clusters = [...new Set(attendanceRecords.map(r => r.cluster.trim()).filter(c => c !== 'VISITOR'))].sort();
     const select = document.getElementById('filter-cluster');
+    
+    // If element doesn't exist (e.g., on different tab), skip update
+    if (!select) {
+        console.log('ℹ️ filter-cluster element not found (may be on different tab)');
+        return;
+    }
+    
     const currentValue = select.value;
     
     select.innerHTML = '<option value="">All Clusters</option>';
@@ -2302,8 +2396,20 @@ function loadMembersFromLocalStorage() {
 
 // Update member statistics
 function updateMemberStats() {
-    document.getElementById('total-members').textContent = membersData.length;
-    document.getElementById('total-visitors').textContent = visitorsData.length;
+    const clusterFilter = document.getElementById('export-cluster-filter');
+    const selectedCluster = clusterFilter ? clusterFilter.value : 'ALL';
+    
+    let filteredMembers = membersData;
+    let filteredVisitors = visitorsData;
+    
+    // Filter by cluster if not "ALL"
+    if (selectedCluster && selectedCluster !== 'ALL') {
+        filteredMembers = membersData.filter(m => m.cluster === selectedCluster);
+        filteredVisitors = visitorsData.filter(v => v.cluster === selectedCluster);
+    }
+    
+    document.getElementById('total-members').textContent = filteredMembers.length;
+    document.getElementById('total-visitors').textContent = filteredVisitors.length;
 }
 
 // Export to Excel Function
