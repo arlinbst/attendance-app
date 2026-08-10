@@ -81,6 +81,48 @@ const firebaseConfig = {
 let db = null;
 let firebaseInitialized = false;
 
+// ====================================================================
+// SYNC STATUS INDICATOR HELPERS
+// Shows real-time sync status to users across all devices
+// ====================================================================
+function showSyncStatus(icon, text, color) {
+    const statusDiv = document.getElementById('sync-status');
+    const iconSpan = document.getElementById('sync-icon');
+    const textSpan = document.getElementById('sync-text');
+    
+    if (statusDiv && iconSpan && textSpan) {
+        iconSpan.textContent = icon;
+        textSpan.textContent = text;
+        statusDiv.style.background = color;
+        statusDiv.style.display = 'flex';
+        statusDiv.style.alignItems = 'center';
+        statusDiv.style.gap = '8px';
+        
+        // Auto-hide success messages after 3 seconds
+        if (icon === '✅') {
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+        }
+    }
+}
+
+function showSyncing() {
+    showSyncStatus('🔄', 'Syncing...', 'rgba(33, 150, 243, 0.95)');
+}
+
+function showSynced() {
+    showSyncStatus('✅', 'Synced', 'rgba(76, 175, 80, 0.95)');
+}
+
+function showOffline() {
+    showSyncStatus('📴', 'Offline Mode', 'rgba(158, 158, 158, 0.95)');
+}
+
+function showSyncError() {
+    showSyncStatus('⚠️', 'Sync Error', 'rgba(244, 67, 54, 0.95)');
+}
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ Page loaded - initializing...');
@@ -93,7 +135,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // STEP 2: Initialize Firebase (onSnapshot will auto-sync from cloud)
     initializeFirebase().then(() => {
         console.log('✅ Firebase connected - real-time sync active');
-        loadMembersFromCloud(); // Load member master data from cloud
+        console.log('📡 Multi-device sync enabled!');
+        console.log('   When you add/scan on one device → all devices update instantly!');
+        // Real-time listeners (onSnapshot) will auto-load data
+        // No need to call loadMembersFromCloud manually
     }).catch((error) => {
         console.error('❌ Firebase failed:', error);
         console.log('⚠️ App will work in offline mode only');
@@ -143,6 +188,24 @@ function showTab(tabName) {
     
     if (tabName === 'records') {
         populateClusterFilter();
+    }
+    
+    // When switching to reports tab, ensure data is loaded
+    if (tabName === 'reports') {
+        console.log('📊 Reports tab opened - ensuring data is loaded');
+        // If no records in memory but localStorage has data, reload
+        if (attendanceRecords.length === 0) {
+            const saved = localStorage.getItem('attendanceRecords');
+            if (saved) {
+                try {
+                    attendanceRecords = JSON.parse(saved);
+                    console.log('✅ Reloaded from localStorage:', attendanceRecords.length);
+                } catch (error) {
+                    console.error('❌ Error loading localStorage:', error);
+                }
+            }
+        }
+        console.log('   Current records in memory:', attendanceRecords.length);
     }
 }
 
@@ -418,13 +481,23 @@ async function initializeFirebase() {
         db = firebase.firestore();
         firebaseInitialized = true;
         console.log('✅ Firebase initialized successfully');
+        console.log('📡 REAL-TIME SYNC ACTIVE - All devices will sync automatically!');
         
-        // Real-time listener for attendance records (syncs across all devices)
+        showSyncing(); // Show initial sync status
+        
+        // ====================================================================
+        // REAL-TIME SYNC: Attendance Records
+        // All devices connected will receive updates INSTANTLY
+        // When Device A adds attendance → Device B/C/D see it immediately
+        // ====================================================================
         db.collection('attendance').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
             const recordCount = snapshot.size;
-            console.log('📡 Firebase snapshot update');
+            console.log('📡 Firebase snapshot update (REAL-TIME)');
             console.log('   Server records:', recordCount);
             console.log('   Local records before sync:', attendanceRecords.length);
+            console.log('   🌐 Syncing across ALL devices...');
+            
+            showSyncing(); // Show syncing indicator
             
             attendanceRecords = [];
             snapshot.forEach((doc) => {
@@ -432,6 +505,7 @@ async function initializeFirebase() {
             });
             
             console.log('✅ Synced from Firebase:', attendanceRecords.length, 'records');
+            console.log('   ✅ All connected devices now have the same data!');
             
             // Update UI
             displayRecords();
@@ -441,9 +515,46 @@ async function initializeFirebase() {
             // Save to localStorage as backup for offline access
             localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
             console.log('💾 Saved to localStorage as backup');
+            
+            showSynced(); // Show success
         }, (error) => {
             console.error('❌ Firebase listener error:', error);
             console.log('⚠️ Real-time sync interrupted. App will use cached data.');
+            showSyncError();
+            setTimeout(() => showOffline(), 2000);
+        });
+        
+        // ====================================================================
+        // REAL-TIME SYNC: Members/Visitors Collection
+        // All devices connected will receive member updates INSTANTLY
+        // ====================================================================
+        db.collection('members').onSnapshot((snapshot) => {
+            console.log('📡 Members snapshot update (REAL-TIME)');
+            membersData = [];
+            visitorsData = [];
+            
+            snapshot.forEach((doc) => {
+                const data = { id: doc.id, ...doc.data() };
+                if (data.type === 'members') {
+                    membersData.push(data);
+                } else {
+                    visitorsData.push(data);
+                }
+            });
+            
+            console.log('✅ Members synced:', membersData.length, 'members,', visitorsData.length, 'visitors');
+            console.log('   ✅ Member data updated across all devices!');
+            
+            // Save to localStorage as backup
+            saveMembersToLocalStorage();
+            updateMemberStats();
+            
+            // Don't show sync indicator for members (only for attendance to avoid clutter)
+            // But log confirms sync is working
+        }, (error) => {
+            console.error('❌ Members listener error:', error);
+            console.log('⚠️ Loading members from localStorage...');
+            loadMembersFromLocalStorage();
         });
         
         return true;
@@ -1130,24 +1241,40 @@ function exportToCSV() {
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     
-    if (navigator.share && navigator.canShare) {
+    // ====================================================================
+    // CROSS-PLATFORM EXPORT: Works on ALL devices (desktop, laptop, mobile)
+    // Device detection is ONLY for enhanced features (share API), NOT restrictions
+    // ====================================================================
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // ENHANCED FEATURE: Try Web Share API on mobile (optional, not required)
+    if (isMobile && navigator.share) {
         const file = new File([blob], filename, { type: 'text/csv' });
-        if (navigator.canShare({ files: [file] })) {
+        
+        // Check if we can share files
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
             navigator.share({
                 files: [file],
                 title: 'Attendance Report',
-                text: 'Attendance records export'
+                text: `Exported ${recordsToExport.length} attendance records`
             }).then(() => {
-                console.log('Shared successfully');
+                console.log('✅ CSV shared successfully via mobile share');
             }).catch((error) => {
-                console.log('Error sharing:', error);
+                console.log('⚠️ Share failed, falling back to download:', error);
                 downloadBlob(blob, filename);
             });
             return;
         }
     }
     
+    // UNIVERSAL FALLBACK: Direct download works on ALL devices
+    console.log('📥 Downloading CSV file - works on desktop, laptop, and mobile');
     downloadBlob(blob, filename);
+    
+    // Show success message on mobile for better UX
+    if (isMobile) {
+        alert(`✅ Report exported!\n\nFile: ${filename}\nRecords: ${recordsToExport.length}\n\nCheck your Downloads folder.`);
+    }
 }
 
 function downloadBlob(blob, filename) {
@@ -1162,6 +1289,20 @@ function downloadBlob(blob, filename) {
 // Open Date Lookup Modal
 function openDateLookup() {
     console.log('📅 Opening date lookup modal...');
+    
+    // CRITICAL FIX: Ensure data is loaded before opening lookup
+    if (attendanceRecords.length === 0) {
+        console.log('⚠️ No records in memory, attempting to reload from localStorage');
+        const saved = localStorage.getItem('attendanceRecords');
+        if (saved) {
+            try {
+                attendanceRecords = JSON.parse(saved);
+                console.log('✅ Reloaded', attendanceRecords.length, 'records from localStorage');
+            } catch (error) {
+                console.error('❌ Error loading localStorage:', error);
+            }
+        }
+    }
     
     // Get unique dates with their service types from attendance records
     const dateServiceMap = {};
@@ -1184,11 +1325,12 @@ function openDateLookup() {
     });
     
     console.log('   Available dates:', sortedDates.length);
+    console.log('   Total records:', attendanceRecords.length);
     
     let lookupHTML = '';
     
     if (sortedDates.length === 0) {
-        lookupHTML = '<p style="text-align: center; color: #666; padding: 40px 20px;">No attendance records found.<br><br>Please scan or add attendance first.</p>';
+        lookupHTML = '<p style="text-align: center; color: #666; padding: 40px 20px;">No attendance records found.<br><br>Please scan or add attendance first.<br><br>If you have scanned QR codes, try reloading the page.</p>';
     } else {
         lookupHTML = `
             <table style="width: 100%; border-collapse: collapse;">
@@ -1239,6 +1381,10 @@ function openDateLookup() {
 function closeDateLookup() {
     document.getElementById('date-lookup-modal').style.display = 'none';
     document.body.style.overflow = 'auto';
+    // Mobile fix: force reflow to ensure modal is properly hidden
+    setTimeout(() => {
+        document.getElementById('date-lookup-modal').style.visibility = 'visible';
+    }, 10);
 }
 
 // Select Report Date from Lookup
@@ -1599,6 +1745,16 @@ function generateReport() {
                 </div>
             `;
         }
+    }
+    
+    // Mobile: Add scroll hint if on mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+        reportHTML = `
+            <div style="background: #e3f2fd; padding: 8px; margin-bottom: 15px; border-radius: 5px; text-align: center; font-size: 12px; color: #1976d2;">
+                📱 <strong>Tip:</strong> Swipe left/right to see full table
+            </div>
+        ` + reportHTML;
     }
     
     document.getElementById('report-content').innerHTML = reportHTML;
@@ -2544,7 +2700,12 @@ function exportToExcel() {
     
     // Create and download file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
+    
+    // ====================================================================
+    // CROSS-PLATFORM EXPORT: Works on ALL devices (desktop, laptop, mobile)
+    // Device detection is ONLY for enhanced features (share API), NOT restrictions
+    // ====================================================================
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     let filename = 'UP_Diliman_';
     if (typeFilter === 'MEMBERS') {
@@ -2558,6 +2719,40 @@ function exportToExcel() {
         filename += `_${clusterFilter.replace(/\s+/g, '_')}`;
     }
     filename += `_${new Date().toISOString().split('T')[0]}.csv`;
+    
+    // ENHANCED FEATURE: Try Web Share API on mobile (optional, not required)
+    if (isMobile && navigator.share) {
+        const file = new File([blob], filename, { type: 'text/csv' });
+        
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            const totalCount = filteredMembers.length + filteredVisitors.length;
+            navigator.share({
+                files: [file],
+                title: 'UP Diliman Members Report',
+                text: `Report: ${totalCount} total records`
+            }).then(() => {
+                console.log('✅ Excel report shared via mobile');
+                let summaryMsg = '✅ Report shared successfully!\n\n';
+                if (typeFilter !== 'VISITORS') summaryMsg += `Members: ${filteredMembers.length}\n`;
+                if (typeFilter !== 'MEMBERS') summaryMsg += `Visitors: ${filteredVisitors.length}\n`;
+                summaryMsg += `Total: ${totalCount}`;
+                alert(summaryMsg);
+            }).catch((error) => {
+                console.log('⚠️ Share failed, downloading instead:', error);
+                downloadExcelFile(blob, filename, filteredMembers, filteredVisitors, typeFilter);
+            });
+            return;
+        }
+    }
+    
+    // UNIVERSAL FALLBACK: Direct download works on ALL devices
+    console.log('📥 Downloading Excel/CSV - works on desktop, laptop, and mobile');
+    downloadExcelFile(blob, filename, filteredMembers, filteredVisitors, typeFilter);
+}
+
+// Helper function to download Excel file
+function downloadExcelFile(blob, filename, filteredMembers, filteredVisitors, typeFilter) {
+    const link = document.createElement('a');
     
     if (navigator.msSaveBlob) { // IE 10+
         navigator.msSaveBlob(blob, filename);
