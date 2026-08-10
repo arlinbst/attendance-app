@@ -329,10 +329,10 @@
                         </select>
                     </div>
                     
-                    <div style="display: flex; gap: 15px; justify-content: center; align-items: center; margin-top: 20px;">
-                        <button onclick="previewMembersReport()" class="btn btn-primary" style="width: 70px; height: 70px; border-radius: 50%; font-size: 36px; padding: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" title="Preview Report">👁️</button>
-                        <button onclick="printMembersReport()" class="btn btn-success" style="width: 70px; height: 70px; border-radius: 50%; font-size: 36px; padding: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" title="Print Report">🖨️</button>
-                        <button onclick="exportToExcel()" class="btn" style="width: 70px; height: 70px; border-radius: 50%; font-size: 36px; padding: 0; display: flex; align-items: center; justify-content: center; background: #FFC107; color: white; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" title="Export to Excel" onmouseover="this.style.background='#FFB300'" onmouseout="this.style.background='#FFC107'">📥</button>
+                    <div style="display: flex; gap: 15px; justify-content: center; align-items: center; margin-top: 20px; flex-wrap: wrap;">
+                        <button onclick="previewMembersReport()" class="btn btn-primary export-circle-btn" style="width: 70px; height: 70px; border-radius: 50%; font-size: 36px; padding: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" title="Preview Report">👁️</button>
+                        <button onclick="printMembersReport()" class="btn btn-success export-circle-btn" style="width: 70px; height: 70px; border-radius: 50%; font-size: 36px; padding: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" title="Print Report">🖨️</button>
+                        <button onclick="exportToExcel()" class="btn export-circle-btn" style="width: 70px; height: 70px; border-radius: 50%; font-size: 36px; padding: 0; display: flex; align-items: center; justify-content: center; background: #FFC107; color: white; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" title="Export to Excel" onmouseover="this.style.background='#FFB300'" onmouseout="this.style.background='#FFC107'">📥</button>
                     </div>
                 </div>
                 
@@ -366,10 +366,10 @@
                 <h3>Attendance Report</h3>
                 
                 <label for="report-date" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Select Date:</label>
-                <div style="display: flex; gap: 8px; align-items: stretch;">
-                    <input type="text" id="report-date-display" class="input-field" placeholder="Click lookup to select date" readonly style="flex: 1; cursor: pointer; background-color: #f0f0f0;" onclick="openDateLookup()">
+                <div style="display: flex; gap: 8px; align-items: stretch; flex-wrap: nowrap;">
+                    <input type="text" id="report-date-display" class="input-field" placeholder="Click lookup to select date" readonly style="flex: 1; cursor: pointer; background-color: #f0f0f0; min-width: 0;" onclick="openDateLookup()">
                     <input type="hidden" id="report-date" value="">
-                    <button onclick="openDateLookup()" class="btn btn-primary" style="flex-shrink: 0; min-width: 100px;">🔍 Lookup</button>
+                    <button onclick="openDateLookup()" class="btn btn-primary" style="flex-shrink: 0; padding: 10px 15px; white-space: nowrap;">🔍 Lookup</button>
                 </div>
                 
                 <label for="report-service" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Service Type:</label>
