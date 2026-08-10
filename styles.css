@@ -265,6 +265,13 @@ header h1 {
     margin: 0 auto;
 }
 
+@media (max-width: 600px) {
+    .form-section {
+        max-width: 100%; /* Full width on mobile */
+        padding: 0 10px;
+    }
+}
+
 .form-section h3 {
     margin-bottom: 20px;
     color: #333;
@@ -334,15 +341,25 @@ header h1 {
     select {
         font-size: 16px !important; /* Prevent zoom on iOS */
         padding: 12px !important;
-        min-height: 44px; /* Touch-friendly */
-    }
+        min-height: 44px; /* Touch-friendly */        width: 100% !important; /* ✅ Full width for mobile */
+        max-width: 100% !important;
+        box-sizing: border-box !important;    }
     
-    /* Mobile: Export buttons - make them larger and stacked */
+    /* Mobile: Export buttons - circular and properly sized */
     .stats + div button,
-    div[style*="border-radius: 50%"] {
-        width: 60px !important;
-        height: 60px !important;
-        font-size: 28px !important;
+    div[style*="border-radius: 50%"],
+    button[onclick*="preview"],
+    button[onclick*="print"],
+    button[onclick*="export"] {
+        min-width: 65px !important;
+        width: 65px !important;
+        height: 65px !important;
+        border-radius: 50% !important;
+        font-size: 30px !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
     
     /* Mobile: Authentication modal */
@@ -433,6 +450,35 @@ header h1 {
     #preview-content {
         padding: 15px !important;
         font-size: 12px !important;
+    }
+    
+    /* Mobile: Lookup button - make it fit properly */
+    button[onclick*="openDateLookup"],
+    button[onclick*="Lookup"] {
+        min-width: 80px !important;
+        max-width: 95px !important;
+        font-size: 14px !important;
+        padding: 10px 8px !important;
+        white-space: nowrap !important;
+    }
+    
+    /* Mobile: Name input fields - ensure full width visibility */
+    #visitor-name,
+    #member-name,
+    #employee-name,
+    #search-name {
+        width: 100% !important;
+        font-size: 15px !important;
+    }
+    
+    /* Mobile: Circular export buttons - consistent sizing */
+    .export-circle-btn,
+    button.export-circle-btn {
+        width: 65px !important;
+        height: 65px !important;
+        min-width: 65px !important;
+        min-height: 65px !important;
+        font-size: 30px !important;
     }
 }
 
