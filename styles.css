@@ -259,6 +259,13 @@ header h1 {
     font-size: 16px;
 }
 
+small {
+    display: block;
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
+}
+
 /* Generate QR Section */
 .form-section {
     max-width: 400px;
@@ -269,6 +276,24 @@ header h1 {
     .form-section {
         max-width: 100%; /* Full width on mobile */
         padding: 0 10px;
+    }
+    
+    .form-group {
+        width: 100%;
+        max-width: 100%;
+        overflow: visible;
+    }
+    
+    .form-group input,
+    .form-group select {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    .form-group small {
+        font-size: 11px !important;
+        display: block !important;
+        margin-top: 4px !important;
     }
 }
 
@@ -344,6 +369,19 @@ header h1 {
         min-height: 44px; /* Touch-friendly */        width: 100% !important; /* ✅ Full width for mobile */
         max-width: 100% !important;
         box-sizing: border-box !important;    }
+    
+    /* Mobile: Date inputs - ensure proper display */
+    input[type="date"] {
+        -webkit-appearance: none;
+        appearance: none;
+        background: white;
+        padding-right: 12px !important;
+    }
+    
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        font-size: 18px;
+        cursor: pointer;
+    }
     
     /* Mobile: Export buttons - circular and properly sized */
     .stats + div button,
