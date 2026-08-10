@@ -2058,22 +2058,16 @@ function printReport() {
                 
                 /* Numbered lists */
                 ol {
-                    counter-reset: item;
-                    padding-left: 0;
+                    padding-left: 20px;
                     margin: 0;
                 }
                 ol li {
-                    counter-increment: item;
                     margin-bottom: 5px;
-                    padding-left: 30px;
-                    position: relative;
                     color: #444;
                     line-height: 1.6;
+                    padding-left: 5px;
                 }
-                ol li:before {
-                    content: counter(item) ".";
-                    position: absolute;
-                    left: 0;
+                ol li::marker {
                     font-weight: bold;
                     color: #2196F3;
                     font-size: 14px;
