@@ -473,7 +473,9 @@ header h1 {
     
     /* Mobile: Circular export buttons - consistent sizing */
     .export-circle-btn,
-    button.export-circle-btn {
+    button.export-circle-btn,
+    .report-circle-btn,
+    button.report-circle-btn {
         width: 65px !important;
         height: 65px !important;
         min-width: 65px !important;
