@@ -1662,6 +1662,18 @@ function generateReport() {
         const totalMembers = filtered.filter(r => !r.isVisitor).length;
         const totalVisitors = filtered.filter(r => r.isVisitor).length;
         
+        // ✅ Calculate Summary per Cluster (across all services)
+        const overallClusterSummary = {};
+        filtered.forEach(r => {
+            if (!r.isVisitor) { // Only count members for cluster summary
+                const cluster = r.cluster || 'N/A';
+                if (!overallClusterSummary[cluster]) {
+                    overallClusterSummary[cluster] = 0;
+                }
+                overallClusterSummary[cluster]++;
+            }
+        });
+        
         // Build report header
         reportHTML = `
             <div class="report-header-enhanced">
@@ -1677,6 +1689,80 @@ function generateReport() {
                     <p class="generated-time"><strong>Generated:</strong> ${generatedTimestamp}</p>
                 </div>
             </div>
+            
+            <h4 style="margin-top: 30px; margin-bottom: 15px; color: #333; font-size: 16px; font-weight: 600; background: #E3F2FD; padding: 10px; border-radius: 5px;">📋 Summary: Attendance per Cluster</h4>
+            <table class="report-table" style="margin-bottom: 30px;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left;">Cluster</th>
+                        <th style="text-align: center; width: 100px;">Total Members</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        // Add cluster summary rows
+        Object.keys(overallClusterSummary).sort().forEach(cluster => {
+            reportHTML += `
+                <tr>
+                    <td><strong>${cluster}</strong></td>
+                    <td style="text-align: center; font-weight: bold;">${overallClusterSummary[cluster]}</td>
+                </tr>
+            `;
+        });
+        
+        reportHTML += `
+                </tbody>
+                <tfoot>
+                    <tr style="background: #E3F2FD; font-weight: bold;">
+                        <td>TOTAL MEMBERS</td>
+                        <td style="text-align: center;">${totalMembers}</td>
+                    </tr>
+                    <tr style="background: #FFF3E0; font-weight: bold;">
+                        <td>TOTAL VISITORS</td>
+                        <td style="text-align: center;">${totalVisitors}</td>
+                    </tr>
+                    <tr style="background: #C8E6C9; font-weight: bold; font-size: 16px;">
+                        <td>GRAND TOTAL</td>
+                        <td style="text-align: center;">${filtered.length}</td>
+                    </tr>
+                </tfoot>
+            </table>
+            
+            <h4 style="margin-top: 30px; margin-bottom: 15px; color: #333; font-size: 16px; font-weight: 600; background: #FFF3E0; padding: 10px; border-radius: 5px;">📊 Total Attendance by Service Type</h4>
+            <table class="report-table" style="margin-bottom: 30px;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left;">Service Type</th>
+                        <th style="text-align: center; width: 100px;">Members</th>
+                        <th style="text-align: center; width: 100px;">Visitors</th>
+                        <th style="text-align: center; width: 100px;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        // Add service type breakdown
+        serviceTypes.forEach(serviceType => {
+            const serviceRecords = serviceTypeGroups[serviceType];
+            const svcMembers = serviceRecords.filter(r => !r.isVisitor).length;
+            const svcVisitors = serviceRecords.filter(r => r.isVisitor).length;
+            reportHTML += `
+                <tr>
+                    <td><strong>${serviceType}</strong></td>
+                    <td style="text-align: center;">${svcMembers}</td>
+                    <td style="text-align: center;">${svcVisitors}</td>
+                    <td style="text-align: center; font-weight: bold;">${serviceRecords.length}</td>
+                </tr>
+            `;
+        });
+        
+        reportHTML += `
+                </tbody>
+            </table>
+            
+            <div style="page-break-before: always;"></div>
+            <h4 style="margin-top: 30px; margin-bottom: 20px; color: #333; font-size: 16px; font-weight: 600;">📝 Detailed Attendance by Service Type</h4>
         `;
         
         // Generate report for each service type
@@ -1706,16 +1792,16 @@ function generateReport() {
                 
                 reportHTML += `
                     <div style="margin-bottom: 20px;">
-                        <h5 style="color: #333; font-size: 15px; font-weight: 600; margin-bottom: 8px;">${cluster}</h5>
-                        <ul style="margin: 0; padding-left: 20px; list-style: none;">
+                        <h5 style="color: #333; font-size: 15px; font-weight: 600; margin-bottom: 8px;">${cluster} (${sortedMembers.length} members)</h5>
+                        <ol style="margin: 0; padding-left: 20px;">
                 `;
                 
                 sortedMembers.forEach(record => {
-                    reportHTML += `<li style="margin-bottom: 3px; color: #444;">• ${record.name}</li>`;
+                    reportHTML += `<li style="margin-bottom: 3px; color: #444;">${record.name}</li>`;
                 });
                 
                 reportHTML += `
-                        </ul>
+                        </ol>
                     </div>
                 `;
             });
@@ -1965,8 +2051,33 @@ function printReport() {
                 }
                 
                 .report-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-                .report-table th { background: #2196F3; color: white; padding: 10px; text-align: left; }
+                .report-table th { background: #2196F3; color: white; padding: 10px; text-align: left; border: 1px solid #1976D2; }
                 .report-table td { border: 1px solid #ddd; padding: 8px; }
+                .report-table tbody tr:nth-child(even) { background-color: #f9f9f9; }
+                .report-table tfoot tr { font-weight: bold; }
+                
+                /* Numbered lists */
+                ol {
+                    counter-reset: item;
+                    padding-left: 0;
+                    margin: 0;
+                }
+                ol li {
+                    counter-increment: item;
+                    margin-bottom: 5px;
+                    padding-left: 30px;
+                    position: relative;
+                    color: #444;
+                    line-height: 1.6;
+                }
+                ol li:before {
+                    content: counter(item) ".";
+                    position: absolute;
+                    left: 0;
+                    font-weight: bold;
+                    color: #2196F3;
+                    font-size: 14px;
+                }
                 
                 .cluster-detail-section {
                     margin-bottom: 25px;
