@@ -278,6 +278,12 @@ header h1 {
     border-radius: 10px;
     display: flex;
     justify-content: center;
+    max-width: 100%; /* ✅ Scale on mobile */
+}
+
+#qrcode canvas {
+    max-width: 100%; /* ✅ Responsive QR code */
+    height: auto !important; /* ✅ Maintain aspect ratio */
 }
 
 /* Report Content Styling */
