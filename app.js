@@ -166,7 +166,135 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         initAuthWrappers();
     }, 500);
+    
+    // ✅ Initialize universal name auto-formatting
+    setTimeout(() => {
+        initUniversalNameFormatting();
+    }, 600);
 });
+
+// ====================================================================
+// UNIVERSAL NAME AUTO-FORMATTING
+// Automatically formats ALL name fields as: "Lastname, Firstname Middlename"
+// Applied to: Visitors, Members, Generate QR, Search
+// Example: "sta. juana arlin b" → "Sta. Juana, Arlin B"
+// ====================================================================
+function initUniversalNameFormatting() {
+    // List of all name input fields to format
+    const nameFields = [
+        'visitor-name',          // Visitors tab - add visitor
+        'member-name',           // Records tab - add/edit member
+        'employee-name',         // Generate QR tab
+        'search-name',           // Records tab - search field
+        'member-invited-by',     // Records tab - invited by
+        'member-baptised-by'     // Records tab - baptised by
+    ];
+    
+    nameFields.forEach(fieldId => {
+        const inputField = document.getElementById(fieldId);
+        
+        if (inputField) {
+            // Add input event listener for real-time formatting
+            inputField.addEventListener('input', function(e) {
+                const cursorPosition = this.selectionStart;
+                const originalValue = this.value;
+                const formattedValue = formatName(originalValue);
+                
+                // Only update if the formatted value is different
+                if (formattedValue !== originalValue) {
+                    this.value = formattedValue;
+                    
+                    // Smart cursor positioning
+                    let newPosition = cursorPosition;
+                    
+                    // If comma was just added, adjust cursor position
+                    if (formattedValue.includes(',') && !originalValue.includes(',')) {
+                        const commaIndex = formattedValue.indexOf(',');
+                        if (cursorPosition > commaIndex) {
+                            newPosition = cursorPosition + 2; // Account for ", "
+                        }
+                    }
+                    
+                    // Maintain cursor position (capped at string length)
+                    this.selectionStart = this.selectionEnd = Math.min(newPosition, formattedValue.length);
+                }
+            });
+            
+            // Also format on blur (when user leaves the field)
+            inputField.addEventListener('blur', function(e) {
+                this.value = formatName(this.value);
+            });
+            
+            console.log(`✅ Name formatting enabled for: ${fieldId}`);
+        }
+    });
+    
+    console.log('✅ Universal name auto-formatting initialized');
+}
+
+function formatName(input) {
+    if (!input || input.trim() === '') return input;
+    
+    // Remove extra spaces
+    let cleaned = input.trim().replace(/\s+/g, ' ');
+    
+    // Split into words
+    let words = cleaned.split(' ');
+    
+    // Capitalize each word with special handling
+    words = words.map(word => {
+        const lowerWord = word.toLowerCase();
+        
+        // ========================================
+        // Filipino Name Prefixes (De, Dela, etc.)
+        // ========================================
+        const filipinoPrefixes = ['de', 'del', 'dela', 'delos', 'delas', 'las', 'los', 'y', 'san', 'santa'];
+        if (filipinoPrefixes.includes(lowerWord)) {
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        }
+        
+        // ========================================
+        // Filipino Abbreviations (Sta., Sto.)
+        // ========================================
+        if (lowerWord === 'sta' || lowerWord === 'sta.') return 'Sta.';
+        if (lowerWord === 'sto' || lowerWord === 'sto.') return 'Sto.';
+        
+        // ========================================
+        // Titles & Honorifics
+        // ========================================
+        if (lowerWord === 'dr' || lowerWord === 'dr.') return 'Dr.';
+        if (lowerWord === 'atty' || lowerWord === 'atty.') return 'Atty.';
+        if (lowerWord === 'engr' || lowerWord === 'engr.') return 'Engr.';
+        if (lowerWord === 'prof' || lowerWord === 'prof.') return 'Prof.';
+        
+        // ========================================
+        // Suffixes (Jr., Sr., II, III, IV)
+        // ========================================
+        if (lowerWord === 'jr' || lowerWord === 'jr.') return 'Jr.';
+        if (lowerWord === 'sr' || lowerWord === 'sr.') return 'Sr.';
+        if (lowerWord === 'ii' || lowerWord === 'iii' || lowerWord === 'iv' || lowerWord === 'v') {
+            return word.toUpperCase();
+        }
+        
+        // ========================================
+        // Regular Capitalization
+        // ========================================
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    });
+    
+    // ========================================
+    // Format as "Lastname, Firstname Middlename"
+    // ========================================
+    if (!cleaned.includes(',') && words.length >= 2) {
+        // Assume first word is lastname, rest is firstname + middlename
+        const lastname = words[0];
+        const restOfName = words.slice(1).join(' ');
+        return `${lastname}, ${restOfName}`;
+    }
+    
+    // If comma already exists, just return capitalized version
+    return words.join(' ');
+}
 
 // Tab switching
 function showTab(tabName) {
