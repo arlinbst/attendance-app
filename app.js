@@ -460,6 +460,11 @@ function onScanSuccess(decodedText, decodedResult) {
             if (data.category) data.category = AuthSystem.sanitizeInput(data.category);
         }
         
+        // ✅ BACKWARDS COMPATIBILITY - old QR codes without category still work
+        if (!data.category) {
+            data.category = 'Member'; // Default for old QR codes
+        }
+        
         if (data.name && data.cluster) {
             stopScanner();
             
@@ -2031,17 +2036,24 @@ function generateQR() {
         return;
     }
     
-    const data = JSON.stringify({ name, cluster, category });
+    // ✅ STABLE QR FORMAT - backwards compatible
+    // Always include name, cluster, category for future compatibility
+    const data = JSON.stringify({ 
+        name: name.trim(), 
+        cluster: cluster.trim(), 
+        category: category.trim() 
+    });
     
     document.getElementById('qrcode').innerHTML = '';
     
+    // ✅ HIGHER RESOLUTION for better mobile scanning
     currentQRCode = new QRCode(document.getElementById('qrcode'), {
         text: data,
-        width: 256,
-        height: 256,
+        width: 512,  // ✅ Increased from 256 to 512 for better mobile scanning
+        height: 512, // ✅ Increased from 256 to 512 for better mobile scanning
         colorDark: '#000000',
         colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.H
+        correctLevel: QRCode.CorrectLevel.H  // Highest error correction
     });
     
     document.getElementById('qr-name').textContent = name;
@@ -2058,12 +2070,34 @@ function downloadQR() {
     }
     
     const name = document.getElementById('employee-name').value.trim();
-    const filename = `QR_${name.replace(/\s+/g, '_')}.png`;
+    
+    // ✅ PROPER FILENAME with formatted name (remove comma for filename)
+    const cleanName = name.replace(/,/g, '').replace(/\s+/g, '_');
+    const filename = `QR_${cleanName}.png`;
     
     // Detect if mobile device
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    canvas.toBlob((blob) => {
+    // ✅ EXTRA LARGE QR FOR PRINTING - 4x resolution (512px × 4 = 2048px!)
+    const highResCanvas = document.createElement('canvas');
+    const scale = 4; // ✅ 4x resolution = 2048px perfect for printing and easy scanning
+    const padding = 80; // ✅ White border around QR code for better scanning
+    
+    highResCanvas.width = (canvas.width * scale) + (padding * 2);
+    highResCanvas.height = (canvas.height * scale) + (padding * 2);
+    
+    const ctx = highResCanvas.getContext('2d');
+    
+    // ✅ White background for better scanning
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, highResCanvas.width, highResCanvas.height);
+    
+    // ✅ Draw QR code with crisp pixels
+    ctx.imageSmoothingEnabled = false; // Crisp pixels, no blur
+    ctx.scale(scale, scale);
+    ctx.drawImage(canvas, padding / scale, padding / scale);
+    
+    highResCanvas.toBlob((blob) => {
         // On mobile, try to share; on desktop, always download
         if (isMobile && navigator.share && navigator.canShare) {
             const file = new File([blob], filename, { type: 'image/png' });
