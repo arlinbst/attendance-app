@@ -235,8 +235,16 @@ function initUniversalNameFormatting() {
 function formatName(input) {
     if (!input || input.trim() === '') return input;
     
-    // Remove extra spaces
+    // ✅ FIX: Preserve trailing space (user is still typing between words)
+    const endsWithSpace = /\s+$/.test(input);
+    
+    // Remove extra spaces (but we'll re-add trailing space later)
     let cleaned = input.trim().replace(/\s+/g, ' ');
+    
+    // If only whitespace was entered, preserve it
+    if (cleaned === '' && input.length > 0) {
+        return input;
+    }
     
     // Split into words
     let words = cleaned.split(' ');
@@ -285,15 +293,23 @@ function formatName(input) {
     // ========================================
     // Format as "Lastname, Firstname Middlename"
     // ========================================
+    let result;
     if (!cleaned.includes(',') && words.length >= 2) {
         // Assume first word is lastname, rest is firstname + middlename
         const lastname = words[0];
         const restOfName = words.slice(1).join(' ');
-        return `${lastname}, ${restOfName}`;
+        result = `${lastname}, ${restOfName}`;
+    } else {
+        // If comma already exists, just return capitalized version
+        result = words.join(' ');
     }
     
-    // If comma already exists, just return capitalized version
-    return words.join(' ');
+    // ✅ FIX: Re-add trailing space so user can continue typing
+    if (endsWithSpace) {
+        result += ' ';
+    }
+    
+    return result;
 }
 
 // Tab switching
