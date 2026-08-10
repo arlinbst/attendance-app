@@ -259,6 +259,61 @@ header h1 {
     font-size: 16px;
 }
 
+/* Report Tables and Lists */
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.report-table th {
+    background: #2196F3;
+    color: white;
+    padding: 12px;
+    text-align: left;
+    font-weight: bold;
+    border: 1px solid #1976D2;
+}
+
+.report-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    color: #333;
+}
+
+.report-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.report-table tbody tr:hover {
+    background-color: #E3F2FD;
+}
+
+/* Numbered lists in reports */
+#report-content ol {
+    counter-reset: item;
+    padding-left: 0;
+    margin: 0;
+}
+
+#report-content ol li {
+    counter-increment: item;
+    margin-bottom: 5px;
+    padding-left: 30px;
+    position: relative;
+    color: #444;
+    line-height: 1.6;
+}
+
+#report-content ol li:before {
+    content: counter(item) ".";
+    position: absolute;
+    left: 0;
+    font-weight: bold;
+    color: #2196F3;
+    font-size: 14px;
+}
+
 small {
     display: block;
     font-size: 12px;
