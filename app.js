@@ -462,15 +462,18 @@ function flipCamera() {
 function onScanSuccess(decodedText, decodedResult) {
     const now = Date.now();
     
+    // ✅ FIX: Atomic check-and-set to prevent race condition
     if (isProcessingScan) {
         return;
     }
+    isProcessingScan = true; // ← Set immediately to block concurrent scans
     
+    // Check for duplicate scan (within 3 seconds)
     if (lastScannedData === decodedText && (now - lastScanTime) < 3000) {
+        isProcessingScan = false; // Reset flag before returning
         return;
     }
     
-    isProcessingScan = true;
     lastScannedData = decodedText;
     lastScanTime = now;
     
@@ -1201,33 +1204,8 @@ function deleteRecordsByDate() {
     }
 }
 
-// Clear All Records with Enhanced Warning
-function clearAllRecords() {
-    const totalRecords = attendanceRecords.length;
-    
-    if (totalRecords === 0) {
-        alert('No records to delete!');
-        return;
-    }
-    
-    const warningMsg = `⚠️ WARNING: DELETE ALL RECORDS ⚠️\n\nYou are about to permanently delete:\n• Total Records: ${totalRecords}\n\nThis will remove ALL attendance data from the system.\n\nThis action CANNOT be undone!\n\nAre you absolutely sure you want to continue?`;
-    
-    if (confirm(warningMsg)) {
-        const finalConfirm = confirm(`FINAL CONFIRMATION:\n\nDelete all ${totalRecords} records?\n\nClick OK to permanently delete all data.`);
-        
-        if (finalConfirm) {
-            clearAllRecordsFromCloud();
-            
-            attendanceRecords = [];
-            saveRecords();
-            updateStats();
-            populateClusterFilter();
-            displayRecords();
-            
-            alert('All records have been deleted successfully.');
-        }
-    }
-}
+// ✅ DUPLICATE REMOVED: Second clearAllRecords() function deleted (was redundant)
+// The comprehensive version with 3-stage confirmation is kept above (line ~1054)
 
 // Display Functions
 function displayRecords(filteredRecords = null) {
