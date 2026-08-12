@@ -91,6 +91,50 @@ function sanitizeInput(input) {
         .replace(/\//g, '&#x2F;'); // Prevent closing tags
 }
 
+// ========================================
+// DATE HANDLING: ISO FORMAT FOR CONSISTENCY
+// ========================================
+
+/**
+ * Get current date in ISO format (YYYY-MM-DD)
+ * Consistent across all browsers and locales
+ * @returns {string} ISO date string (e.g., "2026-08-12")
+ */
+function getLocalDate() {
+    const now = new Date();
+    return now.toISOString().split('T')[0];
+}
+
+/**
+ * Format ISO date for display
+ * @param {string} isoDate - ISO date string (YYYY-MM-DD)
+ * @returns {string} Formatted date (e.g., "August 12, 2026")
+ */
+function formatDateForDisplay(isoDate) {
+    if (!isoDate) return '';
+    const date = new Date(isoDate + 'T00:00:00'); // Avoid timezone issues
+    return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+}
+
+/**
+ * Convert browser locale date to ISO format
+ * Handles legacy data that may be in locale format
+ * @param {string} localeDate - Locale date string
+ * @returns {string} ISO date string
+ */
+function convertToISODate(localeDate) {
+    if (!localeDate) return getLocalDate();
+    // If already ISO format, return as-is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(localeDate)) return localeDate;
+    // Convert locale date to ISO
+    const date = new Date(localeDate);
+    return date.toISOString().split('T')[0];
+}
+
 // Firebase Configuration
 const firebaseConfig = {
     apiKey: "AIzaSyCbZI9mTieFtelvSRscgp2oWp9oA5cIYo",
@@ -552,7 +596,7 @@ async function logAttendance(name, cluster, serviceType, category) {
         serviceType: sanitizeInput(serviceType),
         category: sanitizeInput(category) || 'N/A',
         timestamp: new Date().toISOString(),
-        date: new Date().toLocaleDateString(),
+        date: getLocalDate(), // ✅ FIXED: Use ISO date format for consistency
         time: new Date().toLocaleTimeString(),
         isVisitor: false,
         scannedAt: new Date().toISOString() // Add timestamp when scanned
@@ -577,7 +621,7 @@ async function addVisitor() {
         return;
     }
     
-    const today = new Date().toLocaleDateString();
+    const today = getLocalDate(); // ✅ FIXED: Use ISO date format
     
     // Check for duplicate visitor
     const duplicateVisitor = attendanceRecords.find(record => 
@@ -607,7 +651,7 @@ async function addVisitor() {
         serviceType: sanitizeInput(serviceType),
         category: sanitizeInput(visitorType),
         timestamp: new Date().toISOString(),
-        date: today,
+        date: today, // Already using getLocalDate() from above
         time: new Date().toLocaleTimeString(),
         isVisitor: true,
         visitorType: visitorType,
@@ -691,6 +735,10 @@ async function initializeFirebase() {
             console.log('💾 Saved to localStorage as backup');
             
             showSynced(); // Show success
+            
+            // ✅ SYNC LOCAL RECORDS TO CLOUD (Issue #7 fix)
+            // After receiving server data, push any local-only records
+            setTimeout(() => syncLocalRecordsToCloud(), 1000);
         }, (error) => {
             console.error('❌ Firebase listener error:', error);
             console.log('⚠️ Real-time sync interrupted. App will use cached data.');
@@ -725,6 +773,9 @@ async function initializeFirebase() {
             
             // Don't show sync indicator for members (only for attendance to avoid clutter)
             // But log confirms sync is working
+            
+            // ✅ SYNC LOCAL MEMBERS TO CLOUD (Issue #7 fix)
+            setTimeout(() => syncLocalMembersToCloud(), 1000);
         }, (error) => {
             console.error('❌ Members listener error:', error);
             console.log('⚠️ Loading members from localStorage...');
@@ -754,8 +805,8 @@ async function saveRecordToCloud(record) {
             console.error('❌ Error saving to Firebase:', error);
             alert('⚠️ Warning: Could not save to cloud.\nData saved locally only.\n\nPlease check your internet connection.');
             
-            // Fallback: save locally
-            const tempRecord = { id: 'local_' + Date.now(), ...record };
+            // Fallback: save locally with sync flag
+            const tempRecord = { id: 'local_' + Date.now(), ...record, _needsSync: true };
             attendanceRecords.unshift(tempRecord);
             saveRecords();
             displayRecords();
@@ -766,8 +817,8 @@ async function saveRecordToCloud(record) {
     } else {
         console.log('⚠️ Firebase not initialized, saving locally only');
         
-        // Save locally when Firebase is not available
-        const tempRecord = { id: 'local_' + Date.now(), ...record };
+        // Save locally when Firebase is not available with sync flag
+        const tempRecord = { id: 'local_' + Date.now(), ...record, _needsSync: true };
         attendanceRecords.unshift(tempRecord);
         saveRecords();
         displayRecords();
@@ -775,6 +826,109 @@ async function saveRecordToCloud(record) {
         populateClusterFilter();
         return null;
     }
+}
+
+// ========================================
+// OFFLINE DATA SYNC TO CLOUD
+// ========================================
+
+/**
+ * Sync local-only records to Firebase when connection is restored
+ * Automatically called when Firebase reconnects
+ */
+async function syncLocalRecordsToCloud() {
+    if (!firebaseInitialized || !db) {
+        console.log('⚠️ Firebase not available - cannot sync local records');
+        return;
+    }
+    
+    // Find records that need syncing (local IDs or _needsSync flag)
+    const localRecords = attendanceRecords.filter(r => 
+        r.id.startsWith('local_') || r._needsSync === true
+    );
+    
+    if (localRecords.length === 0) {
+        console.log('✅ No local records to sync');
+        return;
+    }
+    
+    console.log(`🔄 Syncing ${localRecords.length} local records to cloud...`);
+    showSyncing();
+    
+    let syncedCount = 0;
+    let failedCount = 0;
+    
+    for (const record of localRecords) {
+        try {
+            // Remove internal fields before uploading
+            const { id, _needsSync, ...dataWithoutId } = record;
+            
+            // Add to Firebase
+            const docRef = await db.collection('attendance').add(dataWithoutId);
+            console.log(`✅ Synced local record to Firebase: ${docRef.id}`);
+            syncedCount++;
+            
+            // Remove from local array (onSnapshot will re-add with real ID)
+            const index = attendanceRecords.findIndex(r => r.id === id);
+            if (index !== -1) {
+                attendanceRecords.splice(index, 1);
+            }
+        } catch (error) {
+            console.error(`❌ Failed to sync record ${record.id}:`, error);
+            failedCount++;
+        }
+    }
+    
+    // Update localStorage
+    saveRecords();
+    
+    if (failedCount === 0) {
+        console.log(`✅ Successfully synced all ${syncedCount} local records to cloud`);
+        showSynced();
+    } else {
+        console.log(`⚠️ Synced ${syncedCount} records, ${failedCount} failed`);
+        showSyncError();
+    }
+}
+
+/**
+ * Sync local member/visitor records to Firebase
+ */
+async function syncLocalMembersToCloud() {
+    if (!firebaseInitialized || !db) return;
+    
+    const localMembers = [...membersData, ...visitorsData].filter(m => 
+        m.id.startsWith('local_') || m._needsSync === true
+    );
+    
+    if (localMembers.length === 0) {
+        console.log('✅ No local members to sync');
+        return;
+    }
+    
+    console.log(`🔄 Syncing ${localMembers.length} local members to cloud...`);
+    
+    for (const member of localMembers) {
+        try {
+            const { id, _needsSync, ...dataWithoutId } = member;
+            const docRef = await db.collection('members').add(dataWithoutId);
+            console.log(`✅ Synced local member to Firebase: ${docRef.id}`);
+            
+            // Remove from local arrays
+            if (member.type === 'members') {
+                const index = membersData.findIndex(m => m.id === id);
+                if (index !== -1) membersData.splice(index, 1);
+            } else {
+                const index = visitorsData.findIndex(m => m.id === id);
+                if (index !== -1) visitorsData.splice(index, 1);
+            }
+        } catch (error) {
+            console.error(`❌ Failed to sync member ${member.id}:`, error);
+        }
+    }
+    
+    saveMembersToLocalStorage();
+    console.log('✅ Local members synced to cloud');
 }
 
 async function loadRecordsFromCloud() {
@@ -1261,7 +1415,7 @@ function displayRecords(filteredRecords = null) {
 }
 
 function updateStats() {
-    const today = new Date().toLocaleDateString();
+    const today = getLocalDate(); // ✅ FIXED: Use ISO date format
     const todayCount = attendanceRecords.filter(r => r.date === today).length;
     
     console.log('Stats - Today:', todayCount, 'Total:', attendanceRecords.length);
@@ -2617,6 +2771,9 @@ async function saveMember() {
 
 // Helper functions for offline support
 function addLocalMember(memberData) {
+    // Mark for sync when connection restored
+    memberData._needsSync = true;
+    
     if (memberData.type === 'members') {
         membersData.unshift(memberData);
     } else {
