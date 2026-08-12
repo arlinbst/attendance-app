@@ -67,6 +67,30 @@ function initAuthWrappers() {
     console.log('✅ Auth wrappers initialized');
 }
 
+// ========================================
+// SECURITY: XSS PROTECTION
+// ========================================
+
+/**
+ * Sanitize user input to prevent XSS attacks
+ * Escapes HTML special characters to prevent script injection
+ * @param {string} input - Raw user input
+ * @returns {string} Sanitized safe string
+ */
+function sanitizeInput(input) {
+    if (!input || typeof input !== 'string') {
+        return input;
+    }
+    
+    return input
+        .replace(/&/g, '&amp;')   // Must be first to avoid double-escaping
+        .replace(/</g, '&lt;')    // Prevent opening tags
+        .replace(/>/g, '&gt;')    // Prevent closing tags
+        .replace(/"/g, '&quot;') // Prevent attribute injection
+        .replace(/'/g, '&#x27;')  // Prevent attribute injection
+        .replace(/\//g, '&#x2F;'); // Prevent closing tags
+}
+
 // Firebase Configuration
 const firebaseConfig = {
     apiKey: "AIzaSyCbZI9mTieFtelvSRscgp2oWp9oA5cIYo",
@@ -520,10 +544,10 @@ function onScanError(errorMessage) {
 // Attendance Logging
 async function logAttendance(name, cluster, serviceType, category) {
     const record = {
-        name: name.trim(),
-        cluster: cluster.trim(),
-        serviceType: serviceType,
-        category: category || 'N/A',
+        name: sanitizeInput(name.trim()),
+        cluster: sanitizeInput(cluster.trim()),
+        serviceType: sanitizeInput(serviceType),
+        category: sanitizeInput(category) || 'N/A',
         timestamp: new Date().toISOString(),
         date: new Date().toLocaleDateString(),
         time: new Date().toLocaleTimeString(),
@@ -540,12 +564,10 @@ async function logAttendance(name, cluster, serviceType, category) {
 // Add Visitor Function
 async function addVisitor() {
     const rawName = document.getElementById('visitor-name').value.trim();
-    const name = typeof AuthSystem !== 'undefined' && AuthSystem.sanitizeInput 
-        ? AuthSystem.sanitizeInput(rawName) 
-        : rawName;
-    const visitorType = document.getElementById('visitor-type').value;
-    const visitorCluster = document.getElementById('visitor-cluster').value.trim();
-    const serviceType = document.getElementById('visitor-service').value;
+    const name = sanitizeInput(rawName);
+    const visitorType = sanitizeInput(document.getElementById('visitor-type').value);
+    const visitorCluster = sanitizeInput(document.getElementById('visitor-cluster').value.trim());
+    const serviceType = sanitizeInput(document.getElementById('visitor-service').value);
     
     if (!name) {
         alert('Please enter visitor name!');
@@ -577,10 +599,10 @@ async function addVisitor() {
     console.log('   Service Type:', serviceType);
     
     const record = {
-        name: name,
-        cluster: clusterValue,
-        serviceType: serviceType,
-        category: visitorType,
+        name: sanitizeInput(name),
+        cluster: sanitizeInput(clusterValue),
+        serviceType: sanitizeInput(serviceType),
+        category: sanitizeInput(visitorType),
         timestamp: new Date().toISOString(),
         date: today,
         time: new Date().toLocaleTimeString(),
@@ -2504,11 +2526,11 @@ function addNewMember() {
 
 // Save member (Add or Update)
 async function saveMember() {
-    const name = document.getElementById('member-name').value.trim();
+    const name = sanitizeInput(document.getElementById('member-name').value.trim());
     const birthday = document.getElementById('member-birthday').value;
-    const contactNumber = document.getElementById('member-contact').value.trim();
-    const facebookAccount = document.getElementById('member-facebook').value.trim();
-    const cluster = document.getElementById('member-cluster').value;
+    const contactNumber = sanitizeInput(document.getElementById('member-contact').value.trim());
+    const facebookAccount = sanitizeInput(document.getElementById('member-facebook').value.trim());
+    const cluster = sanitizeInput(document.getElementById('member-cluster').value);
     const age = document.getElementById('member-age').value;
     
     let memberData = {
@@ -2524,8 +2546,8 @@ async function saveMember() {
     
     // Add type-specific fields
     if (currentMemberType === 'members') {
-        const category = document.getElementById('member-category').value;
-        const status = document.getElementById('member-status').value;
+        const category = sanitizeInput(document.getElementById('member-category').value);
+        const status = sanitizeInput(document.getElementById('member-status').value);
         
         // Validation for members
         if (!name || !birthday || !contactNumber || !cluster || !category || !status) {
@@ -2536,10 +2558,10 @@ async function saveMember() {
         memberData.category = category;
         memberData.status = status;
     } else {
-        const visitorType = document.getElementById('member-visitor-type').value;
+        const visitorType = sanitizeInput(document.getElementById('member-visitor-type').value);
         const dateBaptised = document.getElementById('member-date-baptised').value;
-        const invitedBy = document.getElementById('member-invited-by') ? document.getElementById('member-invited-by').value.trim() : '';
-        const baptisedBy = document.getElementById('member-baptised-by') ? document.getElementById('member-baptised-by').value.trim() : '';
+        const invitedBy = sanitizeInput(document.getElementById('member-invited-by') ? document.getElementById('member-invited-by').value.trim() : '');
+        const baptisedBy = sanitizeInput(document.getElementById('member-baptised-by') ? document.getElementById('member-baptised-by').value.trim() : '');
         
         // Validation for visitors (cluster is optional)
         if (!name || !birthday || !contactNumber || !visitorType) {
