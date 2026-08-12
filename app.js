@@ -135,6 +135,35 @@ function convertToISODate(localeDate) {
     return date.toISOString().split('T')[0];
 }
 
+/**
+ * Normalize any date format to ISO for comparison
+ * BACKWARD COMPATIBILITY: Handles both old locale dates (8/9/2026) and new ISO dates (2026-08-09)
+ * This ensures old records from before the enhancement still work!
+ * @param {string} dateString - Date in any format
+ * @returns {string} ISO date string (YYYY-MM-DD)
+ */
+function normalizeDateForComparison(dateString) {
+    if (!dateString) return '';
+    
+    // If already ISO format (YYYY-MM-DD), return as-is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        return dateString;
+    }
+    
+    // Convert locale format (M/D/YYYY or MM/DD/YYYY) to ISO
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+            console.warn('Invalid date format:', dateString);
+            return dateString; // Return original if can't convert
+        }
+        return date.toISOString().split('T')[0];
+    } catch (e) {
+        console.error('Date conversion error:', dateString, e);
+        return dateString; // Return original if conversion fails
+    }
+}
+
 // Firebase Configuration
 const firebaseConfig = {
     apiKey: "AIzaSyCbZI9mTieFtelvSRscgp2oWp9oA5cIYo",
@@ -540,13 +569,14 @@ function onScanSuccess(decodedText, decodedResult) {
             stopScanner();
             
             const serviceType = document.getElementById('service-type').value;
-            const today = new Date().toLocaleDateString();
+            const today = getLocalDate(); // Use ISO format for new scans
             
             // Enhanced duplicate check: same person + same date + same service type
+            // ✅ BACKWARD COMPATIBLE: Normalizes both old and new date formats
             const duplicateToday = attendanceRecords.find(record => 
                 record.name === data.name && 
                 record.cluster === data.cluster &&
-                record.date === today &&
+                normalizeDateForComparison(record.date) === normalizeDateForComparison(today) &&
                 record.serviceType === serviceType &&
                 !record.isVisitor
             );
@@ -624,9 +654,10 @@ async function addVisitor() {
     const today = getLocalDate(); // ✅ FIXED: Use ISO date format
     
     // Check for duplicate visitor
+    // ✅ BACKWARD COMPATIBLE: Normalizes both old and new date formats
     const duplicateVisitor = attendanceRecords.find(record => 
         record.name === name && 
-        record.date === today &&
+        normalizeDateForComparison(record.date) === normalizeDateForComparison(today) &&
         record.serviceType === serviceType &&
         record.isVisitor === true
     );
@@ -1091,13 +1122,20 @@ async function deleteRecordsForDate() {
     const deleteServiceType = serviceTypeInput; // Empty string means "All Services"
     
     // Count records for this date and service type
+    // ✅ BACKWARD COMPATIBLE: Normalizes both old and new date formats
+    const normalizedDeleteDate = normalizeDateForComparison(deleteDate);
     let recordsToDelete;
     if (deleteServiceType) {
         // Specific service type
-        recordsToDelete = attendanceRecords.filter(r => r.date === deleteDate && r.serviceType === deleteServiceType);
+        recordsToDelete = attendanceRecords.filter(r => 
+            normalizeDateForComparison(r.date) === normalizedDeleteDate && 
+            r.serviceType === deleteServiceType
+        );
     } else {
         // All services for this date
-        recordsToDelete = attendanceRecords.filter(r => r.date === deleteDate);
+        recordsToDelete = attendanceRecords.filter(r => 
+            normalizeDateForComparison(r.date) === normalizedDeleteDate
+        );
     }
     
     if (recordsToDelete.length === 0) {
@@ -1157,11 +1195,16 @@ async function deleteRecordsForDate() {
         }
         
         // Delete from local array (onSnapshot will handle this, but do it anyway for immediate feedback)
+        // ✅ BACKWARD COMPATIBLE: Normalizes both old and new date formats
         const beforeCount = attendanceRecords.length;
         if (deleteServiceType) {
-            attendanceRecords = attendanceRecords.filter(r => !(r.date === deleteDate && r.serviceType === deleteServiceType));
+            attendanceRecords = attendanceRecords.filter(r => 
+                !(normalizeDateForComparison(r.date) === normalizedDeleteDate && r.serviceType === deleteServiceType)
+            );
         } else {
-            attendanceRecords = attendanceRecords.filter(r => r.date !== deleteDate);
+            attendanceRecords = attendanceRecords.filter(r => 
+                normalizeDateForComparison(r.date) !== normalizedDeleteDate
+            );
         }
         const afterCount = attendanceRecords.length;
         const localDeleted = beforeCount - afterCount;
@@ -1416,7 +1459,10 @@ function displayRecords(filteredRecords = null) {
 
 function updateStats() {
     const today = getLocalDate(); // ✅ FIXED: Use ISO date format
-    const todayCount = attendanceRecords.filter(r => r.date === today).length;
+    // ✅ BACKWARD COMPATIBLE: Normalizes both old and new date formats
+    const todayCount = attendanceRecords.filter(r => 
+        normalizeDateForComparison(r.date) === normalizeDateForComparison(today)
+    ).length;
     
     console.log('Stats - Today:', todayCount, 'Total:', attendanceRecords.length);
     
@@ -1462,8 +1508,11 @@ function filterRecords() {
     let filtered = attendanceRecords.slice();
     
     if (dateFilter) {
-        const filterDate = new Date(dateFilter).toLocaleDateString();
-        filtered = filtered.filter(r => r.date === filterDate);
+        const filterDate = getLocalDate(); // Convert to ISO
+        // ✅ BACKWARD COMPATIBLE: Normalizes both old and new date formats
+        filtered = filtered.filter(r => 
+            normalizeDateForComparison(r.date) === normalizeDateForComparison(filterDate)
+        );
     }
     
     if (clusterFilter) {
@@ -1486,8 +1535,11 @@ function exportToCSV() {
     let recordsToExport = attendanceRecords.slice();
     
     if (dateFilter) {
-        const filterDate = new Date(dateFilter).toLocaleDateString();
-        recordsToExport = recordsToExport.filter(r => r.date === filterDate);
+        const filterDate = new Date(dateFilter).toISOString().split('T')[0]; // Convert to ISO
+        // ✅ BACKWARD COMPATIBLE: Normalizes both old and new date formats
+        recordsToExport = recordsToExport.filter(r => 
+            normalizeDateForComparison(r.date) === normalizeDateForComparison(filterDate)
+        );
     }
     
     if (clusterFilter) {
@@ -1744,7 +1796,11 @@ function generateReport() {
     const reportDate = dateInput; // Already in local date format from selectReportDate
     console.log('   Report date:', reportDate);
     
-    let filtered = attendanceRecords.filter(r => r.date === reportDate);
+    // ✅ BACKWARD COMPATIBLE: Normalizes both old (8/9/2026) and new (2026-08-09) date formats
+    // This allows old records from Aug 9-10 to be retrieved!
+    let filtered = attendanceRecords.filter(r => 
+        normalizeDateForComparison(r.date) === normalizeDateForComparison(reportDate)
+    );
     console.log('   Records for selected date:', filtered.length);
     
     if (serviceFilter) {
