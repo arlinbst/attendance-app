@@ -67,103 +67,6 @@ function initAuthWrappers() {
     console.log('✅ Auth wrappers initialized');
 }
 
-// ========================================
-// SECURITY: XSS PROTECTION
-// ========================================
-
-/**
- * Sanitize user input to prevent XSS attacks
- * Escapes HTML special characters to prevent script injection
- * @param {string} input - Raw user input
- * @returns {string} Sanitized safe string
- */
-function sanitizeInput(input) {
-    if (!input || typeof input !== 'string') {
-        return input;
-    }
-    
-    return input
-        .replace(/&/g, '&amp;')   // Must be first to avoid double-escaping
-        .replace(/</g, '&lt;')    // Prevent opening tags
-        .replace(/>/g, '&gt;')    // Prevent closing tags
-        .replace(/"/g, '&quot;') // Prevent attribute injection
-        .replace(/'/g, '&#x27;')  // Prevent attribute injection
-        .replace(/\//g, '&#x2F;'); // Prevent closing tags
-}
-
-// ========================================
-// DATE HANDLING: ISO FORMAT FOR CONSISTENCY
-// ========================================
-
-/**
- * Get current date in ISO format (YYYY-MM-DD)
- * Consistent across all browsers and locales
- * @returns {string} ISO date string (e.g., "2026-08-12")
- */
-function getLocalDate() {
-    const now = new Date();
-    return now.toISOString().split('T')[0];
-}
-
-/**
- * Format ISO date for display
- * @param {string} isoDate - ISO date string (YYYY-MM-DD)
- * @returns {string} Formatted date (e.g., "August 12, 2026")
- */
-function formatDateForDisplay(isoDate) {
-    if (!isoDate) return '';
-    const date = new Date(isoDate + 'T00:00:00'); // Avoid timezone issues
-    return date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-    });
-}
-
-/**
- * Convert browser locale date to ISO format
- * Handles legacy data that may be in locale format
- * @param {string} localeDate - Locale date string
- * @returns {string} ISO date string
- */
-function convertToISODate(localeDate) {
-    if (!localeDate) return getLocalDate();
-    // If already ISO format, return as-is
-    if (/^\d{4}-\d{2}-\d{2}$/.test(localeDate)) return localeDate;
-    // Convert locale date to ISO
-    const date = new Date(localeDate);
-    return date.toISOString().split('T')[0];
-}
-
-/**
- * Normalize any date format to ISO for comparison
- * BACKWARD COMPATIBILITY: Handles both old locale dates (8/9/2026) and new ISO dates (2026-08-09)
- * This ensures old records from before the enhancement still work!
- * @param {string} dateString - Date in any format
- * @returns {string} ISO date string (YYYY-MM-DD)
- */
-function normalizeDateForComparison(dateString) {
-    if (!dateString) return '';
-    
-    // If already ISO format (YYYY-MM-DD), return as-is
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-        return dateString;
-    }
-    
-    // Convert locale format (M/D/YYYY or MM/DD/YYYY) to ISO
-    try {
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) {
-            console.warn('Invalid date format:', dateString);
-            return dateString; // Return original if can't convert
-        }
-        return date.toISOString().split('T')[0];
-    } catch (e) {
-        console.error('Date conversion error:', dateString, e);
-        return dateString; // Return original if conversion fails
-    }
-}
-
 // Firebase Configuration
 const firebaseConfig = {
     apiKey: "AIzaSyCbZI9mTieFtelvSRscgp2oWp9oA5cIYo",
@@ -535,18 +438,15 @@ function flipCamera() {
 function onScanSuccess(decodedText, decodedResult) {
     const now = Date.now();
     
-    // ✅ FIX: Atomic check-and-set to prevent race condition
     if (isProcessingScan) {
         return;
     }
-    isProcessingScan = true; // ← Set immediately to block concurrent scans
     
-    // Check for duplicate scan (within 3 seconds)
     if (lastScannedData === decodedText && (now - lastScanTime) < 3000) {
-        isProcessingScan = false; // Reset flag before returning
         return;
     }
     
+    isProcessingScan = true;
     lastScannedData = decodedText;
     lastScanTime = now;
     
@@ -569,14 +469,13 @@ function onScanSuccess(decodedText, decodedResult) {
             stopScanner();
             
             const serviceType = document.getElementById('service-type').value;
-            const today = getLocalDate(); // Use ISO format for new scans
+            const today = new Date().toLocaleDateString();
             
             // Enhanced duplicate check: same person + same date + same service type
-            // ✅ BACKWARD COMPATIBLE: Normalizes both old and new date formats
             const duplicateToday = attendanceRecords.find(record => 
                 record.name === data.name && 
                 record.cluster === data.cluster &&
-                normalizeDateForComparison(record.date) === normalizeDateForComparison(today) &&
+                record.date === today &&
                 record.serviceType === serviceType &&
                 !record.isVisitor
             );
@@ -621,12 +520,12 @@ function onScanError(errorMessage) {
 // Attendance Logging
 async function logAttendance(name, cluster, serviceType, category) {
     const record = {
-        name: sanitizeInput(name.trim()),
-        cluster: sanitizeInput(cluster.trim()),
-        serviceType: sanitizeInput(serviceType),
-        category: sanitizeInput(category) || 'N/A',
+        name: name.trim(),
+        cluster: cluster.trim(),
+        serviceType: serviceType,
+        category: category || 'N/A',
         timestamp: new Date().toISOString(),
-        date: getLocalDate(), // ✅ FIXED: Use ISO date format for consistency
+        date: new Date().toLocaleDateString(),
         time: new Date().toLocaleTimeString(),
         isVisitor: false,
         scannedAt: new Date().toISOString() // Add timestamp when scanned
@@ -641,23 +540,24 @@ async function logAttendance(name, cluster, serviceType, category) {
 // Add Visitor Function
 async function addVisitor() {
     const rawName = document.getElementById('visitor-name').value.trim();
-    const name = sanitizeInput(rawName);
-    const visitorType = sanitizeInput(document.getElementById('visitor-type').value);
-    const visitorCluster = sanitizeInput(document.getElementById('visitor-cluster').value.trim());
-    const serviceType = sanitizeInput(document.getElementById('visitor-service').value);
+    const name = typeof AuthSystem !== 'undefined' && AuthSystem.sanitizeInput 
+        ? AuthSystem.sanitizeInput(rawName) 
+        : rawName;
+    const visitorType = document.getElementById('visitor-type').value;
+    const visitorCluster = document.getElementById('visitor-cluster').value.trim();
+    const serviceType = document.getElementById('visitor-service').value;
     
     if (!name) {
         alert('Please enter visitor name!');
         return;
     }
     
-    const today = getLocalDate(); // ✅ FIXED: Use ISO date format
+    const today = new Date().toLocaleDateString();
     
     // Check for duplicate visitor
-    // ✅ BACKWARD COMPATIBLE: Normalizes both old and new date formats
     const duplicateVisitor = attendanceRecords.find(record => 
         record.name === name && 
-        normalizeDateForComparison(record.date) === normalizeDateForComparison(today) &&
+        record.date === today &&
         record.serviceType === serviceType &&
         record.isVisitor === true
     );
@@ -677,12 +577,12 @@ async function addVisitor() {
     console.log('   Service Type:', serviceType);
     
     const record = {
-        name: sanitizeInput(name),
-        cluster: sanitizeInput(clusterValue),
-        serviceType: sanitizeInput(serviceType),
-        category: sanitizeInput(visitorType),
+        name: name,
+        cluster: clusterValue,
+        serviceType: serviceType,
+        category: visitorType,
         timestamp: new Date().toISOString(),
-        date: today, // Already using getLocalDate() from above
+        date: today,
         time: new Date().toLocaleTimeString(),
         isVisitor: true,
         visitorType: visitorType,
@@ -766,10 +666,6 @@ async function initializeFirebase() {
             console.log('💾 Saved to localStorage as backup');
             
             showSynced(); // Show success
-            
-            // ✅ SYNC LOCAL RECORDS TO CLOUD (Issue #7 fix)
-            // After receiving server data, push any local-only records
-            setTimeout(() => syncLocalRecordsToCloud(), 1000);
         }, (error) => {
             console.error('❌ Firebase listener error:', error);
             console.log('⚠️ Real-time sync interrupted. App will use cached data.');
@@ -804,9 +700,6 @@ async function initializeFirebase() {
             
             // Don't show sync indicator for members (only for attendance to avoid clutter)
             // But log confirms sync is working
-            
-            // ✅ SYNC LOCAL MEMBERS TO CLOUD (Issue #7 fix)
-            setTimeout(() => syncLocalMembersToCloud(), 1000);
         }, (error) => {
             console.error('❌ Members listener error:', error);
             console.log('⚠️ Loading members from localStorage...');
@@ -836,8 +729,8 @@ async function saveRecordToCloud(record) {
             console.error('❌ Error saving to Firebase:', error);
             alert('⚠️ Warning: Could not save to cloud.\nData saved locally only.\n\nPlease check your internet connection.');
             
-            // Fallback: save locally with sync flag
-            const tempRecord = { id: 'local_' + Date.now(), ...record, _needsSync: true };
+            // Fallback: save locally
+            const tempRecord = { id: 'local_' + Date.now(), ...record };
             attendanceRecords.unshift(tempRecord);
             saveRecords();
             displayRecords();
@@ -848,8 +741,8 @@ async function saveRecordToCloud(record) {
     } else {
         console.log('⚠️ Firebase not initialized, saving locally only');
         
-        // Save locally when Firebase is not available with sync flag
-        const tempRecord = { id: 'local_' + Date.now(), ...record, _needsSync: true };
+        // Save locally when Firebase is not available
+        const tempRecord = { id: 'local_' + Date.now(), ...record };
         attendanceRecords.unshift(tempRecord);
         saveRecords();
         displayRecords();
@@ -857,109 +750,6 @@ async function saveRecordToCloud(record) {
         populateClusterFilter();
         return null;
     }
-}
-
-// ========================================
-// OFFLINE DATA SYNC TO CLOUD
-// ========================================
-
-/**
- * Sync local-only records to Firebase when connection is restored
- * Automatically called when Firebase reconnects
- */
-async function syncLocalRecordsToCloud() {
-    if (!firebaseInitialized || !db) {
-        console.log('⚠️ Firebase not available - cannot sync local records');
-        return;
-    }
-    
-    // Find records that need syncing (local IDs or _needsSync flag)
-    const localRecords = attendanceRecords.filter(r => 
-        r.id.startsWith('local_') || r._needsSync === true
-    );
-    
-    if (localRecords.length === 0) {
-        console.log('✅ No local records to sync');
-        return;
-    }
-    
-    console.log(`🔄 Syncing ${localRecords.length} local records to cloud...`);
-    showSyncing();
-    
-    let syncedCount = 0;
-    let failedCount = 0;
-    
-    for (const record of localRecords) {
-        try {
-            // Remove internal fields before uploading
-            const { id, _needsSync, ...dataWithoutId } = record;
-            
-            // Add to Firebase
-            const docRef = await db.collection('attendance').add(dataWithoutId);
-            console.log(`✅ Synced local record to Firebase: ${docRef.id}`);
-            syncedCount++;
-            
-            // Remove from local array (onSnapshot will re-add with real ID)
-            const index = attendanceRecords.findIndex(r => r.id === id);
-            if (index !== -1) {
-                attendanceRecords.splice(index, 1);
-            }
-        } catch (error) {
-            console.error(`❌ Failed to sync record ${record.id}:`, error);
-            failedCount++;
-        }
-    }
-    
-    // Update localStorage
-    saveRecords();
-    
-    if (failedCount === 0) {
-        console.log(`✅ Successfully synced all ${syncedCount} local records to cloud`);
-        showSynced();
-    } else {
-        console.log(`⚠️ Synced ${syncedCount} records, ${failedCount} failed`);
-        showSyncError();
-    }
-}
-
-/**
- * Sync local member/visitor records to Firebase
- */
-async function syncLocalMembersToCloud() {
-    if (!firebaseInitialized || !db) return;
-    
-    const localMembers = [...membersData, ...visitorsData].filter(m => 
-        m.id.startsWith('local_') || m._needsSync === true
-    );
-    
-    if (localMembers.length === 0) {
-        console.log('✅ No local members to sync');
-        return;
-    }
-    
-    console.log(`🔄 Syncing ${localMembers.length} local members to cloud...`);
-    
-    for (const member of localMembers) {
-        try {
-            const { id, _needsSync, ...dataWithoutId } = member;
-            const docRef = await db.collection('members').add(dataWithoutId);
-            console.log(`✅ Synced local member to Firebase: ${docRef.id}`);
-            
-            // Remove from local arrays
-            if (member.type === 'members') {
-                const index = membersData.findIndex(m => m.id === id);
-                if (index !== -1) membersData.splice(index, 1);
-            } else {
-                const index = visitorsData.findIndex(m => m.id === id);
-                if (index !== -1) visitorsData.splice(index, 1);
-            }
-        } catch (error) {
-            console.error(`❌ Failed to sync member ${member.id}:`, error);
-        }
-    }
-    
-    saveMembersToLocalStorage();
-    console.log('✅ Local members synced to cloud');
 }
 
 async function loadRecordsFromCloud() {
@@ -1122,20 +912,13 @@ async function deleteRecordsForDate() {
     const deleteServiceType = serviceTypeInput; // Empty string means "All Services"
     
     // Count records for this date and service type
-    // ✅ BACKWARD COMPATIBLE: Normalizes both old and new date formats
-    const normalizedDeleteDate = normalizeDateForComparison(deleteDate);
     let recordsToDelete;
     if (deleteServiceType) {
         // Specific service type
-        recordsToDelete = attendanceRecords.filter(r => 
-            normalizeDateForComparison(r.date) === normalizedDeleteDate && 
-            r.serviceType === deleteServiceType
-        );
+        recordsToDelete = attendanceRecords.filter(r => r.date === deleteDate && r.serviceType === deleteServiceType);
     } else {
         // All services for this date
-        recordsToDelete = attendanceRecords.filter(r => 
-            normalizeDateForComparison(r.date) === normalizedDeleteDate
-        );
+        recordsToDelete = attendanceRecords.filter(r => r.date === deleteDate);
     }
     
     if (recordsToDelete.length === 0) {
@@ -1195,16 +978,11 @@ async function deleteRecordsForDate() {
         }
         
         // Delete from local array (onSnapshot will handle this, but do it anyway for immediate feedback)
-        // ✅ BACKWARD COMPATIBLE: Normalizes both old and new date formats
         const beforeCount = attendanceRecords.length;
         if (deleteServiceType) {
-            attendanceRecords = attendanceRecords.filter(r => 
-                !(normalizeDateForComparison(r.date) === normalizedDeleteDate && r.serviceType === deleteServiceType)
-            );
+            attendanceRecords = attendanceRecords.filter(r => !(r.date === deleteDate && r.serviceType === deleteServiceType));
         } else {
-            attendanceRecords = attendanceRecords.filter(r => 
-                normalizeDateForComparison(r.date) !== normalizedDeleteDate
-            );
+            attendanceRecords = attendanceRecords.filter(r => r.date !== deleteDate);
         }
         const afterCount = attendanceRecords.length;
         const localDeleted = beforeCount - afterCount;
@@ -1401,8 +1179,33 @@ function deleteRecordsByDate() {
     }
 }
 
-// ✅ DUPLICATE REMOVED: Second clearAllRecords() function deleted (was redundant)
-// The comprehensive version with 3-stage confirmation is kept above (line ~1054)
+// Clear All Records with Enhanced Warning
+function clearAllRecords() {
+    const totalRecords = attendanceRecords.length;
+    
+    if (totalRecords === 0) {
+        alert('No records to delete!');
+        return;
+    }
+    
+    const warningMsg = `⚠️ WARNING: DELETE ALL RECORDS ⚠️\n\nYou are about to permanently delete:\n• Total Records: ${totalRecords}\n\nThis will remove ALL attendance data from the system.\n\nThis action CANNOT be undone!\n\nAre you absolutely sure you want to continue?`;
+    
+    if (confirm(warningMsg)) {
+        const finalConfirm = confirm(`FINAL CONFIRMATION:\n\nDelete all ${totalRecords} records?\n\nClick OK to permanently delete all data.`);
+        
+        if (finalConfirm) {
+            clearAllRecordsFromCloud();
+            
+            attendanceRecords = [];
+            saveRecords();
+            updateStats();
+            populateClusterFilter();
+            displayRecords();
+            
+            alert('All records have been deleted successfully.');
+        }
+    }
+}
 
 // Display Functions
 function displayRecords(filteredRecords = null) {
@@ -1458,11 +1261,8 @@ function displayRecords(filteredRecords = null) {
 }
 
 function updateStats() {
-    const today = getLocalDate(); // ✅ FIXED: Use ISO date format
-    // ✅ BACKWARD COMPATIBLE: Normalizes both old and new date formats
-    const todayCount = attendanceRecords.filter(r => 
-        normalizeDateForComparison(r.date) === normalizeDateForComparison(today)
-    ).length;
+    const today = new Date().toLocaleDateString();
+    const todayCount = attendanceRecords.filter(r => r.date === today).length;
     
     console.log('Stats - Today:', todayCount, 'Total:', attendanceRecords.length);
     
@@ -1508,11 +1308,8 @@ function filterRecords() {
     let filtered = attendanceRecords.slice();
     
     if (dateFilter) {
-        const filterDate = getLocalDate(); // Convert to ISO
-        // ✅ BACKWARD COMPATIBLE: Normalizes both old and new date formats
-        filtered = filtered.filter(r => 
-            normalizeDateForComparison(r.date) === normalizeDateForComparison(filterDate)
-        );
+        const filterDate = new Date(dateFilter).toLocaleDateString();
+        filtered = filtered.filter(r => r.date === filterDate);
     }
     
     if (clusterFilter) {
@@ -1535,11 +1332,8 @@ function exportToCSV() {
     let recordsToExport = attendanceRecords.slice();
     
     if (dateFilter) {
-        const filterDate = new Date(dateFilter).toISOString().split('T')[0]; // Convert to ISO
-        // ✅ BACKWARD COMPATIBLE: Normalizes both old and new date formats
-        recordsToExport = recordsToExport.filter(r => 
-            normalizeDateForComparison(r.date) === normalizeDateForComparison(filterDate)
-        );
+        const filterDate = new Date(dateFilter).toLocaleDateString();
+        recordsToExport = recordsToExport.filter(r => r.date === filterDate);
     }
     
     if (clusterFilter) {
@@ -1796,11 +1590,7 @@ function generateReport() {
     const reportDate = dateInput; // Already in local date format from selectReportDate
     console.log('   Report date:', reportDate);
     
-    // ✅ BACKWARD COMPATIBLE: Normalizes both old (8/9/2026) and new (2026-08-09) date formats
-    // This allows old records from Aug 9-10 to be retrieved!
-    let filtered = attendanceRecords.filter(r => 
-        normalizeDateForComparison(r.date) === normalizeDateForComparison(reportDate)
-    );
+    let filtered = attendanceRecords.filter(r => r.date === reportDate);
     console.log('   Records for selected date:', filtered.length);
     
     if (serviceFilter) {
@@ -2714,11 +2504,11 @@ function addNewMember() {
 
 // Save member (Add or Update)
 async function saveMember() {
-    const name = sanitizeInput(document.getElementById('member-name').value.trim());
+    const name = document.getElementById('member-name').value.trim();
     const birthday = document.getElementById('member-birthday').value;
-    const contactNumber = sanitizeInput(document.getElementById('member-contact').value.trim());
-    const facebookAccount = sanitizeInput(document.getElementById('member-facebook').value.trim());
-    const cluster = sanitizeInput(document.getElementById('member-cluster').value);
+    const contactNumber = document.getElementById('member-contact').value.trim();
+    const facebookAccount = document.getElementById('member-facebook').value.trim();
+    const cluster = document.getElementById('member-cluster').value;
     const age = document.getElementById('member-age').value;
     
     let memberData = {
@@ -2734,8 +2524,8 @@ async function saveMember() {
     
     // Add type-specific fields
     if (currentMemberType === 'members') {
-        const category = sanitizeInput(document.getElementById('member-category').value);
-        const status = sanitizeInput(document.getElementById('member-status').value);
+        const category = document.getElementById('member-category').value;
+        const status = document.getElementById('member-status').value;
         
         // Validation for members
         if (!name || !birthday || !contactNumber || !cluster || !category || !status) {
@@ -2746,10 +2536,10 @@ async function saveMember() {
         memberData.category = category;
         memberData.status = status;
     } else {
-        const visitorType = sanitizeInput(document.getElementById('member-visitor-type').value);
+        const visitorType = document.getElementById('member-visitor-type').value;
         const dateBaptised = document.getElementById('member-date-baptised').value;
-        const invitedBy = sanitizeInput(document.getElementById('member-invited-by') ? document.getElementById('member-invited-by').value.trim() : '');
-        const baptisedBy = sanitizeInput(document.getElementById('member-baptised-by') ? document.getElementById('member-baptised-by').value.trim() : '');
+        const invitedBy = document.getElementById('member-invited-by') ? document.getElementById('member-invited-by').value.trim() : '';
+        const baptisedBy = document.getElementById('member-baptised-by') ? document.getElementById('member-baptised-by').value.trim() : '';
         
         // Validation for visitors (cluster is optional)
         if (!name || !birthday || !contactNumber || !visitorType) {
@@ -2827,9 +2617,6 @@ async function saveMember() {
 
 // Helper functions for offline support
 function addLocalMember(memberData) {
-    // Mark for sync when connection restored
-    memberData._needsSync = true;
-    
     if (memberData.type === 'members') {
         membersData.unshift(memberData);
     } else {
