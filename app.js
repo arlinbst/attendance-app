@@ -3428,5 +3428,32 @@ function printMembersReport() {
 // These functions are called from inline onclick attributes in HTML
 // ========================================
 
+// Tab Navigation
+window.showTab = showTab;
+
+// Visitor Management
+window.addVisitor = addVisitor;
+
+// Member Management
+window.searchMember = searchMember;
+window.clearSearch = clearSearch;
+window.addNewMember = addNewMember;
+window.saveMember = saveMember;
+window.deleteMember = deleteMember;
+window.cancelEdit = cancelEdit;
+
+// Reports - RESTORED!
+window.previewMembersReport = previewMembersReport;
+window.printMembersReport = printMembersReport;
+window.exportToExcel = exportToExcel;
+window.closePreview = closePreview;
+window.generateReport = generateReport;
+window.printReport = printReport;
+
+// Record Management
+window.deleteRecordsForDate = deleteRecordsForDate;
+window.clearAllRecords = clearAllRecords;
+
+// QR Code Generation
 window.generateQR = generateQR;
 window.downloadQR = downloadQR;
