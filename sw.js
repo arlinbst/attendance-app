@@ -1,11 +1,10 @@
 // Service Worker for PWA
-const CACHE_NAME = 'attendance-app-v45';
+const CACHE_NAME = 'attendance-app-v46';
 const urlsToCache = [
   './',
   './index.html',
   './styles.css',
   './app.js',
-  './auth-system.js',
   './manifest.json',
   'https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js',
   'https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js',
