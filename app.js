@@ -2132,28 +2132,22 @@ function printReport() {
 
 // QR Code Generation
 function generateQR() {
-    console.log('🔧 generateQR() called'); // Debug log
-    
     const name = document.getElementById('employee-name').value.trim();
     const cluster = document.getElementById('employee-cluster').value.trim();
+    const category = document.getElementById('employee-category').value.trim();
     
-    console.log('📝 Name:', name); // Debug log
-    console.log('📍 Cluster:', cluster); // Debug log
-    
-    if (!name) {
-        alert('Please enter a name!');
+    if (!name || !cluster || !category) {
+        alert('Please fill in all fields (Name, Cluster, and Category)!');
         return;
     }
     
     // ✅ STABLE QR FORMAT - backwards compatible
-    // Cluster is optional, use "No Cluster" if empty
-    const clusterValue = cluster || 'No Cluster';
+    // Always include name, cluster, category for future compatibility
     const data = JSON.stringify({ 
-        name: name, 
-        cluster: clusterValue
+        name: name.trim(), 
+        cluster: cluster.trim(), 
+        category: category.trim() 
     });
-    
-    console.log('📦 QR Data:', data); // Debug log
     
     document.getElementById('qrcode').innerHTML = '';
     
@@ -2167,10 +2161,9 @@ function generateQR() {
         correctLevel: QRCode.CorrectLevel.H  // Highest error correction
     });
     
-    console.log('✅ QR Code generated successfully!'); // Debug log
-    
     document.getElementById('qr-name').textContent = name;
-    document.getElementById('qr-cluster').textContent = clusterValue;
+    document.getElementById('qr-cluster').textContent = cluster;
+    document.getElementById('qr-category').textContent = category;
     document.getElementById('qr-output').style.display = 'block';
 }
 
@@ -2255,6 +2248,7 @@ function downloadBlobFromCanvas(blob, filename) {
 function clearQRForm() {
     document.getElementById('employee-name').value = '';
     document.getElementById('employee-cluster').value = '';
+    document.getElementById('employee-category').value = '';
     document.getElementById('qrcode').innerHTML = '';
     document.getElementById('qr-output').style.display = 'none';
     
