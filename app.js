@@ -3422,3 +3422,11 @@ function printMembersReport() {
         printWindow.print();
     }, 500);
 }
+
+// ========================================
+// EXPOSE FUNCTIONS GLOBALLY FOR INLINE ONCLICK HANDLERS
+// These functions are called from inline onclick attributes in HTML
+// ========================================
+
+window.generateQR = generateQR;
+window.downloadQR = downloadQR;
