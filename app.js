@@ -393,9 +393,11 @@ function startScanner() {
         console.log('✅ Scanner started with camera:', currentCamera);
         document.getElementById('start-scan-btn').style.display = 'none';
         document.getElementById('stop-scan-btn').style.display = 'inline-block';
-        const flipBtn = document.getElementById('camera-flip-btn');
-        flipBtn.style.display = 'flex';
-        console.log('✅ Camera flip button shown');
+        const flipBtn = document.getElementById('camera-toggle-btn');
+        if (flipBtn) {
+            flipBtn.style.display = 'flex';
+            console.log('✅ Camera flip button shown');
+        }
         document.getElementById('scan-result').style.display = 'none';
     }).catch(err => {
         console.error('❌ Error starting camera:', err);
@@ -409,7 +411,8 @@ function stopScanner() {
             html5QrcodeScanner = null;
             document.getElementById('start-scan-btn').style.display = 'inline-block';
             document.getElementById('stop-scan-btn').style.display = 'none';
-            document.getElementById('camera-flip-btn').style.display = 'none';
+            const toggleBtn = document.getElementById('camera-toggle-btn');
+            if (toggleBtn) toggleBtn.style.display = 'none';
         }).catch(err => {
             console.error('Error stopping scanner:', err);
         });
