@@ -336,21 +336,31 @@ function updateUserBadge() {
     // Add login/logout button
     if (currentUser.authenticated) {
         badgeHTML += `
-            <span style="margin-left: 10px; color: #2196F3; cursor: pointer;" 
-                  onclick="logoutUser()">
+            <span id="auth-action-btn" style="margin-left: 10px; color: #2196F3; cursor: pointer;">
                 🚪 Logout
             </span>
         `;
     } else {
         badgeHTML += `
-            <span style="margin-left: 10px; color: #2196F3; cursor: pointer;" 
-                  onclick="showAuthModal('${USER_ROLES.LEADER}')">
+            <span id="auth-action-btn" style="margin-left: 10px; color: #2196F3; cursor: pointer;">
                 🔓 Login
             </span>
         `;
     }
     
     badge.innerHTML = badgeHTML;
+    
+    // Add event listener after HTML is set
+    const actionBtn = document.getElementById('auth-action-btn');
+    if (actionBtn) {
+        actionBtn.addEventListener('click', () => {
+            if (currentUser.authenticated) {
+                logoutUser();
+            } else {
+                showAuthModal(USER_ROLES.LEADER);
+            }
+        });
+    }
 }
 
 // ========================================
@@ -361,7 +371,6 @@ function applyRoleBasedUI() {
     const role = currentUser.role;
     
     // DELETE buttons - Admin only
-    // Method 1: Select by ID and onclick attributes
     const deleteButtons = document.querySelectorAll('#delete-btn, [onclick*="clearAllRecords"], [onclick*="deleteRecordsForDate"], [onclick*="deleteMember"]');
     deleteButtons.forEach(btn => {
         if (role === USER_ROLES.ADMIN) {
@@ -373,11 +382,10 @@ function applyRoleBasedUI() {
         }
     });
     
-    // Method 2: Select all buttons with "Delete" text (catch-all for member delete button)
+    // All buttons with delete-related text
     const allButtons = document.querySelectorAll('button');
     allButtons.forEach(btn => {
         const buttonText = btn.textContent.trim();
-        // Check if button contains delete-related text
         if (buttonText.includes('🗑️ Delete') || 
             buttonText.includes('Delete') || 
             buttonText === '🗑️ Delete' ||
@@ -391,113 +399,6 @@ function applyRoleBasedUI() {
             }
         }
     });
-    
-    // DATA MANAGEMENT SECTION - Admin only
-    const dataManagementSection = document.getElementById('data-management-section');
-    if (dataManagementSection) {
-        if (role === USER_ROLES.ADMIN) {
-            dataManagementSection.style.display = 'block';
-        } else {
-            dataManagementSection.style.display = 'none';
-        }
-    }
-    
-    // TAB RESTRICTIONS - Guest cannot access Records and Reports tabs
-    const recordsTab = Array.from(document.querySelectorAll('.tab-btn')).find(btn => 
-        btn.textContent.includes('Records')
-    );
-    const reportsTab = Array.from(document.querySelectorAll('.tab-btn')).find(btn => 
-        btn.textContent.includes('Reports')
-    );
-    
-    if (recordsTab) {
-        if (role === USER_ROLES.GUEST) {
-            // Disable Records tab for Guest
-            recordsTab.style.opacity = '0.4';
-            recordsTab.style.cursor = 'not-allowed';
-            recordsTab.style.pointerEvents = 'none';
-            recordsTab.title = 'Login required to access Records';
-        } else {
-            // Enable Records tab for authenticated users
-            recordsTab.style.opacity = '1';
-            recordsTab.style.cursor = 'pointer';
-            recordsTab.style.pointerEvents = 'auto';
-            recordsTab.title = '';
-        }
-    }
-    
-    if (reportsTab) {
-        if (role === USER_ROLES.GUEST) {
-            // Disable Reports tab for Guest
-            reportsTab.style.opacity = '0.4';
-            reportsTab.style.cursor = 'not-allowed';
-            reportsTab.style.pointerEvents = 'none';
-            reportsTab.title = 'Login required to access Reports';
-        } else {
-            // Enable Reports tab for authenticated users
-            reportsTab.style.opacity = '1';
-            reportsTab.style.cursor = 'pointer';
-            reportsTab.style.pointerEvents = 'auto';
-            reportsTab.title = '';
-        }
-    }
-    
-    // CLUSTER FILTER - Church Leaders see only their cluster
-    const clusterFilter = document.getElementById('export-cluster-filter');
-    if (clusterFilter && role === USER_ROLES.LEADER) {
-        // Church Leader - show only their cluster
-        const leaderCluster = currentUser.cluster;
-        
-        // Clear all options
-        clusterFilter.innerHTML = '';
-        
-        // Add only the leader's cluster option
-        const option = document.createElement('option');
-        option.value = leaderCluster;
-        option.textContent = leaderCluster;
-        clusterFilter.appendChild(option);
-        
-        // Set as selected
-        clusterFilter.value = leaderCluster;
-        clusterFilter.disabled = true; // Disable dropdown since there's only one option
-        
-        console.log(`✅ Cluster filter restricted to: ${leaderCluster}`);
-    } else if (clusterFilter && role === USER_ROLES.ADMIN) {
-        // Admin - show all clusters (restore original options if needed)
-        clusterFilter.disabled = false;
-        
-        // Ensure all options are present (in case they were removed before)
-        const allClusters = [
-            { value: 'ALL', text: 'ALL Clusters' },
-            { value: 'CAMP AGUINALDO', text: 'CAMP AGUINALDO' },
-            { value: 'CENTRAL', text: 'CENTRAL' },
-            { value: 'KAINGIN', text: 'KAINGIN' },
-            { value: 'KNL 1', text: 'KNL 1' },
-            { value: 'KNL 2', text: 'KNL 2' },
-            { value: 'PANSOL', text: 'PANSOL' },
-            { value: 'UP CAMPUS/CP GARCIA', text: 'UP CAMPUS/CP GARCIA' },
-            { value: 'WHITE', text: 'WHITE' }
-        ];
-        const currentOptions = Array.from(clusterFilter.options).map(opt => opt.value);
-        
-        // Only rebuild if options are missing
-        if (currentOptions.length < allClusters.length) {
-            clusterFilter.innerHTML = '';
-            allClusters.forEach(cluster => {
-                const option = document.createElement('option');
-                option.value = cluster.value;
-                option.textContent = cluster.text;
-                clusterFilter.appendChild(option);
-            });
-        }
-        
-        console.log('✅ Cluster filter: All clusters available (Admin)');
-    }
-    
-    // Update member/visitor counts based on cluster filter
-    if (typeof updateMemberStats === 'function') {
-        updateMemberStats();
-    }
     
     console.log('✅ UI updated for role:', role);
 }
@@ -548,7 +449,6 @@ function requireAuth(requiredRole, callback) {
         return false;
     }
     
-    // Check if current role is sufficient
     if (requiredRole === USER_ROLES.ADMIN && currentUser.role !== USER_ROLES.ADMIN) {
         showAuthModal(USER_ROLES.ADMIN, callback);
         return false;
@@ -595,3 +495,12 @@ window.AuthSystem = {
     showNotification,
     USER_ROLES
 };
+
+// ========================================
+// EXPOSE FUNCTIONS GLOBALLY FOR INLINE ONCLICK HANDLERS
+// ========================================
+
+window.verifyAuth = verifyAuth;
+window.closeAuthModal = closeAuthModal;
+window.logoutUser = logoutUser;
+window.showAuthModal = showAuthModal;
