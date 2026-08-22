@@ -595,12 +595,3 @@ window.AuthSystem = {
     showNotification,
     USER_ROLES
 };
-
-// ========================================
-// EXPOSE FUNCTIONS GLOBALLY FOR INLINE ONCLICK HANDLERS
-// ========================================
-
-window.verifyAuth = verifyAuth;
-window.closeAuthModal = closeAuthModal;
-window.logoutUser = logoutUser;
-window.showAuthModal = showAuthModal;
