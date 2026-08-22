@@ -2134,17 +2134,19 @@ function printReport() {
 function generateQR() {
     const name = document.getElementById('employee-name').value.trim();
     const cluster = document.getElementById('employee-cluster').value.trim();
+    const category = document.getElementById('employee-category').value.trim();
     
-    if (!name) {
-        alert('Please enter a name!');
+    if (!name || !cluster || !category) {
+        alert('Please fill in all fields (Name, Cluster, and Category)!');
         return;
     }
     
     // ✅ STABLE QR FORMAT - backwards compatible
-    // Cluster is optional, use "No Cluster" if empty
+    // Always include name, cluster, category for future compatibility
     const data = JSON.stringify({ 
         name: name.trim(), 
-        cluster: cluster.trim() || 'No Cluster'
+        cluster: cluster.trim(), 
+        category: category.trim() 
     });
     
     document.getElementById('qrcode').innerHTML = '';
@@ -2160,7 +2162,8 @@ function generateQR() {
     });
     
     document.getElementById('qr-name').textContent = name;
-    document.getElementById('qr-cluster').textContent = cluster || 'No Cluster';
+    document.getElementById('qr-cluster').textContent = cluster;
+    document.getElementById('qr-category').textContent = category;
     document.getElementById('qr-output').style.display = 'block';
 }
 
@@ -2245,6 +2248,7 @@ function downloadBlobFromCanvas(blob, filename) {
 function clearQRForm() {
     document.getElementById('employee-name').value = '';
     document.getElementById('employee-cluster').value = '';
+    document.getElementById('employee-category').value = '';
     document.getElementById('qrcode').innerHTML = '';
     document.getElementById('qr-output').style.display = 'none';
     
