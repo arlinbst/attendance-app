@@ -144,17 +144,6 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('⚠️ App will work in offline mode only');
     });
     
-    // ✅ Initialize report date with TODAY'S date
-    const reportDateField = document.getElementById('report-date');
-    if (reportDateField) {
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        const dd = String(today.getDate()).padStart(2, '0');
-        reportDateField.value = `${yyyy}-${mm}-${dd}`;
-        console.log('✅ Report date initialized to:', reportDateField.value);
-    }
-    
     // Initialize member type field visibility after small delay to ensure DOM is ready
     setTimeout(() => {
         try {
@@ -3461,6 +3450,9 @@ window.closePreview = closePreview;
 window.generateReport = generateReport;
 window.printReport = printReport;
 window.recoverData = recoverData;
+window.openDateLookup = openDateLookup;
+window.closeDateLookup = closeDateLookup;
+window.selectReportDate = selectReportDate;
 
 // Record Management
 window.deleteRecordsForDate = deleteRecordsForDate;
