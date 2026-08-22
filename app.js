@@ -128,6 +128,12 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ Page loaded - initializing...');
     console.log('📱 Device:', navigator.userAgent);
     
+    // ✅ Initialize authentication system FIRST
+    if (typeof initAuthSystem === 'function') {
+        initAuthSystem();
+        console.log('✅ Authentication system initialized');
+    }
+    
     // STEP 1: Load from localStorage first (instant display if data exists)
     loadRecords();
     loadMembersFromLocalStorage(); // Load members/visitors from localStorage
