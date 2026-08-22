@@ -98,11 +98,9 @@
                 <input type="text" id="visitor-name" class="input-field" placeholder="Enter visitor name (Lastname, Firstname)" required>
                 
                 <label for="visitor-type" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Visitor Type:</label>
-                <select id="visitor-type" class="input-field" required>
-                    <option value="">Select Visitor Type</option>
+                <select id="visitor-type" class="input-field">
                     <option value="Visiting Member">Visiting Member</option>
                     <option value="Visitor">Visitor</option>
-                    <option value="Invited">Invited</option>
                     <option value="Balik-loob">Balik-loob</option>
                     <option value="New Believer">New Believer</option>
                     <option value="HFGC Baptism">HFGC Baptism</option>
@@ -115,21 +113,8 @@
                     <option value="Extension Cadets">Extension Cadets</option>
                 </select>
                 
-                <label for="visitor-cluster" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Cluster (Optional):</label>
-                <select id="visitor-cluster" class="input-field">
-                    <option value="">No Cluster</option>
-                    <option value="CAMP AGUINALDO">CAMP AGUINALDO</option>
-                    <option value="CENTRAL">CENTRAL</option>
-                    <option value="KAINGIN">KAINGIN</option>
-                    <option value="KNL 1">KNL 1</option>
-                    <option value="KNL 2">KNL 2</option>
-                    <option value="PANSOL">PANSOL</option>
-                    <option value="UP CAMPUS/CP GARCIA">UP CAMPUS/CP GARCIA</option>
-                    <option value="WHITE">WHITE</option>
-                </select>
-                
-                <label for="visitor-service" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Type of Service:</label>
-                <select id="visitor-service" class="input-field" required>
+                <label for="visitor-service" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Service Type:</label>
+                <select id="visitor-service" class="input-field">
                     <option value="Sunday Worship">Sunday Worship</option>
                     <option value="Evangelistic Service">Evangelistic Service</option>
                     <option value="Bible Study">Bible Study</option>
@@ -144,105 +129,270 @@
                     <h3>✅ Visitor Added!</h3>
                     <p><strong>Name:</strong> <span id="visitor-result-name"></span></p>
                     <p><strong>Type:</strong> <span id="visitor-result-type"></span></p>
-                    <p><strong>Cluster:</strong> <span id="visitor-result-cluster"></span></p>
                     <p><strong>Service:</strong> <span id="visitor-result-service"></span></p>
                     <p><strong>Time:</strong> <span id="visitor-result-time"></span></p>
                 </div>
             </div>
         </div>
 
-        <!-- RECORDS TAB -->
+        <!-- RECORDS TAB - MEMBER MANAGEMENT -->
         <div id="records-tab" class="tab-content">
-            <div class="form-section">
-                <h3>📋 Attendance Records</h3>
-                <p style="color: #666; margin-bottom: 15px;">All scanned attendance logs</p>
+            <div class="form-section" style="max-width: 800px;">
+                <h3>📝 Member Information Management</h3>
+                <p style="color: #666; margin-bottom: 20px;">Search, view, and update member details</p>
                 
-                <div class="stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px;">
-                    <div style="background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%); color: white; padding: 15px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 28px; font-weight: bold;" id="total-records">0</div>
-                        <div style="font-size: 12px; opacity: 0.9;">Total Records</div>
-                    </div>
-                    <div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; padding: 15px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 28px; font-weight: bold;" id="total-today">0</div>
-                        <div style="font-size: 12px; opacity: 0.9;">Today</div>
+                <!-- Member Type Selection -->
+                <div style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 10px;">Select Type:</label>
+                    <div class="member-type-radio" style="display: flex; gap: 20px; flex-wrap: wrap;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="member-type" value="members" checked onchange="switchMemberType()">
+                            <span style="margin-left: 8px;">👥 Members (with QR Code)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="member-type" value="visitors" onchange="switchMemberType()">
+                            <span style="margin-left: 8px;">🚶 Visitors (without QR Code)</span>
+                        </label>
                     </div>
                 </div>
                 
-                <div style="margin-bottom: 15px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
-                    <h4 style="margin: 0 0 10px 0; font-size: 14px;">🔍 Filter Records</h4>
-                    <div style="display: grid; gap: 10px;">
-                        <input type="date" id="filter-date" class="input-field" placeholder="Filter by date">
-                        <select id="filter-cluster" class="input-field">
-                            <option value="">All Clusters</option>
+                <!-- Search Section -->
+                <div style="margin-bottom: 25px; padding: 15px; background: #e3f2fd; border-radius: 8px;">
+                    <label for="search-name" style="display: block; margin-bottom: 8px; font-weight: bold;">Search by Name:</label>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch;">
+                        <input type="text" id="search-name" class="input-field" placeholder="Enter name (Lastname, Firstname)" style="flex: 1; min-width: 200px;">
+                        <button onclick="searchMember()" class="btn btn-primary" style="flex-shrink: 0;">🔍 Search</button>
+                        <button onclick="clearSearch()" class="btn btn-secondary" style="flex-shrink: 0;">Clear</button>
+                        <button onclick="addNewMember()" class="btn btn-success" style="flex-shrink: 0;">➕ New</button>
+                    </div>
+                </div>
+                
+                <!-- Member Details Form -->
+                <div id="member-details-section" style="display: none; padding: 20px; background: #fff; border: 2px solid #2196F3; border-radius: 10px; margin-bottom: 20px;">
+                    <h4 style="color: #2196F3; margin-bottom: 20px;" id="form-title">Member Information</h4>
+                    
+                    <input type="hidden" id="member-id" value="">
+                    
+                    <div class="form-group">
+                        <label for="member-name" style="display: block; margin-bottom: 8px; font-weight: bold;">Name:</label>
+                        <input type="text" id="member-name" class="input-field" placeholder="Lastname, Firstname Middlename" required>
+                    </div>
+                    
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="member-birthday" style="display: block; margin-bottom: 8px; font-weight: bold;">Birthday:</label>
+                        <input type="date" id="member-birthday" class="input-field" required onchange="calculateAge()">
+                    </div>
+                    
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="member-age" style="display: block; margin-bottom: 8px; font-weight: bold;">Age:</label>
+                        <input type="text" id="member-age" class="input-field" readonly style="background-color: #f0f0f0; cursor: not-allowed;" placeholder="Auto-calculated">
+                    </div>
+                    
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="member-contact" style="display: block; margin-bottom: 8px; font-weight: bold;">Contact Number:</label>
+                        <input type="tel" id="member-contact" class="input-field" placeholder="09XXXXXXXXX" required>
+                    </div>
+                    
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="member-facebook" style="display: block; margin-bottom: 8px; font-weight: bold;">Facebook Account Name: <span style="font-weight: normal; color: #666;">(Optional)</span></label>
+                        <input type="text" id="member-facebook" class="input-field" placeholder="Facebook name or profile link">
+                    </div>
+                    
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="member-cluster" id="cluster-label" style="display: block; margin-bottom: 8px; font-weight: bold;">Cluster:</label>
+                        <select id="member-cluster" class="input-field" required>
+                            <option value="">Select Cluster</option>
+                            <option value="CAMP AGUINALDO">CAMP AGUINALDO</option>
+                            <option value="CENTRAL">CENTRAL</option>
+                            <option value="KAINGIN">KAINGIN</option>
+                            <option value="KNL 1">KNL 1</option>
+                            <option value="KNL 2">KNL 2</option>
+                            <option value="PANSOL">PANSOL</option>
+                            <option value="UP CAMPUS/CP GARCIA">UP CAMPUS/CP GARCIA</option>
+                            <option value="WHITE">WHITE</option>
                         </select>
-                        <select id="filter-service" class="input-field">
-                            <option value="">All Services</option>
-                            <option value="Sunday Worship">Sunday Worship</option>
-                            <option value="Evangelistic Service">Evangelistic Service</option>
-                            <option value="Bible Study">Bible Study</option>
-                            <option value="Prayer Meeting">Prayer Meeting</option>
-                            <option value="Family Devotion">Family Devotion</option>
-                            <option value="Church Anniversary">Church Anniversary</option>
+                    </div>
+                    
+                    <!-- Category Field (for Members only) -->
+                    <div class="form-group" id="category-field" style="margin-top: 15px;">
+                        <label for="member-category" style="display: block; margin-bottom: 8px; font-weight: bold;">Category:</label>
+                        <select id="member-category" class="input-field" required>
+                            <option value="">Select Category</option>
+                            <option value="Pastoral">Pastoral</option>
+                            <option value="Elder">Elder</option>
+                            <option value="Adult">Adult</option>
+                            <option value="Youth">Youth</option>
+                            <option value="Cadets">Cadets</option>
                         </select>
-                        <div style="display: flex; gap: 10px;">
-                            <button onclick="applyFilters()" class="btn btn-primary" style="flex: 1;">Apply Filters</button>
-                            <button onclick="clearFilters()" class="btn btn-secondary" style="flex: 1;">Clear</button>
+                    </div>
+                    
+                    <!-- Visitor Type Field (for Visitors only) -->
+                    <div class="form-group" id="visitor-type-field" style="margin-top: 15px; display: none;">
+                        <label for="member-visitor-type" style="display: block; margin-bottom: 8px; font-weight: bold;">Visitor Type:</label>
+                        <select id="member-visitor-type" class="input-field">
+                            <option value="">Select Visitor Type</option>
+                            <option value="Visiting Member">Visiting Member</option>
+                            <option value="Visitor">Visitor</option>
+                            <option value="Balik-loob">Balik-loob</option>
+                            <option value="New Believer">New Believer</option>
+                            <option value="HFGC Baptism">HFGC Baptism</option>
+                            <option value="New Baptism">New Baptism</option>
+                            <option value="Extension Member">Extension Member</option>
+                            <option value="Extension Visitors">Extension Visitors</option>
+                            <option value="Extension Balik-loob">Extension Balik-loob</option>
+                            <option value="Extension New Believer">Extension New Believer</option>
+                            <option value="Extension New Baptism">Extension New Baptism</option>
+                            <option value="Extension Cadets">Extension Cadets</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Date Baptised Field (for Visitors only) -->
+                    <div class="form-group" id="date-baptised-field" style="margin-top: 15px; display: none;">
+                        <label for="member-date-baptised" style="display: block; margin-bottom: 8px; font-weight: bold;">Date Baptised:</label>
+                        <input type="date" id="member-date-baptised" class="input-field">
+                    </div>
+                    
+                    <!-- Status Field (for Members only) -->
+                    <div class="form-group" id="status-field" style="margin-top: 15px;">
+                        <label for="member-status" style="display: block; margin-bottom: 8px; font-weight: bold;">Status:</label>
+                        <select id="member-status" class="input-field" required>
+                            <option value="">Select Status</option>
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-top: 25px; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+                        <button onclick="saveMember()" class="btn btn-success" style="min-width: 100px;">💾 Save</button>
+                        <button onclick="deleteMember()" class="btn btn-danger" id="delete-btn" style="display: none; min-width: 100px;">🗑️ Delete</button>
+                        <button onclick="cancelEdit()" class="btn btn-secondary" style="min-width: 100px;">✖️ Cancel</button>
+                    </div>
+                </div>
+                
+                <!-- Search Results -->
+                <div id="search-results" style="display: none; margin-top: 20px;">
+                    <h4 style="margin-bottom: 15px;">Search Results:</h4>
+                    <div id="results-list" class="results-container"></div>
+                </div>
+                
+                <!-- Export Report Section -->
+                <div style="margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 10px;">
+                    <h4 style="color: #2196F3; margin-bottom: 15px;">📊 Generate Members Report</h4>
+                    
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 15px;">
+                        <label style="font-weight: bold;">Type:</label>
+                        <select id="export-type-filter" class="input-field" style="flex: 1; min-width: 150px;">
+                            <option value="ALL">Both (Members & Visitors)</option>
+                            <option value="MEMBERS">Members Only</option>
+                            <option value="VISITORS">Visitors Only</option>
+                        </select>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 15px;">
+                        <label style="font-weight: bold;">Filter by Cluster:</label>
+                        <select id="export-cluster-filter" class="input-field" style="flex: 1; min-width: 200px;">
+                            <option value="ALL">ALL Clusters</option>
+                            <option value="CAMP AGUINALDO">CAMP AGUINALDO</option>
+                            <option value="CENTRAL">CENTRAL</option>
+                            <option value="KAINGIN">KAINGIN</option>
+                            <option value="KNL 1">KNL 1</option>
+                            <option value="KNL 2">KNL 2</option>
+                            <option value="PANSOL">PANSOL</option>
+                            <option value="UP CAMPUS/CP GARCIA">UP CAMPUS/CP GARCIA</option>
+                            <option value="WHITE">WHITE</option>
+                        </select>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 15px;">
+                        <button onclick="previewMembersReport()" class="btn btn-primary" style="width: 60px; height: 60px; border-radius: 50%; font-size: 28px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Preview Report">👁️</button>
+                        <button onclick="printMembersReport()" class="btn btn-success" style="width: 60px; height: 60px; border-radius: 50%; font-size: 28px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Print Report">🖨️</button>
+                        <button onclick="exportToExcel()" class="btn btn-success" style="width: 60px; height: 60px; border-radius: 50%; font-size: 28px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Export to Excel">📥</button>
+                    </div>
+                </div>
+                
+                <!-- Preview Modal -->
+                <div id="preview-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; overflow: auto;" onclick="if(event.target.id === 'preview-modal') closePreview();">
+                    <div style="background: white; margin: 20px auto; max-width: 1000px; border-radius: 10px; position: relative;">
+                        <div style="padding: 20px; border-bottom: 2px solid #2196F3; display: flex; justify-content: space-between; align-items: center; background: #2196F3; color: white; border-radius: 10px 10px 0 0;">
+                            <h3 style="margin: 0; color: white;">📊 Members Report Preview</h3>
+                            <button onclick="closePreview()" style="background: white; color: #2196F3; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 18px; transition: all 0.3s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">✖️ Close</button>
                         </div>
+                        <div id="preview-content" style="padding: 30px; max-height: 80vh; overflow-y: auto;"></div>
                     </div>
                 </div>
                 
-                <div id="records-list"></div>
+                <!-- Stats -->
+                <div class="stats" style="margin-top: 25px;">
+                    <div class="stat-card">
+                        <h3 id="total-members">0</h3>
+                        <p>Total Members</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 id="total-visitors">0</h3>
+                        <p>Total Visitors</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- REPORTS TAB -->
+        <div id="reports-tab" class="tab-content" style="background: linear-gradient(135deg, #FFFDE7 0%, #FFF9C4 100%); padding: 20px; border-radius: 10px; min-height: 500px;">
+            <div class="form-section">
+                <h3>Attendance Report</h3>
                 
-                <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button onclick="exportToCSV()" class="btn btn-success" style="flex: 1; min-width: 120px;">📥 Export CSV</button>
-                    <button onclick="deleteRecordsForDate()" class="btn btn-danger" style="flex: 1; min-width: 120px;">🗑️ Delete Records</button>
+                <label for="report-date" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Select Date:</label>
+                <div style="display: flex; gap: 8px; align-items: stretch;">
+                    <input type="text" id="report-date-display" class="input-field" placeholder="Click lookup to select date" readonly style="flex: 1; cursor: pointer; background-color: #f0f0f0;" onclick="openDateLookup()">
+                    <input type="hidden" id="report-date" value="">
+                    <button onclick="openDateLookup()" class="btn btn-primary" style="flex-shrink: 0; min-width: 100px;">🔍 Lookup</button>
+                </div>
+                
+                <label for="report-service" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Service Type:</label>
+                <select id="report-service" class="input-field">
+                    <option value="">All Services</option>
+                    <option value="Sunday Worship">Sunday Worship</option>
+                    <option value="Evangelistic Service">Evangelistic Service</option>
+                    <option value="Bible Study">Bible Study</option>
+                    <option value="Prayer Meeting">Prayer Meeting</option>
+                    <option value="Family Devotion">Family Devotion</option>
+                    <option value="Church Anniversary">Church Anniversary</option>
+                    <option value="HFGC Watch Party">HFGC Watch Party</option>
+                </select>
+                
+                <button onclick="generateReport()" class="btn btn-primary" style="margin-top: 20px;">Generate Report</button>
+                <button onclick="printReport()" class="btn btn-success" style="margin-top: 20px;">Print Report</button>
+                
+                <!-- DATA MANAGEMENT SECTION -->
+                <div style="margin-top: 30px; padding: 20px; border: 2px solid #ff9800; border-radius: 8px; background-color: #fff3e0;">
+                    <h4 style="color: #f57c00; margin-top: 0; margin-bottom: 15px;">⚠️ Data Management</h4>
+                    <p style="font-size: 13px; color: #666; margin-bottom: 15px;">Carefully manage attendance records. Deleted data cannot be recovered.</p>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                        <button onclick="deleteRecordsForDate()" class="btn" style="background-color: #ff9800; color: white; padding: 12px 20px; font-size: 14px; font-weight: 600; border-radius: 8px; min-width: 200px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <span style="font-size: 18px;">🗑️</span>
+                            <span>Delete by Date & Service</span>
+                        </button>
+                        <button onclick="clearAllRecords()" class="btn" style="background-color: #f44336; color: white; padding: 12px 20px; font-size: 14px; font-weight: 600; border-radius: 8px; min-width: 200px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <span style="font-size: 18px;">❌</span>
+                            <span>Clear ALL Records</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="report-content" style="margin-top: 30px;">
+                    <p class="empty-state">Click 🔍 Lookup to select a date with attendance records, then click "Generate Report" to view attendance summary.</p>
                 </div>
             </div>
         </div>
 
-        <!-- REPORTS TAB -->
-        <div id="reports-tab" class="tab-content">
-            <div class="form-section">
-                <h3>📊 Attendance Reports</h3>
-                <p style="color: #666; margin-bottom: 20px;">Generate detailed attendance reports</p>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: bold;">Report Type:</label>
-                    <select id="report-type" class="input-field">
-                        <option value="daily">Daily Report</option>
-                        <option value="weekly">Weekly Report</option>
-                        <option value="monthly">Monthly Report</option>
-                        <option value="custom">Custom Date Range</option>
-                    </select>
+        <!-- Date Lookup Modal -->
+        <div id="date-lookup-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; overflow: auto;" onclick="if(event.target.id === 'date-lookup-modal') closeDateLookup();">
+            <div style="background: white; margin: 50px auto; max-width: 700px; border-radius: 10px; position: relative;">
+                <div style="padding: 20px; border-bottom: 2px solid #2196F3; display: flex; justify-content: space-between; align-items: center; background: #2196F3; color: white; border-radius: 10px 10px 0 0;">
+                    <h3 style="margin: 0; color: white;">📅 Select Report Date</h3>
+                    <button onclick="closeDateLookup()" style="background: white; color: #2196F3; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 18px; transition: all 0.3s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">✖️ Close</button>
                 </div>
-                
-                <div id="custom-date-range" style="display: none; margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: bold;">From:</label>
-                    <input type="date" id="report-start-date" class="input-field" style="margin-bottom: 10px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: bold;">To:</label>
-                    <input type="date" id="report-end-date" class="input-field">
-                </div>
-                
-                <div style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: bold;">Service Type:</label>
-                    <select id="report-service" class="input-field">
-                        <option value="">All Services</option>
-                        <option value="Sunday Worship">Sunday Worship</option>
-                        <option value="Evangelistic Service">Evangelistic Service</option>
-                        <option value="Bible Study">Bible Study</option>
-                        <option value="Prayer Meeting">Prayer Meeting</option>
-                        <option value="Family Devotion">Family Devotion</option>
-                        <option value="Church Anniversary">Church Anniversary</option>
-                    </select>
-                </div>
-                
-                <button onclick="generateReport()" class="btn btn-primary" style="width: 100%;">Generate Report</button>
-                
-                <div id="report-output" style="display: none; margin-top: 20px;">
-                    <div id="report-content"></div>
-                    <div style="margin-top: 20px; display: flex; gap: 10px;">
-                        <button onclick="printReport()" class="btn btn-secondary" style="flex: 1;">🖨️ Print</button>
-                        <button onclick="exportToExcel()" class="btn btn-success" style="flex: 1;">📥 Export Excel</button>
+                <div style="padding: 30px; max-height: 60vh; overflow-y: auto;">
+                    <div id="date-lookup-content">
+                        <p style="text-align: center; color: #666;">Loading available dates...</p>
                     </div>
                 </div>
             </div>
@@ -303,7 +453,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="auth-system.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
