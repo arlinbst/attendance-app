@@ -853,9 +853,11 @@ async function clearAllRecords() {
         updateStats();
         populateClusterFilter();
         
-        // Clear report content
-        document.getElementById('report-content').innerHTML = 
-            '<p class="empty-state">All records have been deleted.</p>';
+        // Clear report content when the Reports view is present.
+        const reportContent = document.getElementById('report-content');
+        if (reportContent) {
+            reportContent.innerHTML = '<p class="empty-state">All records have been deleted.</p>';
+        }
         
         // Success message
         alert(
