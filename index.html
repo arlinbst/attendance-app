@@ -14,7 +14,7 @@
 <body>
     <div class="container">
         <!-- Beautiful Header Banner -->
-        <div style="background: linear-gradient(135deg, #8B1538 0%, #5D0E29 100%); padding: 20px 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 6px 15px rgba(139, 21, 56, 0.3); position: relative; overflow: hidden;">
+        <div style="background: linear-gradient(135deg, #8B1538 0%, #5D0E29 100%); padding: 18px 0; margin: -10px -10px 15px -10px; box-shadow: 0 4px 12px rgba(139, 21, 56, 0.3); position: relative; overflow: hidden;">
             <!-- Decorative background pattern -->
             <div style="position: absolute; top: 0; right: 0; opacity: 0.1; font-size: 100px; line-height: 1;">📋</div>
             
@@ -57,8 +57,8 @@
         </div>
 
         <!-- SCAN TAB -->
-        <div id="scan-tab" class="tab-content active">
-            <div class="scan-section">
+        <div id="scan-tab" class="tab-content active" style="background: linear-gradient(135deg, #E3F2FD 0%, #E1F5FE 100%); padding: 20px; border-radius: 10px; min-height: 500px;">
+            <div class="scan-section" style="position: relative;">
                 <div class="form-section">
                     <label for="service-type" style="display: block; margin-bottom: 8px; font-weight: bold;">Type of Service:</label>
                     <select id="service-type" class="input-field" style="margin-bottom: 15px;">
@@ -68,15 +68,11 @@
                         <option value="Prayer Meeting">Prayer Meeting</option>
                         <option value="Family Devotion">Family Devotion</option>
                         <option value="Church Anniversary">Church Anniversary</option>
-                        <option value="HFGC">HFGC</option>
+                        <option value="HFGC Watch Party">HFGC Watch Party</option>
                     </select>
                 </div>
-                <div style="margin-bottom: 15px;">
-                    <button id="camera-toggle-btn" class="btn btn-secondary" style="min-width: auto; padding: 10px 20px;">
-                        📷 Switch to Front Camera
-                    </button>
-                </div>
-                <div id="reader"></div>
+                <div id="reader" style="position: relative;"></div>
+                <button id="camera-flip-btn" style="position: absolute; top: 90px; right: 25px; width: 55px; height: 55px; border-radius: 50%; background: rgba(33, 150, 243, 0.95); color: white; font-size: 32px; padding: 0; display: none; align-items: center; justify-content: center; box-shadow: 0 6px 16px rgba(0,0,0,0.4); z-index: 9999; border: 3px solid white; cursor: pointer; transition: all 0.3s;" onclick="flipCamera()" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" title="Switch Camera">🔄</button>
                 <button id="start-scan-btn" class="btn btn-primary">Start Scanner</button>
                 <button id="stop-scan-btn" class="btn btn-danger" style="display: none;">Stop Scanner</button>
                 
@@ -91,7 +87,7 @@
         </div>
 
         <!-- VISITORS TAB -->
-        <div id="visitors-tab" class="tab-content">
+        <div id="visitors-tab" class="tab-content" style="background: linear-gradient(135deg, #F3E5F5 0%, #EDE7F6 100%); padding: 20px; border-radius: 10px; min-height: 500px;">
             <div class="form-section">
                 <h3>Add Visitor Attendance</h3>
                 <p style="color: #666; margin-bottom: 20px;">For visitors without QR codes</p>
@@ -106,15 +102,25 @@
                     <option value="New Believer">New Believer</option>
                     <option value="HFGC Baptism">HFGC Baptism</option>
                     <option value="New Baptism">New Baptism</option>
-                    <option value="Cadets">Cadets</option>
-                    <option value="In-Active">In-Active</option>
-                    <option value="Online Worshipper">Online Worshipper</option>
                     <option value="Extension Member">Extension Member</option>
                     <option value="Extension Visitors">Extension Visitors</option>
                     <option value="Extension Balik-loob">Extension Balik-loob</option>
                     <option value="Extension New Believer">Extension New Believer</option>
                     <option value="Extension New Baptism">Extension New Baptism</option>
                     <option value="Extension Cadets">Extension Cadets</option>
+                </select>
+                
+                <label for="visitor-cluster" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Cluster: <span style="font-weight: normal; color: #666;">(Optional)</span></label>
+                <select id="visitor-cluster" class="input-field">
+                    <option value="">No Cluster</option>
+                    <option value="CAMP AGUINALDO">CAMP AGUINALDO</option>
+                    <option value="CENTRAL">CENTRAL</option>
+                    <option value="KAINGIN">KAINGIN</option>
+                    <option value="KNL 1">KNL 1</option>
+                    <option value="KNL 2">KNL 2</option>
+                    <option value="PANSOL">PANSOL</option>
+                    <option value="UP CAMPUS/CP GARCIA">UP CAMPUS/CP GARCIA</option>
+                    <option value="WHITE">WHITE</option>
                 </select>
                 
                 <label for="visitor-service" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Service Type:</label>
@@ -125,15 +131,16 @@
                     <option value="Prayer Meeting">Prayer Meeting</option>
                     <option value="Family Devotion">Family Devotion</option>
                     <option value="Church Anniversary">Church Anniversary</option>
-                    <option value="HFGC">HFGC</option>
+                    <option value="HFGC Watch Party">HFGC Watch Party</option>
                 </select>
                 
-                <button onclick="addVisitor()" class="btn btn-primary" style="margin-top: 20px;">Add Visitor</button>
+                <button id="add-visitor-btn" type="button" class="btn btn-primary" style="margin-top: 20px;">Add Visitor</button>
                 
                 <div id="visitor-result" class="result-box" style="display: none; margin-top: 20px;">
                     <h3>✅ Visitor Added!</h3>
                     <p><strong>Name:</strong> <span id="visitor-result-name"></span></p>
                     <p><strong>Type:</strong> <span id="visitor-result-type"></span></p>
+                    <p><strong>Cluster:</strong> <span id="visitor-result-cluster"></span></p>
                     <p><strong>Service:</strong> <span id="visitor-result-service"></span></p>
                     <p><strong>Time:</strong> <span id="visitor-result-time"></span></p>
                 </div>
@@ -141,9 +148,9 @@
         </div>
 
         <!-- RECORDS TAB - MEMBER MANAGEMENT -->
-        <div id="records-tab" class="tab-content">
+        <div id="records-tab" class="tab-content" style="background: linear-gradient(135deg, #FCE4EC 0%, #FFF0F5 100%); padding: 20px; border-radius: 10px; min-height: 500px;">
             <div class="form-section" style="max-width: 800px;">
-                <h3>📝 Member Information Management</h3>
+                <h3>📝 Members Information Maintenance</h3>
                 <p style="color: #666; margin-bottom: 20px;">Search, view, and update member details</p>
                 
                 <!-- Member Type Selection -->
@@ -162,13 +169,13 @@
                 </div>
                 
                 <!-- Search Section -->
-                <div style="margin-bottom: 25px; padding: 15px; background: #e3f2fd; border-radius: 8px;">
+                <div style="margin-bottom: 25px; padding: 20px; background: #e3f2fd; border-radius: 8px; border: 2px solid #90caf9;">
                     <label for="search-name" style="display: block; margin-bottom: 8px; font-weight: bold;">Search by Name:</label>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch;">
                         <input type="text" id="search-name" class="input-field" placeholder="Enter name (Lastname, Firstname)" style="flex: 1; min-width: 200px;">
                         <button onclick="searchMember()" class="btn btn-primary" style="flex-shrink: 0;">🔍 Search</button>
                         <button onclick="clearSearch()" class="btn btn-secondary" style="flex-shrink: 0;">Clear</button>
-                        <button onclick="addNewMember()" class="btn btn-success" style="flex-shrink: 0;">➕ New</button>
+                        <button onclick="addNewMember()" class="btn btn-success" id="add-new-btn" style="flex-shrink: 0;">➕ New</button>
                     </div>
                 </div>
                 
@@ -242,9 +249,6 @@
                             <option value="New Believer">New Believer</option>
                             <option value="HFGC Baptism">HFGC Baptism</option>
                             <option value="New Baptism">New Baptism</option>
-                            <option value="Cadets">Cadets</option>
-                            <option value="In-Active">In-Active</option>
-                            <option value="Online Worshipper">Online Worshipper</option>
                             <option value="Extension Member">Extension Member</option>
                             <option value="Extension Visitors">Extension Visitors</option>
                             <option value="Extension Balik-loob">Extension Balik-loob</option>
@@ -258,6 +262,18 @@
                     <div class="form-group" id="date-baptised-field" style="margin-top: 15px; display: none;">
                         <label for="member-date-baptised" style="display: block; margin-bottom: 8px; font-weight: bold;">Date Baptised:</label>
                         <input type="date" id="member-date-baptised" class="input-field">
+                    </div>
+                    
+                    <!-- Invited By Field (for Visitors only) -->
+                    <div class="form-group" id="invited-by-field" style="margin-top: 15px; display: none;">
+                        <label for="member-invited-by" style="display: block; margin-bottom: 8px; font-weight: bold;">Invited By: <span style="font-weight: normal; color: #666;">(Optional)</span></label>
+                        <input type="text" id="member-invited-by" class="input-field" placeholder="Name of person who invited">
+                    </div>
+                    
+                    <!-- Baptised By Field (for Visitors only) -->
+                    <div class="form-group" id="baptised-by-field" style="margin-top: 15px; display: none;">
+                        <label for="member-baptised-by" style="display: block; margin-bottom: 8px; font-weight: bold;">Baptised By: <span style="font-weight: normal; color: #666;">(Optional)</span></label>
+                        <input type="text" id="member-baptised-by" class="input-field" placeholder="Name of minister who baptised">
                     </div>
                     
                     <!-- Status Field (for Members only) -->
@@ -285,7 +301,7 @@
                 
                 <!-- Export Report Section -->
                 <div style="margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 10px;">
-                    <h4 style="color: #2196F3; margin-bottom: 15px;">📊 Generate Members Report</h4>
+                    <h4 style="color: #2196F3; margin-bottom: 15px;">📊 Generate Report</h4>
                     
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 15px;">
                         <label style="font-weight: bold;">Type:</label>
@@ -311,10 +327,10 @@
                         </select>
                     </div>
                     
-                    <div style="display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 15px;">
-                        <button onclick="previewMembersReport()" class="btn btn-primary" style="width: 60px; height: 60px; border-radius: 50%; font-size: 28px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Preview Report">👁️</button>
-                        <button onclick="printMembersReport()" class="btn btn-success" style="width: 60px; height: 60px; border-radius: 50%; font-size: 28px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Print Report">🖨️</button>
-                        <button onclick="exportToExcel()" class="btn btn-success" style="width: 60px; height: 60px; border-radius: 50%; font-size: 28px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Export to Excel">📥</button>
+                    <div style="display: flex; gap: 15px; justify-content: center; align-items: center; margin-top: 20px;">
+                        <button onclick="previewMembersReport()" class="btn btn-primary" style="width: 70px; height: 70px; border-radius: 50%; font-size: 36px; padding: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" title="Preview Report">👁️</button>
+                        <button onclick="printMembersReport()" class="btn btn-success" style="width: 70px; height: 70px; border-radius: 50%; font-size: 36px; padding: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" title="Print Report">🖨️</button>
+                        <button onclick="exportToExcel()" class="btn" style="width: 70px; height: 70px; border-radius: 50%; font-size: 36px; padding: 0; display: flex; align-items: center; justify-content: center; background: #FFC107; color: white; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" title="Export to Excel" onmouseover="this.style.background='#FFB300'" onmouseout="this.style.background='#FFC107'">📥</button>
                     </div>
                 </div>
                 
@@ -322,7 +338,7 @@
                 <div id="preview-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; overflow: auto;" onclick="if(event.target.id === 'preview-modal') closePreview();">
                     <div style="background: white; margin: 20px auto; max-width: 1000px; border-radius: 10px; position: relative;">
                         <div style="padding: 20px; border-bottom: 2px solid #2196F3; display: flex; justify-content: space-between; align-items: center; background: #2196F3; color: white; border-radius: 10px 10px 0 0;">
-                            <h3 style="margin: 0; color: white;">📊 Members Report Preview</h3>
+                            <h3 style="margin: 0; color: white;">📊 Report Preview</h3>
                             <button onclick="closePreview()" style="background: white; color: #2196F3; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 18px; transition: all 0.3s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">✖️ Close</button>
                         </div>
                         <div id="preview-content" style="padding: 30px; max-height: 80vh; overflow-y: auto;"></div>
@@ -366,10 +382,8 @@
                     <option value="HFGC Watch Party">HFGC Watch Party</option>
                 </select>
                 
-                <div style="display: flex; gap: 15px; justify-content: center; align-items: center; margin-top: 25px;">
-                    <button onclick="generateReport()" class="btn btn-primary" style="width: 70px !important; height: 70px !important; min-width: 70px !important; min-height: 70px !important; max-width: 70px !important; max-height: 70px !important; border-radius: 50% !important; font-size: 32px !important; padding: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; box-shadow: 0 4px 8px rgba(0,0,0,0.2); flex-shrink: 0;" title="Generate Report">📊</button>
-                    <button onclick="printReport()" class="btn btn-success" style="width: 70px !important; height: 70px !important; min-width: 70px !important; min-height: 70px !important; max-width: 70px !important; max-height: 70px !important; border-radius: 50% !important; font-size: 32px !important; padding: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; box-shadow: 0 4px 8px rgba(0,0,0,0.2); flex-shrink: 0;" title="Print Report">🖨️</button>
-                </div>
+                <button onclick="generateReport()" class="btn btn-primary" style="margin-top: 20px;">Generate Report</button>
+                <button onclick="printReport()" class="btn btn-success" style="margin-top: 20px;">Print Report</button>
                 
                 <!-- DATA MANAGEMENT SECTION -->
                 <div style="margin-top: 30px; padding: 20px; border: 2px solid #ff9800; border-radius: 8px; background-color: #fff3e0;">
@@ -388,7 +402,7 @@
                 </div>
                 
                 <div id="report-content" style="margin-top: 30px;">
-                    <p class="empty-state">Click 🔍 Lookup to select a date with attendance records, then click "Generate Report" to view attendance summary.</p>
+                    <p class="empty-state">Select date and service type, then click "Generate Report" to view attendance summary.</p>
                 </div>
             </div>
         </div>
@@ -409,18 +423,16 @@
         </div>
 
         <!-- GENERATE QR TAB -->
-        <div id="generate-tab" class="tab-content">
+        <div id="generate-tab" class="tab-content" style="background: #FFFFFF; padding: 20px; border-radius: 10px; min-height: 500px;">
             <div class="form-section">
                 <h3>Generate QR Code</h3>
                 
                 <label for="employee-name" style="display: block; margin-bottom: 8px; font-weight: bold;">Name:</label>
                 <input type="text" id="employee-name" class="input-field" placeholder="Enter name (Lastname, Firstname Middlename)" required>
                 
-                <label for="employee-cluster" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Cluster (Optional):</label>
-                <select id="employee-cluster" class="input-field">
-                    <option value="">Select Cluster (Optional)</option>
-                    <option value="HEAD PASTOR">HEAD PASTOR</option>
-                    <option value="PASTORAL STAFF">PASTORAL STAFF</option>
+                <label for="employee-cluster" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Cluster:</label>
+                <select id="employee-cluster" class="input-field" required>
+                    <option value="">Select Cluster</option>
                     <option value="CAMP AGUINALDO">CAMP AGUINALDO</option>
                     <option value="CENTRAL">CENTRAL</option>
                     <option value="KAINGIN">KAINGIN</option>
@@ -431,12 +443,23 @@
                     <option value="WHITE">WHITE</option>
                 </select>
                 
+                <label for="employee-category" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Category:</label>
+                <select id="employee-category" class="input-field" required>
+                    <option value="">Select Category</option>
+                    <option value="Pastoral">Pastoral</option>
+                    <option value="Elder">Elder</option>
+                    <option value="Adult">Adult</option>
+                    <option value="Youth">Youth</option>
+                    <option value="Cadets">Cadets</option>
+                </select>
+                
                 <button onclick="generateQR()" class="btn btn-primary" style="margin-top: 20px;">Generate QR Code</button>
                 
                 <div id="qr-output" style="display: none; margin-top: 20px;">
                     <h4>QR Code for <span id="qr-name"></span></h4>
                     <p style="color: #666; font-size: 14px;">
-                        <strong>Cluster:</strong> <span id="qr-cluster"></span>
+                        <strong>Cluster:</strong> <span id="qr-cluster"></span><br>
+                        <strong>Category:</strong> <span id="qr-category"></span>
                     </p>
                     <div id="qrcode"></div>
                     <button onclick="downloadQR()" class="btn btn-success">Download QR Code</button>
@@ -463,7 +486,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="auth-system.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
