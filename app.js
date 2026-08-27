@@ -8,65 +8,6 @@ let lastScanTime = 0;
 let currentDisplayedRecords = [];
 let currentCamera = "environment"; // Track current camera: "environment" (back) or "user" (front)
 
-// ========================================
-// AUTHENTICATION WRAPPER FUNCTIONS
-// ========================================
-
-// Backup original functions
-let _original_addVisitor = null;
-let _original_deleteRecordsForDate = null;
-let _original_clearAllRecords = null;
-let _original_deleteMember = null;
-
-// Initialize auth wrappers after page load
-function initAuthWrappers() {
-    // Wait for AuthSystem to be available
-    if (typeof AuthSystem === 'undefined') {
-        console.error('❌ AuthSystem not loaded!');
-        return;
-    }
-    
-    console.log('✅ Initializing auth wrappers...');
-    
-    // Wrap addVisitor - requires Leader or Admin
-    _original_addVisitor = addVisitor;
-    window.addVisitor = function() {
-        if (AuthSystem.isGuest()) {
-            AuthSystem.showAuthModal(AuthSystem.USER_ROLES.LEADER, () => {
-                _original_addVisitor();
-            });
-            return;
-        }
-        _original_addVisitor();
-    };
-    
-    // Wrap deleteRecordsForDate - requires Admin only
-    _original_deleteRecordsForDate = deleteRecordsForDate;
-    window.deleteRecordsForDate = function() {
-        if (!AuthSystem.isAdmin()) {
-            AuthSystem.showAuthModal(AuthSystem.USER_ROLES.ADMIN, () => {
-                _original_deleteRecordsForDate();
-            });
-            return;
-        }
-        _original_deleteRecordsForDate();
-    };
-    
-    // Wrap clearAllRecords - requires Admin only
-    _original_clearAllRecords = clearAllRecords;
-    window.clearAllRecords = function() {
-        if (!AuthSystem.isAdmin()) {
-            AuthSystem.showAuthModal(AuthSystem.USER_ROLES.ADMIN, () => {
-                _original_clearAllRecords();
-            });
-            return;
-        }
-        _original_clearAllRecords();
-    };
-    
-    console.log('✅ Auth wrappers initialized');
-}
-
 // Firebase Configuration
 const firebaseConfig = {
     apiKey: "AIzaSyCbZI9mTieFtelvSRscgp2oWp9oA5cIYo",
@@ -81,57 +22,14 @@ const firebaseConfig = {
 let db = null;
 let firebaseInitialized = false;
 
-// ====================================================================
-// SYNC STATUS INDICATOR HELPERS
-// Shows real-time sync status to users across all devices
-// ====================================================================
-function showSyncStatus(icon, text, color) {
-    const statusDiv = document.getElementById('sync-status');
-    const iconSpan = document.getElementById('sync-icon');
-    const textSpan = document.getElementById('sync-text');
-    
-    if (statusDiv && iconSpan && textSpan) {
-        iconSpan.textContent = icon;
-        textSpan.textContent = text;
-        statusDiv.style.background = color;
-        statusDiv.style.display = 'flex';
-        statusDiv.style.alignItems = 'center';
-        statusDiv.style.gap = '8px';
-        
-        // Auto-hide success messages after 3 seconds
-        if (icon === '✅') {
-            setTimeout(() => {
-                statusDiv.style.display = 'none';
-            }, 3000);
-        }
-    }
-}
-
-function showSyncing() {
-    showSyncStatus('🔄', 'Syncing...', 'rgba(33, 150, 243, 0.95)');
-}
-
-function showSynced() {
-    showSyncStatus('✅', 'Synced', 'rgba(76, 175, 80, 0.95)');
-}
-
-function showOffline() {
-    showSyncStatus('📴', 'Offline Mode', 'rgba(158, 158, 158, 0.95)');
-}
-
-function showSyncError() {
-    showSyncStatus('⚠️', 'Sync Error', 'rgba(244, 67, 54, 0.95)');
-}
-
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ Page loaded - initializing...');
     console.log('📱 Device:', navigator.userAgent);
-    
-    // ✅ Initialize authentication system FIRST
-    if (typeof initAuthSystem === 'function') {
-        initAuthSystem();
-        console.log('✅ Authentication system initialized');
+
+    const addVisitorButton = document.getElementById('add-visitor-btn');
+    if (addVisitorButton) {
+        addVisitorButton.addEventListener('click', addVisitor);
     }
     
     // STEP 1: Load from localStorage first (instant display if data exists)
@@ -141,10 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // STEP 2: Initialize Firebase (onSnapshot will auto-sync from cloud)
     initializeFirebase().then(() => {
         console.log('✅ Firebase connected - real-time sync active');
-        console.log('📡 Multi-device sync enabled!');
-        console.log('   When you add/scan on one device → all devices update instantly!');
-        // Real-time listeners (onSnapshot) will auto-load data
-        // No need to call loadMembersFromCloud manually
+        loadMembersFromCloud(); // Load member master data from cloud
     }).catch((error) => {
         console.error('❌ Firebase failed:', error);
         console.log('⚠️ App will work in offline mode only');
@@ -167,156 +62,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(() => console.log('✅ Service Worker registered'))
             .catch(err => console.log('❌ Service Worker registration failed:', err));
     }
-    
-    // ✅ Initialize authentication wrappers
-    setTimeout(() => {
-        initAuthWrappers();
-    }, 500);
-    
-    // ✅ Initialize universal name auto-formatting
-    setTimeout(() => {
-        initUniversalNameFormatting();
-    }, 600);
 });
-
-// ====================================================================
-// UNIVERSAL NAME AUTO-FORMATTING
-// Automatically formats ALL name fields as: "Lastname, Firstname Middlename"
-// Applied to: Visitors, Members, Generate QR, Search
-// Example: "sta. juana arlin b" → "Sta. Juana, Arlin B"
-// ====================================================================
-function initUniversalNameFormatting() {
-    // List of all name input fields to format
-    const nameFields = [
-        'visitor-name',          // Visitors tab - add visitor
-        'member-name',           // Records tab - add/edit member
-        'employee-name',         // Generate QR tab
-        'search-name',           // Records tab - search field
-        'member-invited-by',     // Records tab - invited by
-        'member-baptised-by'     // Records tab - baptised by
-    ];
-    
-    nameFields.forEach(fieldId => {
-        const inputField = document.getElementById(fieldId);
-        
-        if (inputField) {
-            // Add input event listener for real-time formatting
-            inputField.addEventListener('input', function(e) {
-                const cursorPosition = this.selectionStart;
-                const originalValue = this.value;
-                const formattedValue = formatName(originalValue);
-                
-                // Only update if the formatted value is different
-                if (formattedValue !== originalValue) {
-                    this.value = formattedValue;
-                    
-                    // Smart cursor positioning
-                    let newPosition = cursorPosition;
-                    
-                    // If comma was just added, adjust cursor position
-                    if (formattedValue.includes(',') && !originalValue.includes(',')) {
-                        const commaIndex = formattedValue.indexOf(',');
-                        if (cursorPosition > commaIndex) {
-                            newPosition = cursorPosition + 2; // Account for ", "
-                        }
-                    }
-                    
-                    // Maintain cursor position (capped at string length)
-                    this.selectionStart = this.selectionEnd = Math.min(newPosition, formattedValue.length);
-                }
-            });
-            
-            // Also format on blur (when user leaves the field)
-            inputField.addEventListener('blur', function(e) {
-                this.value = formatName(this.value);
-            });
-            
-            console.log(`✅ Name formatting enabled for: ${fieldId}`);
-        }
-    });
-    
-    console.log('✅ Universal name auto-formatting initialized');
-}
-
-function formatName(input) {
-    if (!input || input.trim() === '') return input;
-    
-    // ✅ FIX: Preserve trailing space (user is still typing between words)
-    const endsWithSpace = /\s+$/.test(input);
-    
-    // Remove extra spaces (but we'll re-add trailing space later)
-    let cleaned = input.trim().replace(/\s+/g, ' ');
-    
-    // If only whitespace was entered, preserve it
-    if (cleaned === '' && input.length > 0) {
-        return input;
-    }
-    
-    // Split into words
-    let words = cleaned.split(' ');
-    
-    // Capitalize each word with special handling
-    words = words.map(word => {
-        const lowerWord = word.toLowerCase();
-        
-        // ========================================
-        // Filipino Name Prefixes (De, Dela, etc.)
-        // ========================================
-        const filipinoPrefixes = ['de', 'del', 'dela', 'delos', 'delas', 'las', 'los', 'y', 'san', 'santa'];
-        if (filipinoPrefixes.includes(lowerWord)) {
-            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-        }
-        
-        // ========================================
-        // Filipino Abbreviations (Sta., Sto.)
-        // ========================================
-        if (lowerWord === 'sta' || lowerWord === 'sta.') return 'Sta.';
-        if (lowerWord === 'sto' || lowerWord === 'sto.') return 'Sto.';
-        
-        // ========================================
-        // Titles & Honorifics
-        // ========================================
-        if (lowerWord === 'dr' || lowerWord === 'dr.') return 'Dr.';
-        if (lowerWord === 'atty' || lowerWord === 'atty.') return 'Atty.';
-        if (lowerWord === 'engr' || lowerWord === 'engr.') return 'Engr.';
-        if (lowerWord === 'prof' || lowerWord === 'prof.') return 'Prof.';
-        
-        // ========================================
-        // Suffixes (Jr., Sr., II, III, IV)
-        // ========================================
-        if (lowerWord === 'jr' || lowerWord === 'jr.') return 'Jr.';
-        if (lowerWord === 'sr' || lowerWord === 'sr.') return 'Sr.';
-        if (lowerWord === 'ii' || lowerWord === 'iii' || lowerWord === 'iv' || lowerWord === 'v') {
-            return word.toUpperCase();
-        }
-        
-        // ========================================
-        // Regular Capitalization
-        // ========================================
-        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-    });
-    
-    // ========================================
-    // Format as "Lastname, Firstname Middlename"
-    // ========================================
-    let result;
-    if (!cleaned.includes(',') && words.length >= 2) {
-        // Assume first word is lastname, rest is firstname + middlename
-        const lastname = words[0];
-        const restOfName = words.slice(1).join(' ');
-        result = `${lastname}, ${restOfName}`;
-    } else {
-        // If comma already exists, just return capitalized version
-        result = words.join(' ');
-    }
-    
-    // ✅ FIX: Re-add trailing space so user can continue typing
-    if (endsWithSpace) {
-        result += ' ';
-    }
-    
-    return result;
-}
 
 // Tab switching
 function showTab(tabName) {
@@ -338,24 +84,6 @@ function showTab(tabName) {
     
     if (tabName === 'records') {
         populateClusterFilter();
-    }
-    
-    // When switching to reports tab, ensure data is loaded
-    if (tabName === 'reports') {
-        console.log('📊 Reports tab opened - ensuring data is loaded');
-        // If no records in memory but localStorage has data, reload
-        if (attendanceRecords.length === 0) {
-            const saved = localStorage.getItem('attendanceRecords');
-            if (saved) {
-                try {
-                    attendanceRecords = JSON.parse(saved);
-                    console.log('✅ Reloaded from localStorage:', attendanceRecords.length);
-                } catch (error) {
-                    console.error('❌ Error loading localStorage:', error);
-                }
-            }
-        }
-        console.log('   Current records in memory:', attendanceRecords.length);
     }
 }
 
@@ -393,11 +121,9 @@ function startScanner() {
         console.log('✅ Scanner started with camera:', currentCamera);
         document.getElementById('start-scan-btn').style.display = 'none';
         document.getElementById('stop-scan-btn').style.display = 'inline-block';
-        const flipBtn = document.getElementById('camera-toggle-btn');
-        if (flipBtn) {
-            flipBtn.style.display = 'flex';
-            console.log('✅ Camera flip button shown');
-        }
+        const flipBtn = document.getElementById('camera-flip-btn');
+        flipBtn.style.display = 'flex';
+        console.log('✅ Camera flip button shown');
         document.getElementById('scan-result').style.display = 'none';
     }).catch(err => {
         console.error('❌ Error starting camera:', err);
@@ -411,8 +137,7 @@ function stopScanner() {
             html5QrcodeScanner = null;
             document.getElementById('start-scan-btn').style.display = 'inline-block';
             document.getElementById('stop-scan-btn').style.display = 'none';
-            const toggleBtn = document.getElementById('camera-toggle-btn');
-            if (toggleBtn) toggleBtn.style.display = 'none';
+            document.getElementById('camera-flip-btn').style.display = 'none';
         }).catch(err => {
             console.error('Error stopping scanner:', err);
         });
@@ -461,18 +186,6 @@ function onScanSuccess(decodedText, decodedResult) {
     
     try {
         const data = JSON.parse(decodedText);
-        
-        // ✅ SANITIZE QR CODE DATA (SECURITY)
-        if (typeof AuthSystem !== 'undefined' && AuthSystem.sanitizeInput) {
-            if (data.name) data.name = AuthSystem.sanitizeInput(data.name);
-            if (data.cluster) data.cluster = AuthSystem.sanitizeInput(data.cluster);
-            if (data.category) data.category = AuthSystem.sanitizeInput(data.category);
-        }
-        
-        // ✅ BACKWARDS COMPATIBILITY - old QR codes without category still work
-        if (!data.category) {
-            data.category = 'Member'; // Default for old QR codes
-        }
         
         if (data.name && data.cluster) {
             stopScanner();
@@ -545,15 +258,16 @@ async function logAttendance(name, cluster, serviceType, category) {
     console.log('📝 Logging attendance:', record);
     
     // Save to cloud (this now handles adding to local array too)
-    await saveRecordToCloud(record);
+    const savedRecordId = await saveRecordToCloud(record);
+
+    if (firebaseInitialized && !savedRecordId) {
+        return;
+    }
 }
 
 // Add Visitor Function
 async function addVisitor() {
-    const rawName = document.getElementById('visitor-name').value.trim();
-    const name = typeof AuthSystem !== 'undefined' && AuthSystem.sanitizeInput 
-        ? AuthSystem.sanitizeInput(rawName) 
-        : rawName;
+    const name = document.getElementById('visitor-name').value.trim();
     const visitorType = document.getElementById('visitor-type').value;
     const visitorCluster = document.getElementById('visitor-cluster').value.trim();
     const serviceType = document.getElementById('visitor-service').value;
@@ -643,23 +357,13 @@ async function initializeFirebase() {
         db = firebase.firestore();
         firebaseInitialized = true;
         console.log('✅ Firebase initialized successfully');
-        console.log('📡 REAL-TIME SYNC ACTIVE - All devices will sync automatically!');
         
-        showSyncing(); // Show initial sync status
-        
-        // ====================================================================
-        // REAL-TIME SYNC: Attendance Records
-        // All devices connected will receive updates INSTANTLY
-        // When Device A adds attendance → Device B/C/D see it immediately
-        // ====================================================================
+        // Real-time listener for attendance records (syncs across all devices)
         db.collection('attendance').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
             const recordCount = snapshot.size;
-            console.log('📡 Firebase snapshot update (REAL-TIME)');
+            console.log('📡 Firebase snapshot update');
             console.log('   Server records:', recordCount);
             console.log('   Local records before sync:', attendanceRecords.length);
-            console.log('   🌐 Syncing across ALL devices...');
-            
-            showSyncing(); // Show syncing indicator
             
             attendanceRecords = [];
             snapshot.forEach((doc) => {
@@ -667,7 +371,6 @@ async function initializeFirebase() {
             });
             
             console.log('✅ Synced from Firebase:', attendanceRecords.length, 'records');
-            console.log('   ✅ All connected devices now have the same data!');
             
             // Update UI
             displayRecords();
@@ -677,46 +380,9 @@ async function initializeFirebase() {
             // Save to localStorage as backup for offline access
             localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
             console.log('💾 Saved to localStorage as backup');
-            
-            showSynced(); // Show success
         }, (error) => {
             console.error('❌ Firebase listener error:', error);
             console.log('⚠️ Real-time sync interrupted. App will use cached data.');
-            showSyncError();
-            setTimeout(() => showOffline(), 2000);
-        });
-        
-        // ====================================================================
-        // REAL-TIME SYNC: Members/Visitors Collection
-        // All devices connected will receive member updates INSTANTLY
-        // ====================================================================
-        db.collection('members').onSnapshot((snapshot) => {
-            console.log('📡 Members snapshot update (REAL-TIME)');
-            membersData = [];
-            visitorsData = [];
-            
-            snapshot.forEach((doc) => {
-                const data = { id: doc.id, ...doc.data() };
-                if (data.type === 'members') {
-                    membersData.push(data);
-                } else {
-                    visitorsData.push(data);
-                }
-            });
-            
-            console.log('✅ Members synced:', membersData.length, 'members,', visitorsData.length, 'visitors');
-            console.log('   ✅ Member data updated across all devices!');
-            
-            // Save to localStorage as backup
-            saveMembersToLocalStorage();
-            updateMemberStats();
-            
-            // Don't show sync indicator for members (only for attendance to avoid clutter)
-            // But log confirms sync is working
-        }, (error) => {
-            console.error('❌ Members listener error:', error);
-            console.log('⚠️ Loading members from localStorage...');
-            loadMembersFromLocalStorage();
         });
         
         return true;
@@ -1128,11 +794,9 @@ async function clearAllRecords() {
         updateStats();
         populateClusterFilter();
         
-        // Clear report content if element exists
-        const reportContent = document.getElementById('report-content');
-        if (reportContent) {
-            reportContent.innerHTML = '<p class="empty-state">All records have been deleted.</p>';
-        }
+        // Clear report content
+        document.getElementById('report-content').innerHTML = 
+            '<p class="empty-state">All records have been deleted.</p>';
         
         // Success message
         alert(
@@ -1223,13 +887,6 @@ function clearAllRecords() {
 // Display Functions
 function displayRecords(filteredRecords = null) {
     const recordsList = document.getElementById('records-list');
-    
-    // If element doesn't exist (e.g., on Reports tab), skip update
-    if (!recordsList) {
-        console.log('ℹ️ records-list element not found (may be on different tab)');
-        return;
-    }
-    
     const records = filteredRecords || attendanceRecords;
     
     currentDisplayedRecords = records;
@@ -1279,24 +936,13 @@ function updateStats() {
     
     console.log('Stats - Today:', todayCount, 'Total:', attendanceRecords.length);
     
-    // Safely update elements if they exist
-    const todayElement = document.getElementById('total-today');
-    const allElement = document.getElementById('total-all');
-    
-    if (todayElement) todayElement.textContent = todayCount;
-    if (allElement) allElement.textContent = attendanceRecords.length;
+    document.getElementById('total-today').textContent = todayCount;
+    document.getElementById('total-all').textContent = attendanceRecords.length;
 }
 
 function populateClusterFilter() {
     const clusters = [...new Set(attendanceRecords.map(r => r.cluster.trim()).filter(c => c !== 'VISITOR'))].sort();
     const select = document.getElementById('filter-cluster');
-    
-    // If element doesn't exist (e.g., on different tab), skip update
-    if (!select) {
-        console.log('ℹ️ filter-cluster element not found (may be on different tab)');
-        return;
-    }
-    
     const currentValue = select.value;
     
     select.innerHTML = '<option value="">All Clusters</option>';
@@ -1403,40 +1049,24 @@ function exportToCSV() {
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     
-    // ====================================================================
-    // CROSS-PLATFORM EXPORT: Works on ALL devices (desktop, laptop, mobile)
-    // Device detection is ONLY for enhanced features (share API), NOT restrictions
-    // ====================================================================
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    // ENHANCED FEATURE: Try Web Share API on mobile (optional, not required)
-    if (isMobile && navigator.share) {
+    if (navigator.share && navigator.canShare) {
         const file = new File([blob], filename, { type: 'text/csv' });
-        
-        // Check if we can share files
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        if (navigator.canShare({ files: [file] })) {
             navigator.share({
                 files: [file],
                 title: 'Attendance Report',
-                text: `Exported ${recordsToExport.length} attendance records`
+                text: 'Attendance records export'
             }).then(() => {
-                console.log('✅ CSV shared successfully via mobile share');
+                console.log('Shared successfully');
             }).catch((error) => {
-                console.log('⚠️ Share failed, falling back to download:', error);
+                console.log('Error sharing:', error);
                 downloadBlob(blob, filename);
             });
             return;
         }
     }
     
-    // UNIVERSAL FALLBACK: Direct download works on ALL devices
-    console.log('📥 Downloading CSV file - works on desktop, laptop, and mobile');
     downloadBlob(blob, filename);
-    
-    // Show success message on mobile for better UX
-    if (isMobile) {
-        alert(`✅ Report exported!\n\nFile: ${filename}\nRecords: ${recordsToExport.length}\n\nCheck your Downloads folder.`);
-    }
 }
 
 function downloadBlob(blob, filename) {
@@ -1451,20 +1081,6 @@ function downloadBlob(blob, filename) {
 // Open Date Lookup Modal
 function openDateLookup() {
     console.log('📅 Opening date lookup modal...');
-    
-    // CRITICAL FIX: Ensure data is loaded before opening lookup
-    if (attendanceRecords.length === 0) {
-        console.log('⚠️ No records in memory, attempting to reload from localStorage');
-        const saved = localStorage.getItem('attendanceRecords');
-        if (saved) {
-            try {
-                attendanceRecords = JSON.parse(saved);
-                console.log('✅ Reloaded', attendanceRecords.length, 'records from localStorage');
-            } catch (error) {
-                console.error('❌ Error loading localStorage:', error);
-            }
-        }
-    }
     
     // Get unique dates with their service types from attendance records
     const dateServiceMap = {};
@@ -1487,12 +1103,11 @@ function openDateLookup() {
     });
     
     console.log('   Available dates:', sortedDates.length);
-    console.log('   Total records:', attendanceRecords.length);
     
     let lookupHTML = '';
     
     if (sortedDates.length === 0) {
-        lookupHTML = '<p style="text-align: center; color: #666; padding: 40px 20px;">No attendance records found.<br><br>Please scan or add attendance first.<br><br>If you have scanned QR codes, try reloading the page.</p>';
+        lookupHTML = '<p style="text-align: center; color: #666; padding: 40px 20px;">No attendance records found.<br><br>Please scan or add attendance first.</p>';
     } else {
         lookupHTML = `
             <table style="width: 100%; border-collapse: collapse;">
@@ -1543,10 +1158,6 @@ function openDateLookup() {
 function closeDateLookup() {
     document.getElementById('date-lookup-modal').style.display = 'none';
     document.body.style.overflow = 'auto';
-    // Mobile fix: force reflow to ensure modal is properly hidden
-    setTimeout(() => {
-        document.getElementById('date-lookup-modal').style.visibility = 'visible';
-    }, 10);
 }
 
 // Select Report Date from Lookup
@@ -1675,18 +1286,6 @@ function generateReport() {
         const totalMembers = filtered.filter(r => !r.isVisitor).length;
         const totalVisitors = filtered.filter(r => r.isVisitor).length;
         
-        // ✅ Calculate Summary per Cluster (across all services)
-        const overallClusterSummary = {};
-        filtered.forEach(r => {
-            if (!r.isVisitor) { // Only count members for cluster summary
-                const cluster = r.cluster || 'N/A';
-                if (!overallClusterSummary[cluster]) {
-                    overallClusterSummary[cluster] = 0;
-                }
-                overallClusterSummary[cluster]++;
-            }
-        });
-        
         // Build report header
         reportHTML = `
             <div class="report-header-enhanced">
@@ -1702,80 +1301,6 @@ function generateReport() {
                     <p class="generated-time"><strong>Generated:</strong> ${generatedTimestamp}</p>
                 </div>
             </div>
-            
-            <h4 style="margin-top: 30px; margin-bottom: 15px; color: #333; font-size: 16px; font-weight: 600; background: #E3F2FD; padding: 10px; border-radius: 5px;">📋 Summary: Attendance per Cluster</h4>
-            <table class="report-table" style="margin-bottom: 30px;">
-                <thead>
-                    <tr>
-                        <th style="text-align: left;">Cluster</th>
-                        <th style="text-align: center; width: 100px;">Total Members</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-        
-        // Add cluster summary rows
-        Object.keys(overallClusterSummary).sort().forEach(cluster => {
-            reportHTML += `
-                <tr>
-                    <td><strong>${cluster}</strong></td>
-                    <td style="text-align: center; font-weight: bold;">${overallClusterSummary[cluster]}</td>
-                </tr>
-            `;
-        });
-        
-        reportHTML += `
-                </tbody>
-                <tfoot>
-                    <tr style="background: #E3F2FD; font-weight: bold;">
-                        <td>TOTAL MEMBERS</td>
-                        <td style="text-align: center;">${totalMembers}</td>
-                    </tr>
-                    <tr style="background: #FFF3E0; font-weight: bold;">
-                        <td>TOTAL VISITORS</td>
-                        <td style="text-align: center;">${totalVisitors}</td>
-                    </tr>
-                    <tr style="background: #C8E6C9; font-weight: bold; font-size: 16px;">
-                        <td>GRAND TOTAL</td>
-                        <td style="text-align: center;">${filtered.length}</td>
-                    </tr>
-                </tfoot>
-            </table>
-            
-            <h4 style="margin-top: 30px; margin-bottom: 15px; color: #333; font-size: 16px; font-weight: 600; background: #FFF3E0; padding: 10px; border-radius: 5px;">📊 Total Attendance by Service Type</h4>
-            <table class="report-table" style="margin-bottom: 30px;">
-                <thead>
-                    <tr>
-                        <th style="text-align: left;">Service Type</th>
-                        <th style="text-align: center; width: 100px;">Members</th>
-                        <th style="text-align: center; width: 100px;">Visitors</th>
-                        <th style="text-align: center; width: 100px;">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-        
-        // Add service type breakdown
-        serviceTypes.forEach(serviceType => {
-            const serviceRecords = serviceTypeGroups[serviceType];
-            const svcMembers = serviceRecords.filter(r => !r.isVisitor).length;
-            const svcVisitors = serviceRecords.filter(r => r.isVisitor).length;
-            reportHTML += `
-                <tr>
-                    <td><strong>${serviceType}</strong></td>
-                    <td style="text-align: center;">${svcMembers}</td>
-                    <td style="text-align: center;">${svcVisitors}</td>
-                    <td style="text-align: center; font-weight: bold;">${serviceRecords.length}</td>
-                </tr>
-            `;
-        });
-        
-        reportHTML += `
-                </tbody>
-            </table>
-            
-            <div style="page-break-before: always;"></div>
-            <h4 style="margin-top: 30px; margin-bottom: 20px; color: #333; font-size: 16px; font-weight: 600;">📝 Detailed Attendance by Service Type</h4>
         `;
         
         // Generate report for each service type
@@ -1805,16 +1330,16 @@ function generateReport() {
                 
                 reportHTML += `
                     <div style="margin-bottom: 20px;">
-                        <h5 style="color: #333; font-size: 15px; font-weight: 600; margin-bottom: 8px;">${cluster} (${sortedMembers.length} members)</h5>
-                        <ol style="margin: 0; padding-left: 20px;">
+                        <h5 style="color: #333; font-size: 15px; font-weight: 600; margin-bottom: 8px;">${cluster}</h5>
+                        <ul style="margin: 0; padding-left: 20px; list-style: none;">
                 `;
                 
                 sortedMembers.forEach(record => {
-                    reportHTML += `<li style="margin-bottom: 3px; color: #444;">${record.name}</li>`;
+                    reportHTML += `<li style="margin-bottom: 3px; color: #444;">• ${record.name}</li>`;
                 });
                 
                 reportHTML += `
-                        </ol>
+                        </ul>
                     </div>
                 `;
             });
@@ -1995,16 +1520,6 @@ function generateReport() {
         }
     }
     
-    // Mobile: Add scroll hint if on mobile device
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (isMobile) {
-        reportHTML = `
-            <div style="background: #e3f2fd; padding: 8px; margin-bottom: 15px; border-radius: 5px; text-align: center; font-size: 12px; color: #1976d2;">
-                📱 <strong>Tip:</strong> Swipe left/right to see full table
-            </div>
-        ` + reportHTML;
-    }
-    
     document.getElementById('report-content').innerHTML = reportHTML;
 }
 
@@ -2064,27 +1579,8 @@ function printReport() {
                 }
                 
                 .report-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-                .report-table th { background: #2196F3; color: white; padding: 10px; text-align: left; border: 1px solid #1976D2; }
+                .report-table th { background: #2196F3; color: white; padding: 10px; text-align: left; }
                 .report-table td { border: 1px solid #ddd; padding: 8px; }
-                .report-table tbody tr:nth-child(even) { background-color: #f9f9f9; }
-                .report-table tfoot tr { font-weight: bold; }
-                
-                /* Numbered lists */
-                ol {
-                    padding-left: 20px;
-                    margin: 0;
-                }
-                ol li {
-                    margin-bottom: 5px;
-                    color: #444;
-                    line-height: 1.6;
-                    padding-left: 5px;
-                }
-                ol li::marker {
-                    font-weight: bold;
-                    color: #2196F3;
-                    font-size: 14px;
-                }
                 
                 .cluster-detail-section {
                     margin-bottom: 25px;
@@ -2145,45 +1641,31 @@ function printReport() {
 
 // QR Code Generation
 function generateQR() {
-    console.log('🔧 generateQR() called'); // Debug log
-    
     const name = document.getElementById('employee-name').value.trim();
     const cluster = document.getElementById('employee-cluster').value.trim();
+    const category = document.getElementById('employee-category').value.trim();
     
-    console.log('📝 Name:', name); // Debug log
-    console.log('📍 Cluster:', cluster); // Debug log
-    
-    if (!name) {
-        alert('Please enter a name!');
+    if (!name || !cluster || !category) {
+        alert('Please fill in all fields (Name, Cluster, and Category)!');
         return;
     }
     
-    // ✅ STABLE QR FORMAT - backwards compatible
-    // Cluster is optional, use "No Cluster" if empty
-    const clusterValue = cluster || 'No Cluster';
-    const data = JSON.stringify({ 
-        name: name, 
-        cluster: clusterValue
-    });
-    
-    console.log('📦 QR Data:', data); // Debug log
+    const data = JSON.stringify({ name, cluster, category });
     
     document.getElementById('qrcode').innerHTML = '';
     
-    // ✅ HIGHER RESOLUTION for better mobile scanning
     currentQRCode = new QRCode(document.getElementById('qrcode'), {
         text: data,
-        width: 512,  // ✅ Increased from 256 to 512 for better mobile scanning
-        height: 512, // ✅ Increased from 256 to 512 for better mobile scanning
+        width: 256,
+        height: 256,
         colorDark: '#000000',
         colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.H  // Highest error correction
+        correctLevel: QRCode.CorrectLevel.H
     });
     
-    console.log('✅ QR Code generated successfully!'); // Debug log
-    
     document.getElementById('qr-name').textContent = name;
-    document.getElementById('qr-cluster').textContent = clusterValue;
+    document.getElementById('qr-cluster').textContent = cluster;
+    document.getElementById('qr-category').textContent = category;
     document.getElementById('qr-output').style.display = 'block';
 }
 
@@ -2195,34 +1677,12 @@ function downloadQR() {
     }
     
     const name = document.getElementById('employee-name').value.trim();
-    
-    // ✅ PROPER FILENAME with formatted name (remove comma for filename)
-    const cleanName = name.replace(/,/g, '').replace(/\s+/g, '_');
-    const filename = `QR_${cleanName}.png`;
+    const filename = `QR_${name.replace(/\s+/g, '_')}.png`;
     
     // Detect if mobile device
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    // ✅ EXTRA LARGE QR FOR PRINTING - 4x resolution (512px × 4 = 2048px!)
-    const highResCanvas = document.createElement('canvas');
-    const scale = 4; // ✅ 4x resolution = 2048px perfect for printing and easy scanning
-    const padding = 80; // ✅ White border around QR code for better scanning
-    
-    highResCanvas.width = (canvas.width * scale) + (padding * 2);
-    highResCanvas.height = (canvas.height * scale) + (padding * 2);
-    
-    const ctx = highResCanvas.getContext('2d');
-    
-    // ✅ White background for better scanning
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, highResCanvas.width, highResCanvas.height);
-    
-    // ✅ Draw QR code with crisp pixels
-    ctx.imageSmoothingEnabled = false; // Crisp pixels, no blur
-    ctx.scale(scale, scale);
-    ctx.drawImage(canvas, padding / scale, padding / scale);
-    
-    highResCanvas.toBlob((blob) => {
+    canvas.toBlob((blob) => {
         // On mobile, try to share; on desktop, always download
         if (isMobile && navigator.share && navigator.canShare) {
             const file = new File([blob], filename, { type: 'image/png' });
@@ -2268,6 +1728,7 @@ function downloadBlobFromCanvas(blob, filename) {
 function clearQRForm() {
     document.getElementById('employee-name').value = '';
     document.getElementById('employee-cluster').value = '';
+    document.getElementById('employee-category').value = '';
     document.getElementById('qrcode').innerHTML = '';
     document.getElementById('qr-output').style.display = 'none';
     
@@ -2854,20 +2315,8 @@ function loadMembersFromLocalStorage() {
 
 // Update member statistics
 function updateMemberStats() {
-    const clusterFilter = document.getElementById('export-cluster-filter');
-    const selectedCluster = clusterFilter ? clusterFilter.value : 'ALL';
-    
-    let filteredMembers = membersData;
-    let filteredVisitors = visitorsData;
-    
-    // Filter by cluster if not "ALL"
-    if (selectedCluster && selectedCluster !== 'ALL') {
-        filteredMembers = membersData.filter(m => m.cluster === selectedCluster);
-        filteredVisitors = visitorsData.filter(v => v.cluster === selectedCluster);
-    }
-    
-    document.getElementById('total-members').textContent = filteredMembers.length;
-    document.getElementById('total-visitors').textContent = filteredVisitors.length;
+    document.getElementById('total-members').textContent = membersData.length;
+    document.getElementById('total-visitors').textContent = visitorsData.length;
 }
 
 // Export to Excel Function
@@ -3002,12 +2451,7 @@ function exportToExcel() {
     
     // Create and download file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    
-    // ====================================================================
-    // CROSS-PLATFORM EXPORT: Works on ALL devices (desktop, laptop, mobile)
-    // Device detection is ONLY for enhanced features (share API), NOT restrictions
-    // ====================================================================
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const link = document.createElement('a');
     
     let filename = 'UP_Diliman_';
     if (typeFilter === 'MEMBERS') {
@@ -3021,40 +2465,6 @@ function exportToExcel() {
         filename += `_${clusterFilter.replace(/\s+/g, '_')}`;
     }
     filename += `_${new Date().toISOString().split('T')[0]}.csv`;
-    
-    // ENHANCED FEATURE: Try Web Share API on mobile (optional, not required)
-    if (isMobile && navigator.share) {
-        const file = new File([blob], filename, { type: 'text/csv' });
-        
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            const totalCount = filteredMembers.length + filteredVisitors.length;
-            navigator.share({
-                files: [file],
-                title: 'UP Diliman Members Report',
-                text: `Report: ${totalCount} total records`
-            }).then(() => {
-                console.log('✅ Excel report shared via mobile');
-                let summaryMsg = '✅ Report shared successfully!\n\n';
-                if (typeFilter !== 'VISITORS') summaryMsg += `Members: ${filteredMembers.length}\n`;
-                if (typeFilter !== 'MEMBERS') summaryMsg += `Visitors: ${filteredVisitors.length}\n`;
-                summaryMsg += `Total: ${totalCount}`;
-                alert(summaryMsg);
-            }).catch((error) => {
-                console.log('⚠️ Share failed, downloading instead:', error);
-                downloadExcelFile(blob, filename, filteredMembers, filteredVisitors, typeFilter);
-            });
-            return;
-        }
-    }
-    
-    // UNIVERSAL FALLBACK: Direct download works on ALL devices
-    console.log('📥 Downloading Excel/CSV - works on desktop, laptop, and mobile');
-    downloadExcelFile(blob, filename, filteredMembers, filteredVisitors, typeFilter);
-}
-
-// Helper function to download Excel file
-function downloadExcelFile(blob, filename, filteredMembers, filteredVisitors, typeFilter) {
-    const link = document.createElement('a');
     
     if (navigator.msSaveBlob) { // IE 10+
         navigator.msSaveBlob(blob, filename);
@@ -3435,42 +2845,3 @@ function printMembersReport() {
         printWindow.print();
     }, 500);
 }
-
-// ========================================
-// EXPOSE FUNCTIONS GLOBALLY FOR INLINE ONCLICK HANDLERS
-// These functions are called from inline onclick attributes in HTML
-// ========================================
-
-// Tab Navigation
-window.showTab = showTab;
-
-// Visitor Management
-window.addVisitor = addVisitor;
-
-// Member Management
-window.searchMember = searchMember;
-window.clearSearch = clearSearch;
-window.addNewMember = addNewMember;
-window.saveMember = saveMember;
-window.deleteMember = deleteMember;
-window.cancelEdit = cancelEdit;
-
-// Reports - RESTORED!
-window.previewMembersReport = previewMembersReport;
-window.printMembersReport = printMembersReport;
-window.exportToExcel = exportToExcel;
-window.closePreview = closePreview;
-window.generateReport = generateReport;
-window.printReport = printReport;
-window.recoverData = recoverData;
-window.openDateLookup = openDateLookup;
-window.closeDateLookup = closeDateLookup;
-window.selectReportDate = selectReportDate;
-
-// Record Management
-window.deleteRecordsForDate = deleteRecordsForDate;
-window.clearAllRecords = clearAllRecords;
-
-// QR Code Generation
-window.generateQR = generateQR;
-window.downloadQR = downloadQR;
