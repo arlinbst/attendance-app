@@ -241,9 +241,7 @@ async function logAttendance(name, cluster, serviceType, category) {
         cluster: cluster.trim(),
         serviceType: serviceType,
         category: category || 'N/A',
-        timestamp: firebaseInitialized && typeof firebase !== 'undefined'
-            ? firebase.firestore.Timestamp.now()
-            : new Date().toISOString(),
+        timestamp: new Date(),
         date: new Date().toLocaleDateString(),
         time: new Date().toLocaleTimeString(),
         isVisitor: false,
@@ -301,9 +299,7 @@ async function addVisitor() {
         cluster: clusterValue,
         serviceType: serviceType,
         category: visitorType,
-        timestamp: firebaseInitialized && typeof firebase !== 'undefined'
-            ? firebase.firestore.Timestamp.now()
-            : new Date().toISOString(),
+        timestamp: new Date(),
         date: today,
         time: new Date().toLocaleTimeString(),
         isVisitor: true,
@@ -314,7 +310,11 @@ async function addVisitor() {
     console.log('📝 Adding visitor:', record);
     
     // Save to cloud (this now handles adding to local array too)
-    await saveRecordToCloud(record);
+    const savedRecordId = await saveRecordToCloud(record);
+
+    if (firebaseInitialized && !savedRecordId) {
+        return;
+    }
     
     // Show success message
     document.getElementById('visitor-result-name').textContent = name;
@@ -401,7 +401,8 @@ async function saveRecordToCloud(record) {
             return docRef.id;
         } catch (error) {
             console.error('❌ Error saving to Firebase:', error);
-            alert('⚠️ Warning: Could not save to cloud.\nData saved locally only.\n\nPlease check your internet connection.');
+            const errorCode = error && error.code ? `\nError code: ${error.code}` : '';
+            alert(`⚠️ Warning: Could not save to cloud.${errorCode}\nData saved locally only.\n\nPlease check your internet connection and Firebase rules.`);
             
             // Fallback: save locally
             const tempRecord = { id: 'local_' + Date.now(), ...record };
