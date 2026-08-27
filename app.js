@@ -27,11 +27,6 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ Page loaded - initializing...');
     console.log('📱 Device:', navigator.userAgent);
 
-    const addVisitorButton = document.getElementById('add-visitor-btn');
-    if (addVisitorButton) {
-        addVisitorButton.addEventListener('click', addVisitor);
-    }
-    
     // STEP 1: Load from localStorage first (instant display if data exists)
     loadRecords();
     loadMembersFromLocalStorage(); // Load members/visitors from localStorage
@@ -2845,3 +2840,28 @@ function printMembersReport() {
         printWindow.print();
     }, 500);
 }
+
+// Make functions available to the inline handlers in index.html.
+window.addVisitor = addVisitor;
+window.showTab = showTab;
+window.flipCamera = flipCamera;
+window.generateQR = generateQR;
+window.downloadQR = downloadQR;
+window.searchMember = searchMember;
+window.clearSearch = clearSearch;
+window.addNewMember = addNewMember;
+window.saveMember = saveMember;
+window.deleteMember = deleteMember;
+window.cancelEdit = cancelEdit;
+window.previewMembersReport = previewMembersReport;
+window.printMembersReport = printMembersReport;
+window.exportToExcel = exportToExcel;
+window.closePreview = closePreview;
+window.generateReport = generateReport;
+window.printReport = printReport;
+window.recoverData = recoverData;
+window.openDateLookup = openDateLookup;
+window.closeDateLookup = closeDateLookup;
+window.selectReportDate = selectReportDate;
+window.deleteRecordsForDate = deleteRecordsForDate;
+window.clearAllRecords = clearAllRecords;
