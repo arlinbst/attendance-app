@@ -8,6 +8,63 @@ let lastScanTime = 0;
 let currentDisplayedRecords = [];
 let currentCamera = "environment"; // Track current camera: "environment" (back) or "user" (front)
 
+// Authentication wrappers
+let _originalAddVisitor = null;
+let _originalDeleteRecordsForDate = null;
+let _originalClearAllRecords = null;
+let _originalDeleteMember = null;
+
+function initAuthWrappers() {
+    if (typeof AuthSystem === 'undefined') {
+        console.error('AuthSystem not loaded.');
+        return;
+    }
+
+    _originalAddVisitor = addVisitor;
+    window.addVisitor = function() {
+        if (AuthSystem.isGuest()) {
+            AuthSystem.showAuthModal(AuthSystem.USER_ROLES.LEADER, () => {
+                _originalAddVisitor();
+            });
+            return;
+        }
+        _originalAddVisitor();
+    };
+
+    _originalDeleteRecordsForDate = deleteRecordsForDate;
+    window.deleteRecordsForDate = function() {
+        if (!AuthSystem.isAdmin()) {
+            AuthSystem.showAuthModal(AuthSystem.USER_ROLES.ADMIN, () => {
+                _originalDeleteRecordsForDate();
+            });
+            return;
+        }
+        _originalDeleteRecordsForDate();
+    };
+
+    _originalClearAllRecords = clearAllRecords;
+    window.clearAllRecords = function() {
+        if (!AuthSystem.isAdmin()) {
+            AuthSystem.showAuthModal(AuthSystem.USER_ROLES.ADMIN, () => {
+                _originalClearAllRecords();
+            });
+            return;
+        }
+        _originalClearAllRecords();
+    };
+
+    _originalDeleteMember = deleteMember;
+    window.deleteMember = function() {
+        if (!AuthSystem.isAdmin()) {
+            AuthSystem.showAuthModal(AuthSystem.USER_ROLES.ADMIN, () => {
+                _originalDeleteMember();
+            });
+            return;
+        }
+        _originalDeleteMember();
+    };
+}
+
 // Firebase Configuration
 const firebaseConfig = {
     apiKey: "AIzaSyCbZI9mTieFtelvSRscgp2oWp9oA5cIYo",
@@ -26,6 +83,10 @@ let firebaseInitialized = false;
 document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ Page loaded - initializing...');
     console.log('📱 Device:', navigator.userAgent);
+
+    if (typeof initAuthSystem === 'function') {
+        initAuthSystem();
+    }
 
     // STEP 1: Load from localStorage first (instant display if data exists)
     loadRecords();
@@ -51,6 +112,8 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('⚠️ Member type initialization skipped:', error);
         }
     }, 100);
+
+    setTimeout(initAuthWrappers, 500);
     
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js')
