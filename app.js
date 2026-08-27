@@ -533,7 +533,9 @@ async function logAttendance(name, cluster, serviceType, category) {
         cluster: cluster.trim(),
         serviceType: serviceType,
         category: category || 'N/A',
-        timestamp: new Date().toISOString(),
+        timestamp: firebaseInitialized && typeof firebase !== 'undefined'
+            ? firebase.firestore.Timestamp.now()
+            : new Date().toISOString(),
         date: new Date().toLocaleDateString(),
         time: new Date().toLocaleTimeString(),
         isVisitor: false,
@@ -590,7 +592,9 @@ async function addVisitor() {
         cluster: clusterValue,
         serviceType: serviceType,
         category: visitorType,
-        timestamp: new Date().toISOString(),
+        timestamp: firebaseInitialized && typeof firebase !== 'undefined'
+            ? firebase.firestore.Timestamp.now()
+            : new Date().toISOString(),
         date: today,
         time: new Date().toLocaleTimeString(),
         isVisitor: true,
