@@ -8,6 +8,13 @@ let lastScanTime = 0;
 let currentDisplayedRecords = [];
 let currentCamera = "environment"; // Track current camera: "environment" (back) or "user" (front)
 
+function setElementHTML(elementId, html) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.innerHTML = html;
+    }
+}
+
 // Authentication wrappers
 let _originalAddVisitor = null;
 let _originalDeleteRecordsForDate = null;
@@ -734,10 +741,7 @@ async function deleteRecordsForDate() {
         populateClusterFilter();
         
         // Clear report content if on Reports tab
-        const reportContentElement = document.getElementById('report-content');
-        if (reportContentElement) {
-            reportContentElement.innerHTML = '<p class="empty-state">Records deleted. Select a new date to generate report.</p>';
-        }
+        setElementHTML('report-content', '<p class="empty-state">Records deleted. Select a new date to generate report.</p>');
         
         // Success message
         const serviceMsg = deleteServiceType ? ` (${deleteServiceType})` : ' (All Services)';
@@ -854,10 +858,7 @@ async function clearAllRecords() {
         populateClusterFilter();
         
         // Clear report content when the Reports view is present.
-        const reportContent = document.getElementById('report-content');
-        if (reportContent) {
-            reportContent.innerHTML = '<p class="empty-state">All records have been deleted.</p>';
-        }
+        setElementHTML('report-content', '<p class="empty-state">All records have been deleted.</p>');
         
         // Success message
         alert(
@@ -948,6 +949,9 @@ function clearAllRecords() {
 // Display Functions
 function displayRecords(filteredRecords = null) {
     const recordsList = document.getElementById('records-list');
+    if (!recordsList) {
+        return;
+    }
     const records = filteredRecords || attendanceRecords;
     
     currentDisplayedRecords = records;
