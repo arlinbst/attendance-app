@@ -1001,13 +1001,18 @@ function updateStats() {
     
     console.log('Stats - Today:', todayCount, 'Total:', attendanceRecords.length);
     
-    document.getElementById('total-today').textContent = todayCount;
-    document.getElementById('total-all').textContent = attendanceRecords.length;
+    const todayElement = document.getElementById('total-today');
+    const allElement = document.getElementById('total-all');
+    if (todayElement) todayElement.textContent = todayCount;
+    if (allElement) allElement.textContent = attendanceRecords.length;
 }
 
 function populateClusterFilter() {
     const clusters = [...new Set(attendanceRecords.map(r => r.cluster.trim()).filter(c => c !== 'VISITOR'))].sort();
     const select = document.getElementById('filter-cluster');
+    if (!select) {
+        return;
+    }
     const currentValue = select.value;
     
     select.innerHTML = '<option value="">All Clusters</option>';
