@@ -2069,7 +2069,16 @@ function toggleConvertToMember() {
         return;
     }
 
-    const converting = currentMemberType === 'visitors' && checkbox.checked;
+    // Members always show Category/Status regardless of the convert toggle's checked state.
+    if (currentMemberType === 'members') {
+        categoryField.style.display = 'block';
+        statusField.style.display = 'block';
+        document.getElementById('member-category').required = true;
+        document.getElementById('member-status').required = true;
+        return;
+    }
+
+    const converting = checkbox.checked;
     categoryField.style.display = converting ? 'block' : 'none';
     statusField.style.display = converting ? 'block' : 'none';
     document.getElementById('member-category').required = converting;
