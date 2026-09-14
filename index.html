@@ -251,26 +251,22 @@
                         </select>
                     </div>
                     
-                    <!-- Visitor Type Field (for Visitors only) -->
+                    <!-- Event Type Field (for New Baptism records only) -->
                     <div class="form-group" id="visitor-type-field" style="margin-top: 15px; display: none;">
-                        <label for="member-visitor-type" style="display: block; margin-bottom: 8px; font-weight: bold;">Visitor Type:</label>
-                        <select id="member-visitor-type" class="input-field">
-                            <option value="">Select Visitor Type</option>
-                            <option value="Visiting Member">Visiting Member</option>
-                            <option value="Visitor">Visitor</option>
-                            <option value="Balik-loob">Balik-loob</option>
-                            <option value="New Believer">New Believer</option>
+                        <label for="member-visitor-type" style="display: block; margin-bottom: 8px; font-weight: bold;">Event Type:</label>
+                        <select id="member-visitor-type" class="input-field" onchange="toggleEventTypeDetail()">
+                            <option value="">Select Event Type</option>
                             <option value="HFGC Baptism">HFGC Baptism</option>
-                            <option value="New Baptism">New Baptism</option>
-                            <option value="In-Active">In-Active</option>
-                            <option value="Online Worshipper">Online Worshipper</option>
-                            <option value="Extension Member">Extension Member</option>
-                            <option value="Extension Visitors">Extension Visitors</option>
-                            <option value="Extension Balik-loob">Extension Balik-loob</option>
-                            <option value="Extension New Believer">Extension New Believer</option>
-                            <option value="Extension New Baptism">Extension New Baptism</option>
-                            <option value="Extension Cadets">Extension Cadets</option>
+                            <option value="Church Anniversary Baptism">Church Anniversary Baptism</option>
+                            <option value="Worship Service Baptism">Worship Service Baptism</option>
+                            <option value="Others">Others</option>
                         </select>
+                    </div>
+                    
+                    <!-- Event Type Detail Field (shown only for HFGC Baptism / Others) -->
+                    <div class="form-group" id="event-type-detail-field" style="margin-top: 15px; display: none;">
+                        <label for="member-event-type-detail" id="event-type-detail-label" style="display: block; margin-bottom: 8px; font-weight: bold;">Place:</label>
+                        <input type="text" id="member-event-type-detail" class="input-field" placeholder="Describe the place">
                     </div>
                     
                     <!-- Date Baptised Field (shared: Members retain it after conversion, New Baptism sets it up front) -->
