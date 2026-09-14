@@ -1,5 +1,5 @@
 // Service Worker for PWA
-const CACHE_NAME = 'attendance-app-v50'; // bump on every deploy to bust stale cached app.js
+const CACHE_NAME = 'attendance-app-v51'; // bump on every deploy to bust stale cached app.js
 const urlsToCache = [
   './',
   './index.html',
