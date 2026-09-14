@@ -2054,7 +2054,7 @@ function switchMemberType() {
             // Update button label
             const addNewBtn = document.getElementById('add-new-btn');
             if (addNewBtn) {
-                addNewBtn.innerHTML = '➕ New Visitor';
+                addNewBtn.innerHTML = '➕ New Baptism';
             }
         }
         
