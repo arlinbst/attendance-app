@@ -8,7 +8,7 @@
 // ========================================
 
 const AUTH_CONFIG = {
-    ADMIN_PIN: '999888',           // Admin access for all features
+    // Admin PIN is never stored here — Firestore rules verify it via a hashed comparison (see verifyAuth).
     LEADER_PINS: {
         '260801': { name: 'KNL1 Leader', cluster: 'KNL 1' },
         '260802': { name: 'KNL2 Leader', cluster: 'KNL 2' },
@@ -50,6 +50,9 @@ let currentUser = {
 
 // Check for existing session on page load
 function initAuthSystem() {
+    // Establish a stable anonymous identity so Firestore rules can verify admin rights later.
+    ensureAnonymousAuth();
+
     const savedAuth = sessionStorage.getItem(AUTH_CONFIG.SESSION_KEY);
     
     if (savedAuth) {
@@ -84,6 +87,28 @@ function sanitizeInput(str) {
         .replace(/<script[^>]*>.*?<\/script>/gi, '')  // Remove scripts
         .replace(/<[^>]+>/g, '')                       // Remove HTML tags
         .replace(/[<>]/g, '');                         // Remove < and >
+}
+
+// ========================================
+// SERVER-VERIFIED ADMIN CHECK (no Cloud Functions/Blaze needed)
+// ========================================
+
+async function ensureAnonymousAuth() {
+    if (typeof firebase === 'undefined' || !firebase.auth) return null;
+    if (firebase.auth().currentUser) return firebase.auth().currentUser;
+    try {
+        const cred = await firebase.auth().signInAnonymously();
+        return cred.user;
+    } catch (e) {
+        console.error('❌ Anonymous sign-in failed:', e);
+        return null;
+    }
+}
+
+async function hashPin(pin) {
+    const data = new TextEncoder().encode(pin);
+    const digest = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 // ========================================
@@ -175,7 +200,7 @@ function closeAuthModal() {
 // PIN VERIFICATION
 // ========================================
 
-function verifyAuth(requiredRole) {
+async function verifyAuth(requiredRole) {
     const pinInput = document.getElementById('auth-pin-input');
     const errorDisplay = document.getElementById('auth-error');
     
@@ -191,18 +216,8 @@ function verifyAuth(requiredRole) {
     
     let authenticated = false;
     
-    // Check Admin PIN
-    if (pin === AUTH_CONFIG.ADMIN_PIN) {
-        currentUser = {
-            role: USER_ROLES.ADMIN,
-            name: 'ADMIN',
-            cluster: 'ALL',
-            authenticated: true
-        };
-        authenticated = true;
-    }
-    // Check Leader PINs
-    else if (AUTH_CONFIG.LEADER_PINS[pin]) {
+    // Check Leader PINs first (local list, no destructive rights attached)
+    if (AUTH_CONFIG.LEADER_PINS[pin]) {
         const leader = AUTH_CONFIG.LEADER_PINS[pin];
         currentUser = {
             role: USER_ROLES.LEADER,
@@ -211,6 +226,29 @@ function verifyAuth(requiredRole) {
             authenticated: true
         };
         authenticated = true;
+    }
+    // Otherwise, let Firestore rules prove admin rights — the real PIN never lives in this file.
+    else {
+        try {
+            const user = await ensureAnonymousAuth();
+            if (!user) throw new Error('No authenticated session');
+
+            const pinHash = await hashPin(pin);
+            await firebase.firestore().collection('users').doc(user.uid).set({
+                role: 'admin',
+                pinHash: pinHash
+            });
+
+            currentUser = {
+                role: USER_ROLES.ADMIN,
+                name: 'ADMIN',
+                cluster: 'ALL',
+                authenticated: true
+            };
+            authenticated = true;
+        } catch (e) {
+            authenticated = false;
+        }
     }
     
     if (authenticated) {
@@ -258,12 +296,14 @@ function verifyAuth(requiredRole) {
 // LOGOUT
 // ========================================
 
-function logoutUser() {
+async function logoutUser() {
     if (currentUser.role === USER_ROLES.GUEST) {
         return; // Already logged out
     }
     
     if (confirm('Are you sure you want to logout?')) {
+        const wasAdmin = currentUser.role === USER_ROLES.ADMIN;
+
         currentUser = {
             role: USER_ROLES.GUEST,
             name: 'Guest',
@@ -272,6 +312,16 @@ function logoutUser() {
         };
         
         sessionStorage.removeItem(AUTH_CONFIG.SESSION_KEY);
+
+        // Revoke the proven admin role so this device needs the PIN again next time.
+        const authUser = firebase.auth && firebase.auth().currentUser;
+        if (wasAdmin && authUser) {
+            try {
+                await firebase.firestore().collection('users').doc(authUser.uid).delete();
+            } catch (e) {
+                console.error('❌ Failed to revoke admin role:', e);
+            }
+        }
         
         updateUserBadge();
         applyRoleBasedUI();
