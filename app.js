@@ -156,10 +156,6 @@ function showTab(tabName) {
     if (tabName === 'records') {
         populateClusterFilter();
     }
-    
-    if (tabName === 'visitors') {
-        renderRecentVisitorEntries();
-    }
 }
 
 // Clear all filters and show all records
@@ -419,8 +415,6 @@ async function addVisitor() {
     setTimeout(() => {
         document.getElementById('visitor-result').style.display = 'none';
     }, 5000);
-
-    renderRecentVisitorEntries();
 }
 
 // Update an existing visitor attendance entry (corrects typos before they reach the Report)
@@ -486,31 +480,43 @@ function cancelVisitorEdit() {
     document.getElementById('cancel-visitor-edit-btn').style.display = 'none';
 }
 
-// Show today's visitor entries with an Edit action, so typos never reach the Report
-function renderRecentVisitorEntries() {
-    const container = document.getElementById('recent-visitors-list');
-    if (!container) {
+// Search visitor attendance entries by name so a specific one can be corrected (avoids rendering the whole list)
+function searchVisitorToEdit() {
+    const searchTerm = document.getElementById('visitor-search-name').value.trim().toLowerCase();
+    const resultsDiv = document.getElementById('visitor-search-results');
+    if (!resultsDiv) {
         return;
     }
 
-    const today = new Date().toLocaleDateString();
-    const todaysVisitors = attendanceRecords
-        .filter(r => r.isVisitor && r.date === today)
-        .sort((a, b) => (b.scannedAt || '').localeCompare(a.scannedAt || ''));
-
-    if (todaysVisitors.length === 0) {
-        container.innerHTML = '<p class="empty-state">No visitor entries yet today.</p>';
+    if (!searchTerm) {
+        alert('Please enter a name to search!');
         return;
     }
 
-    container.innerHTML = todaysVisitors.map(record => `
+    const matches = attendanceRecords
+        .filter(r => r.isVisitor && r.name.toLowerCase().includes(searchTerm))
+        .sort((a, b) => (b.scannedAt || '').localeCompare(a.scannedAt || ''))
+        .slice(0, 20);
+
+    if (matches.length === 0) {
+        resultsDiv.innerHTML = '<p class="empty-state">No visitor entries found matching that name.</p>';
+        return;
+    }
+
+    resultsDiv.innerHTML = matches.map(record => `
         <div class="result-item">
             <h4>${escapeHtml(record.name)}</h4>
             <p><strong>Cluster:</strong> ${escapeHtml(record.cluster)} | <strong>Type:</strong> ${escapeHtml(record.visitorType || 'N/A')}</p>
-            <p><strong>Service:</strong> ${record.serviceType} | <strong>Time:</strong> ${record.time}</p>
+            <p><strong>Service:</strong> ${record.serviceType} | <strong>Date:</strong> ${record.date} ${record.time}</p>
             <button class="btn btn-secondary" style="margin-top: 8px;" onclick="editVisitorRecord('${record.id}')">✏️ Edit</button>
         </div>
     `).join('');
+}
+
+// Clear visitor search box and results
+function clearVisitorSearch() {
+    document.getElementById('visitor-search-name').value = '';
+    document.getElementById('visitor-search-results').innerHTML = '';
 }
 
 // Firebase Functions
@@ -546,7 +552,6 @@ async function initializeFirebase() {
             displayRecords();
             updateStats();
             populateClusterFilter();
-            renderRecentVisitorEntries();
             
             // Save to localStorage as backup for offline access
             localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
@@ -3048,3 +3053,5 @@ window.deleteRecordsForDate = deleteRecordsForDate;
 window.clearAllRecords = clearAllRecords;
 window.editVisitorRecord = editVisitorRecord;
 window.cancelVisitorEdit = cancelVisitorEdit;
+window.searchVisitorToEdit = searchVisitorToEdit;
+window.clearVisitorSearch = clearVisitorSearch;
