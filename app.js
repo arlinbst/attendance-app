@@ -26,6 +26,7 @@ let _originalAddVisitor = null;
 let _originalDeleteRecordsForDate = null;
 let _originalClearAllRecords = null;
 let _originalDeleteMember = null;
+let _originalDeleteVisitorRecord = null;
 
 function initAuthWrappers() {
     if (typeof AuthSystem === 'undefined') {
@@ -75,6 +76,17 @@ function initAuthWrappers() {
             return;
         }
         _originalDeleteMember();
+    };
+
+    _originalDeleteVisitorRecord = deleteVisitorRecord;
+    window.deleteVisitorRecord = function(recordId, recordName) {
+        if (!AuthSystem.isAdmin()) {
+            AuthSystem.showAuthModal(AuthSystem.USER_ROLES.ADMIN, () => {
+                _originalDeleteVisitorRecord(recordId, recordName);
+            });
+            return;
+        }
+        _originalDeleteVisitorRecord(recordId, recordName);
     };
 }
 
@@ -503,14 +515,54 @@ function searchVisitorToEdit() {
         return;
     }
 
+    // Delete button is admin-only — hidden entirely from Guests and Cluster Leaders.
+    const canDelete = typeof AuthSystem !== 'undefined' && AuthSystem.isAdmin();
+
     resultsDiv.innerHTML = matches.map(record => `
         <div class="result-item">
             <h4>${escapeHtml(record.name)}</h4>
             <p><strong>Cluster:</strong> ${escapeHtml(record.cluster)} | <strong>Type:</strong> ${escapeHtml(record.visitorType || 'N/A')}</p>
             <p><strong>Service:</strong> ${record.serviceType} | <strong>Date:</strong> ${record.date} ${record.time}</p>
             <button class="btn btn-secondary" style="margin-top: 8px;" onclick="editVisitorRecord('${record.id}')">✏️ Edit</button>
+            ${canDelete ? `<button class="btn btn-danger" style="margin-top: 8px; margin-left: 8px;" onclick="deleteVisitorRecord('${record.id}', '${escapeHtml(record.name).replace(/'/g, "\\'")}')">🗑️ Delete</button>` : ''}
         </div>
     `).join('');
+}
+
+// Permanently remove a visitor attendance entry — Admin role only (enforced client-side and by Firestore rules)
+async function deleteVisitorRecord(recordId, recordName) {
+    const confirmed = confirm(
+        `⚠️ DELETE VISITOR ENTRY\n` +
+        `═══════════════════════════════\n\n` +
+        `Delete the attendance entry for:\n${recordName}\n\n` +
+        `This action CANNOT be undone!\n\n` +
+        `Do you want to proceed?`
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+        if (firebaseInitialized && db) {
+            await db.collection('attendance').doc(recordId).delete();
+            console.log('✅ Visitor record deleted from Firebase:', recordId);
+        } else {
+            attendanceRecords = attendanceRecords.filter(r => r.id !== recordId);
+            saveRecords();
+            updateStats();
+            populateClusterFilter();
+        }
+
+        alert(`✅ Visitor entry deleted: ${recordName}`);
+        if (editingVisitorRecordId === recordId) {
+            cancelVisitorEdit();
+        }
+        searchVisitorToEdit();
+    } catch (error) {
+        console.error('❌ Error deleting visitor record:', error);
+        alert('❌ Could not delete visitor entry: ' + error.message);
+    }
 }
 
 // Clear visitor search box and results
@@ -3055,3 +3107,4 @@ window.editVisitorRecord = editVisitorRecord;
 window.cancelVisitorEdit = cancelVisitorEdit;
 window.searchVisitorToEdit = searchVisitorToEdit;
 window.clearVisitorSearch = clearVisitorSearch;
+window.deleteVisitorRecord = deleteVisitorRecord;
