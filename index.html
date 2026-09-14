@@ -148,9 +148,14 @@
                     <p><strong>Time:</strong> <span id="visitor-result-time"></span></p>
                 </div>
 
-                <div style="margin-top: 30px;">
-                    <h4 style="color: #333; margin-bottom: 10px;">📋 Today's Visitor Entries</h4>
-                    <div id="recent-visitors-list" class="results-container"></div>
+                <div style="margin-top: 30px; padding: 20px; background: #e3f2fd; border-radius: 8px; border: 2px solid #90caf9;">
+                    <h4 style="color: #333; margin-bottom: 10px;">🔍 Search Visitor to Edit</h4>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch;">
+                        <input type="text" id="visitor-search-name" class="input-field" placeholder="Enter visitor name" style="flex: 1; min-width: 200px;">
+                        <button onclick="searchVisitorToEdit()" class="btn btn-primary" style="flex-shrink: 0;">🔍 Search</button>
+                        <button onclick="clearVisitorSearch()" class="btn btn-secondary" style="flex-shrink: 0;">Clear</button>
+                    </div>
+                    <div id="visitor-search-results" class="results-container" style="margin-top: 15px;"></div>
                 </div>
             </div>
         </div>
