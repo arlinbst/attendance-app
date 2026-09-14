@@ -444,7 +444,7 @@ async function updateVisitorAttendance(recordId, name, clusterValue, serviceType
 
         alert(`✅ Visitor entry updated successfully!\n\nName: ${name}\nCluster: ${clusterValue}\nService: ${serviceType}`);
         cancelVisitorEdit();
-        renderRecentVisitorEntries();
+        clearVisitorSearch();
     } catch (error) {
         console.error('❌ Error updating visitor record:', error);
         alert('❌ Could not update visitor entry: ' + error.message);
