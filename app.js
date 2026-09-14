@@ -7,12 +7,18 @@ let lastScannedData = null;
 let lastScanTime = 0;
 let currentDisplayedRecords = [];
 let currentCamera = "environment"; // Track current camera: "environment" (back) or "user" (front)
+let editingVisitorRecordId = null; // Tracks which visitor attendance entry is being corrected
 
 function setElementHTML(elementId, html) {
     const element = document.getElementById(elementId);
     if (element) {
         element.innerHTML = html;
     }
+}
+
+function escapeHtml(str) {
+    if (typeof str !== 'string') return str;
+    return str.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 }
 
 // Authentication wrappers
@@ -149,6 +155,10 @@ function showTab(tabName) {
     
     if (tabName === 'records') {
         populateClusterFilter();
+    }
+    
+    if (tabName === 'visitors') {
+        renderRecentVisitorEntries();
     }
 }
 
@@ -341,6 +351,13 @@ async function addVisitor() {
     }
     
     const today = new Date().toLocaleDateString();
+    const clusterValue = visitorCluster || 'No Cluster';
+    
+    // Editing an existing entry instead of creating a new one
+    if (editingVisitorRecordId) {
+        await updateVisitorAttendance(editingVisitorRecordId, name, clusterValue, serviceType, visitorType);
+        return;
+    }
     
     // Check for duplicate visitor
     const duplicateVisitor = attendanceRecords.find(record => 
@@ -354,10 +371,6 @@ async function addVisitor() {
         alert(`Duplicate visitor detected!\n\n${name} already recorded for ${serviceType} today.`);
         return;
     }
-    
-    // Use the selected cluster value directly, even if empty (for "No Cluster")
-    // If truly empty, use 'No Cluster' as the display value
-    const clusterValue = visitorCluster || 'No Cluster';
     
     console.log('📝 Visitor Cluster Debug:');
     console.log('   Selected from dropdown:', visitorCluster);
@@ -406,6 +419,98 @@ async function addVisitor() {
     setTimeout(() => {
         document.getElementById('visitor-result').style.display = 'none';
     }, 5000);
+
+    renderRecentVisitorEntries();
+}
+
+// Update an existing visitor attendance entry (corrects typos before they reach the Report)
+async function updateVisitorAttendance(recordId, name, clusterValue, serviceType, visitorType) {
+    const updatedFields = {
+        name: name,
+        cluster: clusterValue,
+        serviceType: serviceType,
+        category: visitorType,
+        visitorType: visitorType
+    };
+
+    try {
+        if (firebaseInitialized && db) {
+            await db.collection('attendance').doc(recordId).update(updatedFields);
+            console.log('✅ Visitor record updated in Firebase:', recordId);
+        } else {
+            const localIndex = attendanceRecords.findIndex(r => r.id === recordId);
+            if (localIndex !== -1) {
+                attendanceRecords[localIndex] = { ...attendanceRecords[localIndex], ...updatedFields };
+                saveRecords();
+                displayRecords();
+                updateStats();
+                populateClusterFilter();
+            }
+        }
+
+        alert(`✅ Visitor entry updated successfully!\n\nName: ${name}\nCluster: ${clusterValue}\nService: ${serviceType}`);
+        cancelVisitorEdit();
+        renderRecentVisitorEntries();
+    } catch (error) {
+        console.error('❌ Error updating visitor record:', error);
+        alert('❌ Could not update visitor entry: ' + error.message);
+    }
+}
+
+// Load a visitor entry into the form for editing
+function editVisitorRecord(recordId) {
+    const record = attendanceRecords.find(r => r.id === recordId);
+    if (!record) {
+        alert('⚠️ Visitor entry not found. It may have been deleted or already updated.');
+        return;
+    }
+
+    editingVisitorRecordId = recordId;
+    document.getElementById('visitor-name').value = record.name;
+    document.getElementById('visitor-type').value = record.visitorType || record.category || '';
+    document.getElementById('visitor-cluster').value = record.cluster === 'No Cluster' ? '' : record.cluster;
+    document.getElementById('visitor-service').value = record.serviceType;
+
+    document.getElementById('add-visitor-btn').textContent = '💾 Update Visitor';
+    document.getElementById('cancel-visitor-edit-btn').style.display = 'inline-block';
+
+    document.getElementById('visitor-name').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Cancel visitor edit and reset the form back to "Add" mode
+function cancelVisitorEdit() {
+    editingVisitorRecordId = null;
+    document.getElementById('visitor-name').value = '';
+    document.getElementById('visitor-cluster').value = '';
+    document.getElementById('add-visitor-btn').textContent = 'Add Visitor';
+    document.getElementById('cancel-visitor-edit-btn').style.display = 'none';
+}
+
+// Show today's visitor entries with an Edit action, so typos never reach the Report
+function renderRecentVisitorEntries() {
+    const container = document.getElementById('recent-visitors-list');
+    if (!container) {
+        return;
+    }
+
+    const today = new Date().toLocaleDateString();
+    const todaysVisitors = attendanceRecords
+        .filter(r => r.isVisitor && r.date === today)
+        .sort((a, b) => (b.scannedAt || '').localeCompare(a.scannedAt || ''));
+
+    if (todaysVisitors.length === 0) {
+        container.innerHTML = '<p class="empty-state">No visitor entries yet today.</p>';
+        return;
+    }
+
+    container.innerHTML = todaysVisitors.map(record => `
+        <div class="result-item">
+            <h4>${escapeHtml(record.name)}</h4>
+            <p><strong>Cluster:</strong> ${escapeHtml(record.cluster)} | <strong>Type:</strong> ${escapeHtml(record.visitorType || 'N/A')}</p>
+            <p><strong>Service:</strong> ${record.serviceType} | <strong>Time:</strong> ${record.time}</p>
+            <button class="btn btn-secondary" style="margin-top: 8px;" onclick="editVisitorRecord('${record.id}')">✏️ Edit</button>
+        </div>
+    `).join('');
 }
 
 // Firebase Functions
@@ -441,6 +546,7 @@ async function initializeFirebase() {
             displayRecords();
             updateStats();
             populateClusterFilter();
+            renderRecentVisitorEntries();
             
             // Save to localStorage as backup for offline access
             localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
@@ -2940,3 +3046,5 @@ window.closeDateLookup = closeDateLookup;
 window.selectReportDate = selectReportDate;
 window.deleteRecordsForDate = deleteRecordsForDate;
 window.clearAllRecords = clearAllRecords;
+window.editVisitorRecord = editVisitorRecord;
+window.cancelVisitorEdit = cancelVisitorEdit;
