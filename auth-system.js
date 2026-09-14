@@ -563,6 +563,7 @@ function applyRoleBasedUI() {
             { value: 'KNL 1', text: 'KNL 1' },
             { value: 'KNL 2', text: 'KNL 2' },
             { value: 'PANSOL', text: 'PANSOL' },
+            { value: 'RONAS GARDEN', text: 'RONAS GARDEN' },
             { value: 'UP CAMPUS/CP GARCIA', text: 'UP CAMPUS/CP GARCIA' },
             { value: 'WHITE', text: 'WHITE' }
         ];
