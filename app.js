@@ -1988,24 +1988,34 @@ function switchMemberType() {
         const visitorTypeField = document.getElementById('visitor-type-field');
         const dateBaptisedField = document.getElementById('date-baptised-field');
         const statusField = document.getElementById('status-field');
+        const invitedByField = document.getElementById('invited-by-field');
+        const baptisedByField = document.getElementById('baptised-by-field');
+        const convertField = document.getElementById('convert-to-member-field');
+        const convertCheckbox = document.getElementById('convert-to-member');
         
         if (!categoryField || !visitorTypeField || !statusField) {
             console.log('Member form fields not found - skipping field visibility update');
             return;
         }
         
+        // Baptism history (Date Baptised, Invited By, Baptised By) applies to Members and New Baptism records alike.
+        if (dateBaptisedField) {
+            dateBaptisedField.style.display = 'block';
+            const today = new Date().toISOString().split('T')[0];
+            if (currentMemberType === 'visitors' && !document.getElementById('member-date-baptised').value) {
+                document.getElementById('member-date-baptised').value = today;
+            }
+        }
+        if (invitedByField) invitedByField.style.display = 'block';
+        if (baptisedByField) baptisedByField.style.display = 'block';
+        
         if (currentMemberType === 'members') {
-            // Members: Show Category and Status, Hide Visitor Type and Date Baptised
+            // Members: Show Category and Status, Hide Visitor Type and the convert toggle
             categoryField.style.display = 'block';
             statusField.style.display = 'block';
             visitorTypeField.style.display = 'none';
-            if (dateBaptisedField) dateBaptisedField.style.display = 'none';
-            
-            // Hide Invited By and Baptised By fields for members
-            const invitedByField = document.getElementById('invited-by-field');
-            const baptisedByField = document.getElementById('baptised-by-field');
-            if (invitedByField) invitedByField.style.display = 'none';
-            if (baptisedByField) baptisedByField.style.display = 'none';
+            if (convertField) convertField.style.display = 'none';
+            if (convertCheckbox) convertCheckbox.checked = false;
             
             document.getElementById('member-category').required = true;
             document.getElementById('member-status').required = true;
@@ -2014,9 +2024,6 @@ function switchMemberType() {
             if (document.getElementById('cluster-label')) {
                 document.getElementById('cluster-label').innerHTML = 'Cluster:';
             }
-            if (document.getElementById('member-date-baptised')) {
-                document.getElementById('member-date-baptised').required = false;
-            }
             
             // Update button label
             const addNewBtn = document.getElementById('add-new-btn');
@@ -2024,27 +2031,12 @@ function switchMemberType() {
                 addNewBtn.innerHTML = '➕ New';
             }
         } else {
-            // Visitors: Hide Category and Status, Show Visitor Type and Date Baptised, Make Cluster optional
-            categoryField.style.display = 'none';
-            statusField.style.display = 'none';
+            // New Baptism: Show Visitor Type and the convert-to-member toggle; Cluster optional
             visitorTypeField.style.display = 'block';
-            if (dateBaptisedField) {
-                dateBaptisedField.style.display = 'block';
-                // Set default date to today
-                const today = new Date().toISOString().split('T')[0];
-                if (!document.getElementById('member-date-baptised').value) {
-                    document.getElementById('member-date-baptised').value = today;
-                }
-            }
+            if (convertField) convertField.style.display = 'block';
+            if (convertCheckbox) convertCheckbox.checked = false;
+            toggleConvertToMember();
             
-            // Show Invited By and Baptised By fields for visitors
-            const invitedByField = document.getElementById('invited-by-field');
-            const baptisedByField = document.getElementById('baptised-by-field');
-            if (invitedByField) invitedByField.style.display = 'block';
-            if (baptisedByField) baptisedByField.style.display = 'block';
-            
-            document.getElementById('member-category').required = false;
-            document.getElementById('member-status').required = false;
             document.getElementById('member-visitor-type').required = true;
             document.getElementById('member-cluster').required = false;
             if (document.getElementById('cluster-label')) {
@@ -2062,6 +2054,25 @@ function switchMemberType() {
         if (typeof updateMemberStats === 'function') updateMemberStats();
     } catch (error) {
         console.error('Error in switchMemberType:', error);
+    }
+}
+
+// Show Category/Status when a New Baptism record is being tagged as a Regular Member
+function toggleConvertToMember() {
+    const checkbox = document.getElementById('convert-to-member');
+    const categoryField = document.getElementById('category-field');
+    const statusField = document.getElementById('status-field');
+    if (!checkbox || !categoryField || !statusField) {
+        return;
+    }
+
+    const converting = currentMemberType === 'visitors' && checkbox.checked;
+    categoryField.style.display = converting ? 'block' : 'none';
+    statusField.style.display = converting ? 'block' : 'none';
+    document.getElementById('member-category').required = converting;
+    document.getElementById('member-status').required = converting;
+    if (converting && !document.getElementById('member-status').value) {
+        document.getElementById('member-status').value = 'Active';
     }
 }
 
@@ -2151,23 +2162,29 @@ function viewMember(memberId) {
             calculateAge();
         }
         
-        if (currentMemberType === 'members') {
-            document.getElementById('member-category').value = member.category;
-            document.getElementById('member-status').value = member.status;
-        } else {
-            document.getElementById('member-visitor-type').value = member.visitorType || '';
-            if (document.getElementById('member-date-baptised')) {
-                document.getElementById('member-date-baptised').value = member.dateBaptised || '';
-            }
-            if (document.getElementById('member-invited-by')) {
-                document.getElementById('member-invited-by').value = member.invitedBy || '';
-            }
-            if (document.getElementById('member-baptised-by')) {
-                document.getElementById('member-baptised-by').value = member.baptisedBy || '';
-            }
+        // Baptism history carries over regardless of whether this is now a Member or still a New Baptism record.
+        if (document.getElementById('member-date-baptised')) {
+            document.getElementById('member-date-baptised').value = member.dateBaptised || '';
+        }
+        if (document.getElementById('member-invited-by')) {
+            document.getElementById('member-invited-by').value = member.invitedBy || '';
+        }
+        if (document.getElementById('member-baptised-by')) {
+            document.getElementById('member-baptised-by').value = member.baptisedBy || '';
         }
         
-        const formTitle = currentMemberType === 'visitors' ? 'Edit Visitor Information' : 'Edit Member Information';
+        if (currentMemberType === 'members') {
+            document.getElementById('member-category').value = member.category || '';
+            document.getElementById('member-status').value = member.status || '';
+        } else {
+            document.getElementById('member-visitor-type').value = member.visitorType || '';
+        }
+        
+        const convertCheckbox = document.getElementById('convert-to-member');
+        if (convertCheckbox) convertCheckbox.checked = false;
+        toggleConvertToMember();
+        
+        const formTitle = currentMemberType === 'visitors' ? 'Edit New Baptism Record' : 'Edit Member Information';
         document.getElementById('form-title').textContent = formTitle;
         document.getElementById('delete-btn').style.display = 'inline-block';
         document.getElementById('member-details-section').style.display = 'block';
@@ -2205,8 +2222,12 @@ function addNewMember() {
         document.getElementById('member-date-baptised').value = currentMemberType === 'visitors' ? today : '';
     }
     
+    const convertCheckbox = document.getElementById('convert-to-member');
+    if (convertCheckbox) convertCheckbox.checked = false;
+    toggleConvertToMember();
+    
     // Update form title based on type
-    const formTitle = currentMemberType === 'visitors' ? 'Add New Visitor' : 'Add New Member';
+    const formTitle = currentMemberType === 'visitors' ? 'Add New Baptism Record' : 'Add New Member';
     document.getElementById('form-title').textContent = formTitle;
     document.getElementById('delete-btn').style.display = 'none';
     document.getElementById('member-details-section').style.display = 'block';
@@ -2223,6 +2244,11 @@ async function saveMember() {
     const facebookAccount = document.getElementById('member-facebook').value.trim();
     const cluster = document.getElementById('member-cluster').value;
     const age = document.getElementById('member-age').value;
+    const dateBaptised = document.getElementById('member-date-baptised') ? document.getElementById('member-date-baptised').value : '';
+    const invitedBy = document.getElementById('member-invited-by') ? document.getElementById('member-invited-by').value.trim() : '';
+    const baptisedBy = document.getElementById('member-baptised-by') ? document.getElementById('member-baptised-by').value.trim() : '';
+    const convertCheckbox = document.getElementById('convert-to-member');
+    const isConvertingToMember = currentMemberType === 'visitors' && convertCheckbox && convertCheckbox.checked;
     
     let memberData = {
         name: name,
@@ -2231,7 +2257,10 @@ async function saveMember() {
         contactNumber: contactNumber,
         facebookAccount: facebookAccount || '',
         cluster: cluster,
-        type: currentMemberType,
+        type: isConvertingToMember ? 'members' : currentMemberType,
+        dateBaptised: dateBaptised || '',
+        invitedBy: invitedBy || '',
+        baptisedBy: baptisedBy || '',
         updatedAt: new Date().toISOString()
     };
     
@@ -2250,9 +2279,6 @@ async function saveMember() {
         memberData.status = status;
     } else {
         const visitorType = document.getElementById('member-visitor-type').value;
-        const dateBaptised = document.getElementById('member-date-baptised').value;
-        const invitedBy = document.getElementById('member-invited-by') ? document.getElementById('member-invited-by').value.trim() : '';
-        const baptisedBy = document.getElementById('member-baptised-by') ? document.getElementById('member-baptised-by').value.trim() : '';
         
         // Validation for visitors (cluster is optional)
         if (!name || !birthday || !contactNumber || !visitorType) {
@@ -2261,9 +2287,23 @@ async function saveMember() {
         }
         
         memberData.visitorType = visitorType;
-        memberData.dateBaptised = dateBaptised || new Date().toISOString().split('T')[0];
-        memberData.invitedBy = invitedBy || '';
-        memberData.baptisedBy = baptisedBy || '';
+        if (!memberData.dateBaptised) {
+            memberData.dateBaptised = new Date().toISOString().split('T')[0];
+        }
+        
+        // Tagging as Regular Member requires the same fields a Member record needs
+        if (isConvertingToMember) {
+            const category = document.getElementById('member-category').value;
+            const status = document.getElementById('member-status').value;
+            
+            if (!cluster || !category || !status) {
+                alert('Please fill in Cluster, Category, and Status to tag as Regular Member!');
+                return;
+            }
+            
+            memberData.category = category;
+            memberData.status = status;
+        }
     }
     
     try {
@@ -2278,7 +2318,7 @@ async function saveMember() {
                 // Update in local arrays if offline
                 updateLocalMember(currentEditingId, memberData);
             }
-            alert('✅ Member information updated successfully!' + 
+            alert((isConvertingToMember ? '✅ Tagged as Regular Member! Record moved from New Baptism to Members.' : '✅ Member information updated successfully!') + 
                   (savedToCloud ? '' : '\n⚠️ Saved offline - will sync when online'));
         } else {
             // Add new member
@@ -2338,13 +2378,27 @@ function addLocalMember(memberData) {
     updateMemberStats();
 }
 
+// Moves the record between the local Members/New Baptism arrays when its type changes (conversion)
 function updateLocalMember(id, updatedData) {
-    const dataSource = currentMemberType === 'members' ? membersData : visitorsData;
-    const index = dataSource.findIndex(m => m.id === id);
-    if (index !== -1) {
-        dataSource[index] = { ...dataSource[index], ...updatedData };
-        updateMemberStats();
+    let existing = null;
+    const membersIdx = membersData.findIndex(m => m.id === id);
+    const visitorsIdx = visitorsData.findIndex(m => m.id === id);
+
+    if (membersIdx !== -1) {
+        existing = membersData[membersIdx];
+        membersData.splice(membersIdx, 1);
+    } else if (visitorsIdx !== -1) {
+        existing = visitorsData[visitorsIdx];
+        visitorsData.splice(visitorsIdx, 1);
     }
+
+    const merged = { ...(existing || {}), ...updatedData, id };
+    if (merged.type === 'members') {
+        membersData.unshift(merged);
+    } else {
+        visitorsData.unshift(merged);
+    }
+    updateMemberStats();
 }
 
 function saveMembersToLocalStorage() {
@@ -2478,6 +2532,14 @@ function cancelEdit() {
     if (document.getElementById('member-date-baptised')) {
         document.getElementById('member-date-baptised').value = '';
     }
+    if (document.getElementById('member-invited-by')) {
+        document.getElementById('member-invited-by').value = '';
+    }
+    if (document.getElementById('member-baptised-by')) {
+        document.getElementById('member-baptised-by').value = '';
+    }
+    const convertCheckbox = document.getElementById('convert-to-member');
+    if (convertCheckbox) convertCheckbox.checked = false;
 }
 
 // Clear search
@@ -3108,3 +3170,4 @@ window.cancelVisitorEdit = cancelVisitorEdit;
 window.searchVisitorToEdit = searchVisitorToEdit;
 window.clearVisitorSearch = clearVisitorSearch;
 window.deleteVisitorRecord = deleteVisitorRecord;
+window.toggleConvertToMember = toggleConvertToMember;
