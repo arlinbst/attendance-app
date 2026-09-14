@@ -137,6 +137,7 @@
                 </select>
                 
                 <button id="add-visitor-btn" type="button" class="btn btn-primary" style="margin-top: 20px;" onclick="addVisitor()">Add Visitor</button>
+                <button id="cancel-visitor-edit-btn" type="button" class="btn btn-secondary" style="margin-top: 20px; margin-left: 10px; display: none;" onclick="cancelVisitorEdit()">✖️ Cancel Edit</button>
                 
                 <div id="visitor-result" class="result-box" style="display: none; margin-top: 20px;">
                     <h3>✅ Visitor Added!</h3>
@@ -145,6 +146,11 @@
                     <p><strong>Cluster:</strong> <span id="visitor-result-cluster"></span></p>
                     <p><strong>Service:</strong> <span id="visitor-result-service"></span></p>
                     <p><strong>Time:</strong> <span id="visitor-result-time"></span></p>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <h4 style="color: #333; margin-bottom: 10px;">📋 Today's Visitor Entries</h4>
+                    <div id="recent-visitors-list" class="results-container"></div>
                 </div>
             </div>
         </div>
