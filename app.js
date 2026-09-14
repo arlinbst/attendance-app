@@ -1976,6 +1976,7 @@ let membersData = [];
 let visitorsData = [];
 let currentMemberType = 'members';
 let currentEditingId = null;
+let isSavingMember = false; // Guards against duplicate records from rapid/repeated Save clicks
 
 // Switch between Members and Visitors
 function switchMemberType() {
@@ -2282,6 +2283,10 @@ function addNewMember() {
 
 // Save member (Add or Update)
 async function saveMember() {
+    if (isSavingMember) {
+        return; // Already saving - ignore extra clicks so we don't create duplicate records
+    }
+
     const name = document.getElementById('member-name').value.trim();
     const birthday = document.getElementById('member-birthday').value;
     const contactNumber = document.getElementById('member-contact').value.trim();
@@ -2358,6 +2363,23 @@ async function saveMember() {
         }
     }
     
+    // Duplicate check for new records only (same name + cluster already exists in this list)
+    if (!currentEditingId) {
+        const dataSource = memberData.type === 'members' ? membersData : visitorsData;
+        const isDuplicate = dataSource.some(m =>
+            (m.name || '').trim().toLowerCase() === name.toLowerCase() &&
+            (m.cluster || '').trim().toLowerCase() === (cluster || '').trim().toLowerCase()
+        );
+        if (isDuplicate) {
+            alert(`⚠️ Duplicate detected!\n\n"${name}" already exists in ${cluster || 'this'} cluster.\n\nPlease verify before adding again.`);
+            return;
+        }
+    }
+    
+    const saveBtn = document.getElementById('save-member-btn');
+    isSavingMember = true;
+    if (saveBtn) saveBtn.disabled = true;
+    
     try {
         let savedToCloud = false;
         
@@ -2417,6 +2439,9 @@ async function saveMember() {
         } else {
             alert('❌ Error saving member: ' + error.message);
         }
+    } finally {
+        isSavingMember = false;
+        if (saveBtn) saveBtn.disabled = false;
     }
 }
 
