@@ -2949,7 +2949,7 @@ function previewMembersReport() {
                             <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Contact</th>
                             <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Facebook</th>
                             <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
-                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitor Type</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Event</th>
                             <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Date Baptised</th>
                             <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Invited By</th>
                             <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Baptised By</th>
@@ -3113,7 +3113,7 @@ function printMembersReport() {
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Contact</th>
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Facebook</th>
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
-                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitor Type</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Event</th>
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Date Baptised</th>
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Invited By</th>
                         <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Baptised By</th>
