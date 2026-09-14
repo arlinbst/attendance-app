@@ -74,7 +74,7 @@ function initAuthWrappers() {
 
 // Firebase Configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyCbZI9mTieFtelvSRscgp2oWp9oA5cIYo",
+    apiKey: "AIzaSyCbZI9mTTieFtelvSRscgp2oWp9oA5cIYo",
     authDomain: "attendance-app-5b4f5.firebaseapp.com",
     projectId: "attendance-app-5b4f5",
     storageBucket: "attendance-app-5b4f5.firebasestorage.app",
