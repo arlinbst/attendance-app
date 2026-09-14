@@ -501,6 +501,34 @@ function applyRoleBasedUI() {
             reportsTab.title = '';
         }
     }
+
+    // GENERATE QR TAB - Admin only (Guests and Cluster Leaders cannot access)
+    const generateTab = Array.from(document.querySelectorAll('.tab-btn')).find(btn =>
+        btn.textContent.includes('Generate QR')
+    );
+    if (generateTab) {
+        if (role === USER_ROLES.ADMIN) {
+            generateTab.style.opacity = '1';
+            generateTab.style.cursor = 'pointer';
+            generateTab.style.pointerEvents = 'auto';
+            generateTab.title = '';
+        } else {
+            generateTab.style.opacity = '0.4';
+            generateTab.style.cursor = 'not-allowed';
+            generateTab.style.pointerEvents = 'none';
+            generateTab.title = 'Admin login required to access Generate QR';
+
+            // Kick the viewer back to Scan if they lost admin rights while on this tab.
+            if (generateTab.classList.contains('active')) {
+                const scanTab = Array.from(document.querySelectorAll('.tab-btn')).find(btn =>
+                    btn.textContent.includes('Scan')
+                );
+                if (scanTab) {
+                    scanTab.click();
+                }
+            }
+        }
+    }
     
     // CLUSTER FILTER - Church Leaders see only their cluster
     const clusterFilter = document.getElementById('export-cluster-filter');
