@@ -2016,6 +2016,8 @@ function switchMemberType() {
             visitorTypeField.style.display = 'none';
             if (convertField) convertField.style.display = 'none';
             if (convertCheckbox) convertCheckbox.checked = false;
+            const eventTypeDetailField = document.getElementById('event-type-detail-field');
+            if (eventTypeDetailField) eventTypeDetailField.style.display = 'none';
             
             document.getElementById('member-category').required = true;
             document.getElementById('member-status').required = true;
@@ -2036,6 +2038,7 @@ function switchMemberType() {
             if (convertField) convertField.style.display = 'block';
             if (convertCheckbox) convertCheckbox.checked = false;
             toggleConvertToMember();
+            toggleEventTypeDetail();
             
             document.getElementById('member-visitor-type').required = true;
             document.getElementById('member-cluster').required = false;
@@ -2073,6 +2076,30 @@ function toggleConvertToMember() {
     document.getElementById('member-status').required = converting;
     if (converting && !document.getElementById('member-status').value) {
         document.getElementById('member-status').value = 'Active';
+    }
+}
+
+// Show/hide the Place (HFGC Baptism) or Description (Others) detail field based on the chosen Event Type
+function toggleEventTypeDetail() {
+    const select = document.getElementById('member-visitor-type');
+    const detailField = document.getElementById('event-type-detail-field');
+    const detailInput = document.getElementById('member-event-type-detail');
+    const detailLabel = document.getElementById('event-type-detail-label');
+    if (!select || !detailField || !detailInput) {
+        return;
+    }
+
+    const value = select.value;
+    if (value === 'HFGC Baptism' || value === 'Others') {
+        detailField.style.display = 'block';
+        detailInput.required = true;
+        if (detailLabel) {
+            detailLabel.textContent = value === 'HFGC Baptism' ? 'Place:' : 'Description:';
+        }
+        detailInput.placeholder = value === 'HFGC Baptism' ? 'Describe the place (e.g. venue/location)' : 'Describe the event';
+    } else {
+        detailField.style.display = 'none';
+        detailInput.required = false;
     }
 }
 
@@ -2179,10 +2206,14 @@ function viewMember(memberId) {
         } else {
             document.getElementById('member-visitor-type').value = member.visitorType || '';
         }
+        if (document.getElementById('member-event-type-detail')) {
+            document.getElementById('member-event-type-detail').value = member.eventTypeDetail || '';
+        }
         
         const convertCheckbox = document.getElementById('convert-to-member');
         if (convertCheckbox) convertCheckbox.checked = false;
         toggleConvertToMember();
+        toggleEventTypeDetail();
         
         const formTitle = currentMemberType === 'visitors' ? 'Edit New Baptism Record' : 'Edit Member Information';
         document.getElementById('form-title').textContent = formTitle;
@@ -2221,10 +2252,14 @@ function addNewMember() {
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('member-date-baptised').value = currentMemberType === 'visitors' ? today : '';
     }
+    if (document.getElementById('member-event-type-detail')) {
+        document.getElementById('member-event-type-detail').value = '';
+    }
     
     const convertCheckbox = document.getElementById('convert-to-member');
     if (convertCheckbox) convertCheckbox.checked = false;
     toggleConvertToMember();
+    toggleEventTypeDetail();
     
     // Update form title based on type
     const formTitle = currentMemberType === 'visitors' ? 'Add New Baptism Record' : 'Add New Member';
@@ -2279,6 +2314,7 @@ async function saveMember() {
         memberData.status = status;
     } else {
         const visitorType = document.getElementById('member-visitor-type').value;
+        const eventTypeDetail = document.getElementById('member-event-type-detail') ? document.getElementById('member-event-type-detail').value.trim() : '';
         
         // Validation for visitors (cluster is optional)
         if (!name || !birthday || !contactNumber || !visitorType) {
@@ -2286,7 +2322,14 @@ async function saveMember() {
             return;
         }
         
+        // HFGC Baptism needs the place, Others needs a description
+        if ((visitorType === 'HFGC Baptism' || visitorType === 'Others') && !eventTypeDetail) {
+            alert(visitorType === 'HFGC Baptism' ? 'Please specify the place for HFGC Baptism!' : 'Please describe the event for Others!');
+            return;
+        }
+        
         memberData.visitorType = visitorType;
+        memberData.eventTypeDetail = eventTypeDetail;
         if (!memberData.dateBaptised) {
             memberData.dateBaptised = new Date().toISOString().split('T')[0];
         }
@@ -2537,6 +2580,9 @@ function cancelEdit() {
     }
     if (document.getElementById('member-baptised-by')) {
         document.getElementById('member-baptised-by').value = '';
+    }
+    if (document.getElementById('member-event-type-detail')) {
+        document.getElementById('member-event-type-detail').value = '';
     }
     const convertCheckbox = document.getElementById('convert-to-member');
     if (convertCheckbox) convertCheckbox.checked = false;
@@ -3171,3 +3217,4 @@ window.searchVisitorToEdit = searchVisitorToEdit;
 window.clearVisitorSearch = clearVisitorSearch;
 window.deleteVisitorRecord = deleteVisitorRecord;
 window.toggleConvertToMember = toggleConvertToMember;
+window.toggleEventTypeDetail = toggleEventTypeDetail;
