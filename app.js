@@ -1605,7 +1605,8 @@ function generateReport() {
         const serviceTypes = Object.keys(serviceTypeGroups).sort();
         const totalMembers = filtered.filter(r => !r.isVisitor && (r.category || '') !== 'Cadets').length;
         const totalCadets = filtered.filter(r => !r.isVisitor && (r.category || '') === 'Cadets').length;
-        const totalVisitors = filtered.filter(r => r.isVisitor).length;
+        const totalOnline = filtered.filter(r => r.isVisitor && r.visitorType === 'Online Worshipper').length;
+        const totalVisitors = filtered.filter(r => r.isVisitor && r.visitorType !== 'Online Worshipper').length;
         
         // Build report header
         reportHTML = `
@@ -1618,7 +1619,7 @@ function generateReport() {
                     <p><strong>Date:</strong> ${reportDate}</p>
                     <p><strong>Service Types:</strong> ${serviceTypes.join(', ')}</p>
                     <p><strong>Total Attendance:</strong> ${filtered.length}</p>
-                    <p><strong>Members:</strong> ${totalMembers} | <strong>Cadets:</strong> ${totalCadets} | <strong>Visitors:</strong> ${totalVisitors}</p>
+                    <p><strong>Members:</strong> ${totalMembers} | <strong>Cadets:</strong> ${totalCadets} | <strong>Online Worshipper:</strong> ${totalOnline} | <strong>Visitors:</strong> ${totalVisitors}</p>
                     <p class="generated-time"><strong>Generated:</strong> ${generatedTimestamp}</p>
                 </div>
             </div>
@@ -1629,12 +1630,13 @@ function generateReport() {
             const serviceRecords = serviceTypeGroups[serviceType];
             const serviceMembers = serviceRecords.filter(r => !r.isVisitor && (r.category || '') !== 'Cadets');
             const serviceCadets = serviceRecords.filter(r => !r.isVisitor && (r.category || '') === 'Cadets');
-            const serviceVisitors = serviceRecords.filter(r => r.isVisitor);
+            const serviceOnline = serviceRecords.filter(r => r.isVisitor && r.visitorType === 'Online Worshipper');
+            const serviceVisitors = serviceRecords.filter(r => r.isVisitor && r.visitorType !== 'Online Worshipper');
             
             reportHTML += `
                 <div class="service-type-section" style="margin-top: ${serviceIndex > 0 ? '40px' : '20px'}; padding: 20px; border: 2px solid #2196F3; border-radius: 8px; background: #f9f9f9;">
                     <h3 style="color: #2196F3; margin: 0 0 15px 0; font-size: 18px; text-transform: uppercase; border-bottom: 2px solid #2196F3; padding-bottom: 10px;">${serviceType}</h3>
-                    <p style="color: #666; margin-bottom: 20px;"><strong>Total Attendees:</strong> ${serviceRecords.length} (Members: ${serviceMembers.length}, Cadets: ${serviceCadets.length}, Visitors: ${serviceVisitors.length})</p>
+                    <p style="color: #666; margin-bottom: 20px;"><strong>Total Attendees:</strong> ${serviceRecords.length} (Members: ${serviceMembers.length}, Cadets: ${serviceCadets.length}, Online Worshipper: ${serviceOnline.length}, Visitors: ${serviceVisitors.length})</p>
             `;
             
             // Group members by cluster for this service
@@ -1700,6 +1702,40 @@ function generateReport() {
                 `;
             }
             
+            // Add Online Worshipper attendance for this service
+            if (serviceOnline.length > 0) {
+                const sortedOnline = serviceOnline.slice().sort((a, b) => a.name.localeCompare(b.name));
+                
+                reportHTML += `
+                    <div style="margin-top: 20px; padding-top: 15px; border-top: 2px dashed #00BCD4;">
+                        <h5 style="color: #00BCD4; font-size: 15px; font-weight: 600; margin-bottom: 12px;">ONLINE WORSHIPPER (${serviceOnline.length})</h5>
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                            <thead>
+                                <tr style="background-color: #00BCD4; color: white;">
+                                    <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Name</th>
+                                    <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                sortedOnline.forEach((record, index) => {
+                    const bgColor = index % 2 === 0 ? '#e0f7fa' : 'white';
+                    reportHTML += `
+                        <tr style="background: ${bgColor};">
+                            <td style="border: 1px solid #ddd; padding: 8px;">${record.name}</td>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${record.cluster || 'N/A'}</td>
+                        </tr>
+                    `;
+                });
+                
+                reportHTML += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+            
             // Add visitors for this service
             if (serviceVisitors.length > 0) {
                 const sortedVisitors = serviceVisitors.sort((a, b) => a.name.localeCompare(b.name));
@@ -1749,7 +1785,8 @@ function generateReport() {
         // Single service type - keep original behavior
         const members = filtered.filter(r => !r.isVisitor && (r.category || '') !== 'Cadets');
         const cadets = filtered.filter(r => !r.isVisitor && (r.category || '') === 'Cadets');
-        const visitors = filtered.filter(r => r.isVisitor);
+        const onlineWorshippers = filtered.filter(r => r.isVisitor && r.visitorType === 'Online Worshipper');
+        const visitors = filtered.filter(r => r.isVisitor && r.visitorType !== 'Online Worshipper');
         
         // Group members by cluster
         const clusterGroups = {};
@@ -1771,7 +1808,7 @@ function generateReport() {
                     <p><strong>Date:</strong> ${reportDate}</p>
                     <p><strong>Service Type:</strong> ${serviceFilter}</p>
                     <p><strong>Total Attendance:</strong> ${filtered.length}</p>
-                    <p><strong>Members:</strong> ${members.length} | <strong>Cadets:</strong> ${cadets.length} | <strong>Visitors:</strong> ${visitors.length}</p>
+                    <p><strong>Members:</strong> ${members.length} | <strong>Cadets:</strong> ${cadets.length} | <strong>Online Worshipper:</strong> ${onlineWorshippers.length} | <strong>Visitors:</strong> ${visitors.length}</p>
                     <p class="generated-time"><strong>Generated:</strong> ${generatedTimestamp}</p>
                 </div>
             </div>
@@ -1803,6 +1840,16 @@ function generateReport() {
                 <tr>
                     <td><strong>CADETS</strong></td>
                     <td style="text-align: center;"><strong>${cadets.length}</strong></td>
+                </tr>
+            `;
+        }
+        
+        // Add Online Worshipper row if there are any
+        if (onlineWorshippers.length > 0) {
+            reportHTML += `
+                <tr>
+                    <td><strong>ONLINE WORSHIPPER</strong></td>
+                    <td style="text-align: center;"><strong>${onlineWorshippers.length}</strong></td>
                 </tr>
             `;
         }
@@ -1864,6 +1911,42 @@ function generateReport() {
             
             sortedCadets.forEach((record, index) => {
                 const bgColor = index % 2 === 0 ? '#f3e5f5' : 'white';
+                reportHTML += `
+                    <tr style="background: ${bgColor};">
+                        <td style="border: 1px solid #ddd; padding: 8px;">${record.name}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${record.cluster || 'N/A'}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${record.time}</td>
+                    </tr>
+                `;
+            });
+            
+            reportHTML += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+        
+        // Add Online Worshipper section if there are any
+        if (onlineWorshippers.length > 0) {
+            const sortedOnline = onlineWorshippers.slice().sort((a, b) => a.name.localeCompare(b.name));
+            
+            reportHTML += `
+                <div class="cluster-detail-section" style="margin-top: 25px;">
+                    <h5 style="color: #00BCD4; font-size: 15px; font-weight: 600; margin-bottom: 12px;">ONLINE WORSHIPPER (${onlineWorshippers.length} total)</h5>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                        <thead>
+                            <tr style="background-color: #00BCD4; color: white;">
+                                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Name</th>
+                                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
+                                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            sortedOnline.forEach((record, index) => {
+                const bgColor = index % 2 === 0 ? '#e0f7fa' : 'white';
                 reportHTML += `
                     <tr style="background: ${bgColor};">
                         <td style="border: 1px solid #ddd; padding: 8px;">${record.name}</td>
@@ -2895,6 +2978,10 @@ function exportToExcel() {
     const filteredCadets = filteredMembers.filter(m => m.category === 'Cadets');
     filteredMembers = filteredMembers.filter(m => m.category !== 'Cadets');
     
+    // Split out Online Worshipper into their own section, separate from the general Visitors table
+    const filteredOnline = filteredVisitors.filter(v => v.visitorType === 'Online Worshipper');
+    filteredVisitors = filteredVisitors.filter(v => v.visitorType !== 'Online Worshipper');
+    
     // Calculate category totals for members (Cadets tracked separately below)
     const categoryTotals = {
         'Pastoral': 0,
@@ -3003,6 +3090,22 @@ function exportToExcel() {
         csvContent += '\n';
     }
     
+    // Online Worshipper Section (only if not filtered to MEMBERS only)
+    if (typeFilter !== 'MEMBERS' && filteredOnline.length > 0) {
+        csvContent += '"=== ONLINE WORSHIPPER ==="\n';
+        csvContent += '"Name","Birthday","Age","Contact Number","Facebook Account","Cluster"\n';
+        
+        filteredOnline.forEach(visitor => {
+            csvContent += `"${visitor.name}","${visitor.birthday || 'N/A'}","${visitor.age || 'N/A'}","${visitor.contactNumber || 'N/A'}","${visitor.facebookAccount || 'N/A'}","${visitor.cluster || 'N/A'}"\n`;
+        });
+        
+        csvContent += '\n';
+        csvContent += `"Total Online Worshipper: ${filteredOnline.length}"\n`;
+        csvContent += '\n';
+        csvContent += '"====================================="\n';
+        csvContent += '\n';
+    }
+    
     // Grand Totals
     csvContent += '"SUMMARY"\n';
     if (typeFilter !== 'VISITORS') {
@@ -3011,8 +3114,9 @@ function exportToExcel() {
     }
     if (typeFilter !== 'MEMBERS') {
         csvContent += `"Total Visitors:","${filteredVisitors.length}"\n`;
+        csvContent += `"Total Online Worshipper:","${filteredOnline.length}"\n`;
     }
-    csvContent += `"Grand Total:","${filteredMembers.length + filteredCadets.length + filteredVisitors.length}"\n`;
+    csvContent += `"Grand Total:","${filteredMembers.length + filteredCadets.length + filteredVisitors.length + filteredOnline.length}"\n`;
     
     // Create and download file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -3094,6 +3198,10 @@ function previewMembersReport() {
     // Split out Cadets into their own section, separate from the general Members table
     const filteredCadets = filteredMembers.filter(m => m.category === 'Cadets');
     filteredMembers = filteredMembers.filter(m => m.category !== 'Cadets');
+    
+    // Split out Online Worshipper into their own section, separate from the general Visitors table
+    const filteredOnline = filteredVisitors.filter(v => v.visitorType === 'Online Worshipper');
+    filteredVisitors = filteredVisitors.filter(v => v.visitorType !== 'Online Worshipper');
     
     // Determine report title based on type filter
     let reportTitle = 'Members & Visitors Information List';
@@ -3259,6 +3367,49 @@ function previewMembersReport() {
         `;
     }
     
+    // Online Worshipper Table
+    if (typeFilter !== 'MEMBERS' && filteredOnline.length > 0) {
+        previewContent += `
+            <h3 style="color: #00BCD4; border-bottom: 2px solid #00BCD4; padding-bottom: 10px; margin-top: 40px;">ONLINE WORSHIPPER</h3>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 14px;">
+                    <thead>
+                        <tr style="background-color: #00BCD4; color: white;">
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">#</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Name</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Birthday</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Age</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Contact</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Facebook</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        filteredOnline.forEach((visitor, index) => {
+            const calculatedAge = calculateAgeFromBirthday(visitor.birthday);
+            previewContent += `
+                <tr style="${index % 2 === 0 ? 'background: #e0f7fa;' : 'background: white;'}">
+                    <td style="border: 1px solid #ddd; padding: 8px;">${index + 1}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; font-weight: bold;">${visitor.name}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.birthday || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${calculatedAge}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.contactNumber || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.facebookAccount || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.cluster || 'N/A'}</td>
+                </tr>
+            `;
+        });
+        
+        previewContent += `
+                    </tbody>
+                </table>
+            </div>
+            <p style="font-weight: bold; margin-top: 10px; font-size: 16px; color: #00BCD4;">Total Online Worshipper: ${filteredOnline.length}</p>
+        `;
+    }
+    
     // Summary
     previewContent += `
         <div style="margin-top: 40px; padding: 25px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
@@ -3266,7 +3417,8 @@ function previewMembersReport() {
             ${typeFilter !== 'VISITORS' ? `<p style="font-size: 16px; margin: 10px 0;">Total Members: <strong style="font-size: 24px;">${filteredMembers.length}</strong></p>` : ''}
             ${typeFilter !== 'VISITORS' ? `<p style="font-size: 16px; margin: 10px 0;">Total Cadets: <strong style="font-size: 24px;">${filteredCadets.length}</strong></p>` : ''}
             ${typeFilter !== 'MEMBERS' ? `<p style="font-size: 16px; margin: 10px 0;">Total Visitors: <strong style="font-size: 24px;">${filteredVisitors.length}</strong></p>` : ''}
-            <p style="font-size: 18px; margin: 15px 0 0 0; padding-top: 15px; border-top: 2px solid rgba(255,255,255,0.3);">Grand Total: <strong style="font-size: 28px;">${filteredMembers.length + filteredCadets.length + filteredVisitors.length}</strong></p>
+            ${typeFilter !== 'MEMBERS' ? `<p style="font-size: 16px; margin: 10px 0;">Total Online Worshipper: <strong style="font-size: 24px;">${filteredOnline.length}</strong></p>` : ''}
+            <p style="font-size: 18px; margin: 15px 0 0 0; padding-top: 15px; border-top: 2px solid rgba(255,255,255,0.3);">Grand Total: <strong style="font-size: 28px;">${filteredMembers.length + filteredCadets.length + filteredVisitors.length + filteredOnline.length}</strong></p>
         </div>
     `;
     
@@ -3320,6 +3472,10 @@ function printMembersReport() {
     // Split out Cadets into their own section, separate from the general Members table
     const filteredCadets = filteredMembers.filter(m => m.category === 'Cadets');
     filteredMembers = filteredMembers.filter(m => m.category !== 'Cadets');
+    
+    // Split out Online Worshipper into their own section, separate from the general Visitors table
+    const filteredOnline = filteredVisitors.filter(v => v.visitorType === 'Online Worshipper');
+    filteredVisitors = filteredVisitors.filter(v => v.visitorType !== 'Online Worshipper');
     
     // Build print content
     let printContent = `
@@ -3470,6 +3626,47 @@ function printMembersReport() {
         `;
     }
     
+    // Online Worshipper Table
+    if (typeFilter !== 'MEMBERS' && filteredOnline.length > 0) {
+        printContent += `
+            <h3 style="color: #00BCD4; border-bottom: 2px solid #00BCD4; padding-bottom: 10px; margin-top: 30px;">ONLINE WORSHIPPER</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+                <thead>
+                    <tr style="background-color: #00BCD4; color: white;">
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">#</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Name</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Birthday</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Age</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Contact</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Facebook</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        filteredOnline.forEach((visitor, index) => {
+            const calculatedAge = calculateAgeFromBirthday(visitor.birthday);
+            printContent += `
+                <tr>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${index + 1}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.name}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.birthday || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${calculatedAge}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.contactNumber || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.facebookAccount || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${visitor.cluster || 'N/A'}</td>
+                </tr>
+            `;
+        });
+        
+        printContent += `
+                </tbody>
+            </table>
+            <p style="font-weight: bold; margin-top: 10px;">Total Online Worshipper: ${filteredOnline.length}</p>
+        `;
+    }
+    
     // Summary
     printContent += `
             <div style="margin-top: 30px; padding: 20px; background-color: #f5f5f5; border-radius: 8px;">
@@ -3477,7 +3674,8 @@ function printMembersReport() {
                 ${typeFilter !== 'VISITORS' ? `<p>Total Members: <strong>${filteredMembers.length}</strong></p>` : ''}
                 ${typeFilter !== 'VISITORS' ? `<p>Total Cadets: <strong>${filteredCadets.length}</strong></p>` : ''}
                 ${typeFilter !== 'MEMBERS' ? `<p>Total Visitors: <strong>${filteredVisitors.length}</strong></p>` : ''}
-                <p style="font-size: 18px; margin-top: 15px;">Grand Total: <strong>${filteredMembers.length + filteredCadets.length + filteredVisitors.length}</strong></p>
+                ${typeFilter !== 'MEMBERS' ? `<p>Total Online Worshipper: <strong>${filteredOnline.length}</strong></p>` : ''}
+                <p style="font-size: 18px; margin-top: 15px;">Grand Total: <strong>${filteredMembers.length + filteredCadets.length + filteredVisitors.length + filteredOnline.length}</strong></p>
             </div>
         </div>
     `;
