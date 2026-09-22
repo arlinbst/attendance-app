@@ -27,6 +27,7 @@ let _originalDeleteRecordsForDate = null;
 let _originalClearAllRecords = null;
 let _originalDeleteMember = null;
 let _originalDeleteVisitorRecord = null;
+let _originalDeleteScannedRecord = null;
 
 function initAuthWrappers() {
     if (typeof AuthSystem === 'undefined') {
@@ -87,6 +88,17 @@ function initAuthWrappers() {
             return;
         }
         _originalDeleteVisitorRecord(recordId, recordName);
+    };
+
+    _originalDeleteScannedRecord = deleteScannedRecord;
+    window.deleteScannedRecord = function(recordId, recordName) {
+        if (!AuthSystem.isAdmin()) {
+            AuthSystem.showAuthModal(AuthSystem.USER_ROLES.ADMIN, () => {
+                _originalDeleteScannedRecord(recordId, recordName);
+            });
+            return;
+        }
+        _originalDeleteScannedRecord(recordId, recordName);
     };
 }
 
@@ -569,6 +581,81 @@ async function deleteVisitorRecord(recordId, recordName) {
 function clearVisitorSearch() {
     document.getElementById('visitor-search-name').value = '';
     document.getElementById('visitor-search-results').innerHTML = '';
+}
+
+// Search scanned (non-visitor) attendance entries by name so a mistaken scan can be removed
+function searchScannedRecordToDelete() {
+    const searchTerm = document.getElementById('scan-search-name').value.trim().toLowerCase();
+    const resultsDiv = document.getElementById('scan-search-results');
+    if (!resultsDiv) {
+        return;
+    }
+
+    if (!searchTerm) {
+        alert('Please enter a name to search!');
+        return;
+    }
+
+    const matches = attendanceRecords
+        .filter(r => !r.isVisitor && r.name.toLowerCase().includes(searchTerm))
+        .sort((a, b) => (b.scannedAt || '').localeCompare(a.scannedAt || ''))
+        .slice(0, 20);
+
+    if (matches.length === 0) {
+        resultsDiv.innerHTML = '<p class="empty-state">No scanned records found matching that name.</p>';
+        return;
+    }
+
+    // Delete button is admin-only — hidden entirely from Guests and Cluster Leaders.
+    const canDelete = typeof AuthSystem !== 'undefined' && AuthSystem.isAdmin();
+
+    resultsDiv.innerHTML = matches.map(record => `
+        <div class="result-item">
+            <h4>${escapeHtml(record.name)}</h4>
+            <p><strong>Cluster:</strong> ${escapeHtml(record.cluster)} | <strong>Category:</strong> ${escapeHtml(record.category || 'N/A')}</p>
+            <p><strong>Service:</strong> ${record.serviceType} | <strong>Date:</strong> ${record.date} ${record.time}</p>
+            ${canDelete ? `<button class="btn btn-danger" style="margin-top: 8px;" onclick="deleteScannedRecord('${record.id}', '${escapeHtml(record.name).replace(/'/g, "\\'")}')">🗑️ Delete</button>` : ''}
+        </div>
+    `).join('');
+}
+
+// Clear scanned-record search box and results
+function clearScanSearch() {
+    document.getElementById('scan-search-name').value = '';
+    document.getElementById('scan-search-results').innerHTML = '';
+}
+
+// Permanently remove a scanned attendance entry — Admin role only (enforced client-side and by Firestore rules)
+async function deleteScannedRecord(recordId, recordName) {
+    const confirmed = confirm(
+        `⚠️ DELETE SCANNED RECORD\n` +
+        `═══════════════════════════════\n\n` +
+        `Delete the attendance entry for:\n${recordName}\n\n` +
+        `This action CANNOT be undone!\n\n` +
+        `Do you want to proceed?`
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+        if (firebaseInitialized && db) {
+            await db.collection('attendance').doc(recordId).delete();
+            console.log('✅ Scanned record deleted from Firebase:', recordId);
+        } else {
+            attendanceRecords = attendanceRecords.filter(r => r.id !== recordId);
+            saveRecords();
+            updateStats();
+            populateClusterFilter();
+        }
+
+        alert(`✅ Scanned record deleted: ${recordName}`);
+        searchScannedRecordToDelete();
+    } catch (error) {
+        console.error('❌ Error deleting scanned record:', error);
+        alert('❌ Could not delete scanned record: ' + error.message);
+    }
 }
 
 // Firebase Functions
@@ -3250,5 +3337,8 @@ window.cancelVisitorEdit = cancelVisitorEdit;
 window.searchVisitorToEdit = searchVisitorToEdit;
 window.clearVisitorSearch = clearVisitorSearch;
 window.deleteVisitorRecord = deleteVisitorRecord;
+window.searchScannedRecordToDelete = searchScannedRecordToDelete;
+window.clearScanSearch = clearScanSearch;
+window.deleteScannedRecord = deleteScannedRecord;
 window.toggleConvertToMember = toggleConvertToMember;
 window.toggleEventTypeDetail = toggleEventTypeDetail;
