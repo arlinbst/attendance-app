@@ -462,6 +462,16 @@ function applyRoleBasedUI() {
         }
     }
     
+    // SCAN TAB DELETE SECTION - Admin only
+    const scanDeleteSection = document.getElementById('scan-delete-section');
+    if (scanDeleteSection) {
+        if (role === USER_ROLES.ADMIN) {
+            scanDeleteSection.style.display = 'block';
+        } else {
+            scanDeleteSection.style.display = 'none';
+        }
+    }
+    
     // TAB RESTRICTIONS - Guest cannot access Records and Reports tabs
     const recordsTab = Array.from(document.querySelectorAll('.tab-btn')).find(btn => 
         btn.textContent.includes('Records')
