@@ -1603,7 +1603,8 @@ function generateReport() {
         });
         
         const serviceTypes = Object.keys(serviceTypeGroups).sort();
-        const totalMembers = filtered.filter(r => !r.isVisitor).length;
+        const totalMembers = filtered.filter(r => !r.isVisitor && (r.category || '') !== 'Cadets').length;
+        const totalCadets = filtered.filter(r => !r.isVisitor && (r.category || '') === 'Cadets').length;
         const totalVisitors = filtered.filter(r => r.isVisitor).length;
         
         // Build report header
@@ -1617,7 +1618,7 @@ function generateReport() {
                     <p><strong>Date:</strong> ${reportDate}</p>
                     <p><strong>Service Types:</strong> ${serviceTypes.join(', ')}</p>
                     <p><strong>Total Attendance:</strong> ${filtered.length}</p>
-                    <p><strong>Members:</strong> ${totalMembers} | <strong>Visitors:</strong> ${totalVisitors}</p>
+                    <p><strong>Members:</strong> ${totalMembers} | <strong>Cadets:</strong> ${totalCadets} | <strong>Visitors:</strong> ${totalVisitors}</p>
                     <p class="generated-time"><strong>Generated:</strong> ${generatedTimestamp}</p>
                 </div>
             </div>
@@ -1626,13 +1627,14 @@ function generateReport() {
         // Generate report for each service type
         serviceTypes.forEach((serviceType, serviceIndex) => {
             const serviceRecords = serviceTypeGroups[serviceType];
-            const serviceMembers = serviceRecords.filter(r => !r.isVisitor);
+            const serviceMembers = serviceRecords.filter(r => !r.isVisitor && (r.category || '') !== 'Cadets');
+            const serviceCadets = serviceRecords.filter(r => !r.isVisitor && (r.category || '') === 'Cadets');
             const serviceVisitors = serviceRecords.filter(r => r.isVisitor);
             
             reportHTML += `
                 <div class="service-type-section" style="margin-top: ${serviceIndex > 0 ? '40px' : '20px'}; padding: 20px; border: 2px solid #2196F3; border-radius: 8px; background: #f9f9f9;">
                     <h3 style="color: #2196F3; margin: 0 0 15px 0; font-size: 18px; text-transform: uppercase; border-bottom: 2px solid #2196F3; padding-bottom: 10px;">${serviceType}</h3>
-                    <p style="color: #666; margin-bottom: 20px;"><strong>Total Attendees:</strong> ${serviceRecords.length} (Members: ${serviceMembers.length}, Visitors: ${serviceVisitors.length})</p>
+                    <p style="color: #666; margin-bottom: 20px;"><strong>Total Attendees:</strong> ${serviceRecords.length} (Members: ${serviceMembers.length}, Cadets: ${serviceCadets.length}, Visitors: ${serviceVisitors.length})</p>
             `;
             
             // Group members by cluster for this service
@@ -1663,6 +1665,40 @@ function generateReport() {
                     </div>
                 `;
             });
+            
+            // Add Cadets attendance for this service
+            if (serviceCadets.length > 0) {
+                const sortedCadets = serviceCadets.slice().sort((a, b) => a.name.localeCompare(b.name));
+                
+                reportHTML += `
+                    <div style="margin-top: 20px; padding-top: 15px; border-top: 2px dashed #9C27B0;">
+                        <h5 style="color: #9C27B0; font-size: 15px; font-weight: 600; margin-bottom: 12px;">CADETS ATTENDANCE (${serviceCadets.length})</h5>
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                            <thead>
+                                <tr style="background-color: #9C27B0; color: white;">
+                                    <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Name</th>
+                                    <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                sortedCadets.forEach((record, index) => {
+                    const bgColor = index % 2 === 0 ? '#f3e5f5' : 'white';
+                    reportHTML += `
+                        <tr style="background: ${bgColor};">
+                            <td style="border: 1px solid #ddd; padding: 8px;">${record.name}</td>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${record.cluster || 'N/A'}</td>
+                        </tr>
+                    `;
+                });
+                
+                reportHTML += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
             
             // Add visitors for this service
             if (serviceVisitors.length > 0) {
@@ -1711,7 +1747,8 @@ function generateReport() {
         
     } else {
         // Single service type - keep original behavior
-        const members = filtered.filter(r => !r.isVisitor);
+        const members = filtered.filter(r => !r.isVisitor && (r.category || '') !== 'Cadets');
+        const cadets = filtered.filter(r => !r.isVisitor && (r.category || '') === 'Cadets');
         const visitors = filtered.filter(r => r.isVisitor);
         
         // Group members by cluster
@@ -1734,7 +1771,7 @@ function generateReport() {
                     <p><strong>Date:</strong> ${reportDate}</p>
                     <p><strong>Service Type:</strong> ${serviceFilter}</p>
                     <p><strong>Total Attendance:</strong> ${filtered.length}</p>
-                    <p><strong>Members:</strong> ${members.length} | <strong>Visitors:</strong> ${visitors.length}</p>
+                    <p><strong>Members:</strong> ${members.length} | <strong>Cadets:</strong> ${cadets.length} | <strong>Visitors:</strong> ${visitors.length}</p>
                     <p class="generated-time"><strong>Generated:</strong> ${generatedTimestamp}</p>
                 </div>
             </div>
@@ -1759,6 +1796,16 @@ function generateReport() {
                 </tr>
             `;
         });
+        
+        // Add Cadets row if there are Cadets
+        if (cadets.length > 0) {
+            reportHTML += `
+                <tr>
+                    <td><strong>CADETS</strong></td>
+                    <td style="text-align: center;"><strong>${cadets.length}</strong></td>
+                </tr>
+            `;
+        }
         
         // Add visitors row if there are visitors
         if (visitors.length > 0) {
@@ -1796,6 +1843,42 @@ function generateReport() {
                 </div>
             `;
         });
+        
+        // Add Cadets attendance section if there are Cadets
+        if (cadets.length > 0) {
+            const sortedCadets = cadets.slice().sort((a, b) => a.name.localeCompare(b.name));
+            
+            reportHTML += `
+                <div class="cluster-detail-section" style="margin-top: 25px;">
+                    <h5 style="color: #9C27B0; font-size: 15px; font-weight: 600; margin-bottom: 12px;">CADETS ATTENDANCE (${cadets.length} total)</h5>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                        <thead>
+                            <tr style="background-color: #9C27B0; color: white;">
+                                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Name</th>
+                                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
+                                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            sortedCadets.forEach((record, index) => {
+                const bgColor = index % 2 === 0 ? '#f3e5f5' : 'white';
+                reportHTML += `
+                    <tr style="background: ${bgColor};">
+                        <td style="border: 1px solid #ddd; padding: 8px;">${record.name}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${record.cluster || 'N/A'}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${record.time}</td>
+                    </tr>
+                `;
+            });
+            
+            reportHTML += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
         
         // Add visitors section if there are visitors
         if (visitors.length > 0) {
@@ -2808,13 +2891,16 @@ function exportToExcel() {
     filteredMembers.sort((a, b) => a.name.localeCompare(b.name));
     filteredVisitors.sort((a, b) => a.name.localeCompare(b.name));
     
-    // Calculate category totals for members
+    // Split out Cadets into their own section, separate from the general Members table
+    const filteredCadets = filteredMembers.filter(m => m.category === 'Cadets');
+    filteredMembers = filteredMembers.filter(m => m.category !== 'Cadets');
+    
+    // Calculate category totals for members (Cadets tracked separately below)
     const categoryTotals = {
         'Pastoral': 0,
         'Elder': 0,
         'Adult': 0,
-        'Youth': 0,
-        'Cadets': 0
+        'Youth': 0
     };
     
     filteredMembers.forEach(member => {
@@ -2877,6 +2963,22 @@ function exportToExcel() {
         csvContent += '\n';
     }
     
+    // Cadets Section (only if not filtered to VISITORS only)
+    if (typeFilter !== 'VISITORS' && filteredCadets.length > 0) {
+        csvContent += '"=== CADETS ==="\n';
+        csvContent += '"Name","Birthday","Age","Contact Number","Facebook Account","Cluster","Status"\n';
+        
+        filteredCadets.forEach(member => {
+            csvContent += `"${member.name}","${member.birthday || 'N/A'}","${member.age || 'N/A'}","${member.contactNumber || 'N/A'}","${member.facebookAccount || 'N/A'}","${member.cluster}","${member.status}"\n`;
+        });
+        
+        csvContent += '\n';
+        csvContent += `"Total Cadets: ${filteredCadets.length}"\n`;
+        csvContent += '\n';
+        csvContent += '"====================================="\n';
+        csvContent += '\n';
+    }
+    
     // Visitors Section (only if not filtered to MEMBERS only)
     if (typeFilter !== 'MEMBERS' && filteredVisitors.length > 0) {
         csvContent += '"=== VISITORS ==="\n';
@@ -2905,11 +3007,12 @@ function exportToExcel() {
     csvContent += '"SUMMARY"\n';
     if (typeFilter !== 'VISITORS') {
         csvContent += `"Total Members:","${filteredMembers.length}"\n`;
+        csvContent += `"Total Cadets:","${filteredCadets.length}"\n`;
     }
     if (typeFilter !== 'MEMBERS') {
         csvContent += `"Total Visitors:","${filteredVisitors.length}"\n`;
     }
-    csvContent += `"Grand Total:","${filteredMembers.length + filteredVisitors.length}"\n`;
+    csvContent += `"Grand Total:","${filteredMembers.length + filteredCadets.length + filteredVisitors.length}"\n`;
     
     // Create and download file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -2988,6 +3091,10 @@ function previewMembersReport() {
     filteredMembers.sort((a, b) => a.name.localeCompare(b.name));
     filteredVisitors.sort((a, b) => a.name.localeCompare(b.name));
     
+    // Split out Cadets into their own section, separate from the general Members table
+    const filteredCadets = filteredMembers.filter(m => m.category === 'Cadets');
+    filteredMembers = filteredMembers.filter(m => m.category !== 'Cadets');
+    
     // Determine report title based on type filter
     let reportTitle = 'Members & Visitors Information List';
     if (typeFilter === 'MEMBERS') {
@@ -3055,6 +3162,52 @@ function previewMembersReport() {
         `;
     }
     
+    // Cadets Table
+    if (typeFilter !== 'VISITORS' && filteredCadets.length > 0) {
+        previewContent += `
+            <h3 style="color: #9C27B0; border-bottom: 2px solid #9C27B0; padding-bottom: 10px; margin-top: 40px;">CADETS</h3>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 14px;">
+                    <thead>
+                        <tr style="background-color: #9C27B0; color: white;">
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">#</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Name</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Birthday</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Age</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Contact</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Facebook</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
+                            <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        filteredCadets.forEach((member, index) => {
+            const statusClass = member.status === 'Active' ? 'background: #4CAF50; color: white;' : 'background: #f44336; color: white;';
+            const calculatedAge = calculateAgeFromBirthday(member.birthday);
+            previewContent += `
+                <tr style="${index % 2 === 0 ? 'background: #f3e5f5;' : 'background: white;'}">
+                    <td style="border: 1px solid #ddd; padding: 8px;">${index + 1}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; font-weight: bold;">${member.name}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.birthday || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${calculatedAge}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.contactNumber || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.facebookAccount || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.cluster}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;"><span style="padding: 5px 10px; border-radius: 5px; ${statusClass}">${member.status}</span></td>
+                </tr>
+            `;
+        });
+        
+        previewContent += `
+                    </tbody>
+                </table>
+            </div>
+            <p style="font-weight: bold; margin-top: 10px; font-size: 16px; color: #9C27B0;">Total Cadets: ${filteredCadets.length}</p>
+        `;
+    }
+    
     // Visitors Table
     if (typeFilter !== 'MEMBERS' && filteredVisitors.length > 0) {
         previewContent += `
@@ -3111,8 +3264,9 @@ function previewMembersReport() {
         <div style="margin-top: 40px; padding: 25px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <h4 style="margin-top: 0; font-size: 20px; border-bottom: 2px solid white; padding-bottom: 10px;">📊 SUMMARY</h4>
             ${typeFilter !== 'VISITORS' ? `<p style="font-size: 16px; margin: 10px 0;">Total Members: <strong style="font-size: 24px;">${filteredMembers.length}</strong></p>` : ''}
+            ${typeFilter !== 'VISITORS' ? `<p style="font-size: 16px; margin: 10px 0;">Total Cadets: <strong style="font-size: 24px;">${filteredCadets.length}</strong></p>` : ''}
             ${typeFilter !== 'MEMBERS' ? `<p style="font-size: 16px; margin: 10px 0;">Total Visitors: <strong style="font-size: 24px;">${filteredVisitors.length}</strong></p>` : ''}
-            <p style="font-size: 18px; margin: 15px 0 0 0; padding-top: 15px; border-top: 2px solid rgba(255,255,255,0.3);">Grand Total: <strong style="font-size: 28px;">${filteredMembers.length + filteredVisitors.length}</strong></p>
+            <p style="font-size: 18px; margin: 15px 0 0 0; padding-top: 15px; border-top: 2px solid rgba(255,255,255,0.3);">Grand Total: <strong style="font-size: 28px;">${filteredMembers.length + filteredCadets.length + filteredVisitors.length}</strong></p>
         </div>
     `;
     
@@ -3162,6 +3316,10 @@ function printMembersReport() {
     // Sort by name
     filteredMembers.sort((a, b) => a.name.localeCompare(b.name));
     filteredVisitors.sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Split out Cadets into their own section, separate from the general Members table
+    const filteredCadets = filteredMembers.filter(m => m.category === 'Cadets');
+    filteredMembers = filteredMembers.filter(m => m.category !== 'Cadets');
     
     // Build print content
     let printContent = `
@@ -3220,6 +3378,49 @@ function printMembersReport() {
         `;
     }
     
+    // Cadets Table
+    if (typeFilter !== 'VISITORS' && filteredCadets.length > 0) {
+        printContent += `
+            <h3 style="color: #9C27B0; border-bottom: 2px solid #9C27B0; padding-bottom: 10px; margin-top: 30px;">CADETS</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+                <thead>
+                    <tr style="background-color: #9C27B0; color: white;">
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">#</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Name</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Birthday</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Age</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Contact</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Facebook</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
+                        <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        filteredCadets.forEach((member, index) => {
+            const calculatedAge = calculateAgeFromBirthday(member.birthday);
+            printContent += `
+                <tr>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${index + 1}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.name}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.birthday || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${calculatedAge}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.contactNumber || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.facebookAccount || 'N/A'}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.cluster}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${member.status}</td>
+                </tr>
+            `;
+        });
+        
+        printContent += `
+                </tbody>
+            </table>
+            <p style="font-weight: bold; margin-top: 10px;">Total Cadets: ${filteredCadets.length}</p>
+        `;
+    }
+    
     // Visitors Table
     if (typeFilter !== 'MEMBERS' && filteredVisitors.length > 0) {
         printContent += `
@@ -3274,8 +3475,9 @@ function printMembersReport() {
             <div style="margin-top: 30px; padding: 20px; background-color: #f5f5f5; border-radius: 8px;">
                 <h4>SUMMARY</h4>
                 ${typeFilter !== 'VISITORS' ? `<p>Total Members: <strong>${filteredMembers.length}</strong></p>` : ''}
+                ${typeFilter !== 'VISITORS' ? `<p>Total Cadets: <strong>${filteredCadets.length}</strong></p>` : ''}
                 ${typeFilter !== 'MEMBERS' ? `<p>Total Visitors: <strong>${filteredVisitors.length}</strong></p>` : ''}
-                <p style="font-size: 18px; margin-top: 15px;">Grand Total: <strong>${filteredMembers.length + filteredVisitors.length}</strong></p>
+                <p style="font-size: 18px; margin-top: 15px;">Grand Total: <strong>${filteredMembers.length + filteredCadets.length + filteredVisitors.length}</strong></p>
             </div>
         </div>
     `;
