@@ -84,6 +84,16 @@
                     <p><strong>Service Type:</strong> <span id="scanned-service"></span></p>
                     <p><strong>Time:</strong> <span id="scanned-time"></span></p>
                 </div>
+
+                <div style="margin-top: 30px; padding: 20px; background: #e3f2fd; border-radius: 8px; border: 2px solid #90caf9;">
+                    <h4 style="color: #333; margin-bottom: 10px;">🔍 Search Scanned Record to Delete</h4>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch;">
+                        <input type="text" id="scan-search-name" class="input-field" placeholder="Enter name to find scanned record" style="flex: 1; min-width: 200px;">
+                        <button onclick="searchScannedRecordToDelete()" class="btn btn-primary" style="flex-shrink: 0;">🔍 Search</button>
+                        <button onclick="clearScanSearch()" class="btn btn-secondary" style="flex-shrink: 0;">Clear</button>
+                    </div>
+                    <div id="scan-search-results" class="results-container" style="margin-top: 15px;"></div>
+                </div>
             </div>
         </div>
 
@@ -105,6 +115,7 @@
                     <option value="New Baptism">New Baptism</option>
                     <option value="In-Active">In-Active</option>
                     <option value="Online Worshipper">Online Worshipper</option>
+                    <option value="Cadets">Cadets</option>
                     <option value="Extension Member">Extension Member</option>
                     <option value="Extension Visitors">Extension Visitors</option>
                     <option value="Extension Balik-loob">Extension Balik-loob</option>
