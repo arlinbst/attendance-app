@@ -554,15 +554,20 @@ async function updateVisitorAttendance(recordId, name, clusterValue, serviceType
         if (firebaseInitialized && db) {
             await db.collection('attendance').doc(recordId).update(updatedFields);
             console.log('✅ Visitor record updated in Firebase:', recordId);
-        } else {
-            const localIndex = attendanceRecords.findIndex(r => r.id === recordId);
-            if (localIndex !== -1) {
-                attendanceRecords[localIndex] = { ...attendanceRecords[localIndex], ...updatedFields };
-                saveRecords();
-                displayRecords();
-                updateStats();
-                populateClusterFilter();
-            }
+        }
+
+        const localIndex = attendanceRecords.findIndex(r => r.id === recordId);
+        if (localIndex !== -1) {
+            attendanceRecords[localIndex] = { ...attendanceRecords[localIndex], ...updatedFields };
+        }
+        saveRecords();
+        displayRecords();
+        updateStats();
+        populateClusterFilter();
+
+        const reportContent = document.getElementById('report-content');
+        if (reportContent && reportContent.querySelector('.report-header-enhanced')) {
+            generateReport();
         }
 
         alert(`✅ Visitor entry updated successfully!\n\nName: ${name}\nCluster: ${clusterValue}\nService: ${serviceType}\nAttendance Date: ${eventDate}`);
