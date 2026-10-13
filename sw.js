@@ -1,5 +1,5 @@
 // Service Worker for PWA
-const CACHE_NAME = 'attendance-app-v65'; // bump on every deploy to bust stale cached app.js
+const CACHE_NAME = 'attendance-app-v67'; // bump on every deploy to bust stale cached app.js
 const urlsToCache = [
   './',
   './index.html',
@@ -15,11 +15,12 @@ const urlsToCache = [
 
 // Install Service Worker
 self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('Opened cache');
-        return cache.addAll(urlsToCache);
+        return cache.addAll(urlsToCache.map(url => new Request(url, { cache: 'reload' })));
       })
   );
 });
@@ -49,6 +50,6 @@ self.addEventListener('activate', event => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });
