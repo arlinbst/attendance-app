@@ -1516,6 +1516,18 @@ document.addEventListener('keydown', function(event) {
     }
 });
 
+// Visitors without a cluster are listed after all named clusters.
+function compareVisitorsByClusterThenName(a, b) {
+    const clusterA = (a.cluster || '').trim();
+    const clusterB = (b.cluster || '').trim();
+    const noneA = !clusterA || clusterA === 'No Cluster' || clusterA === 'N/A';
+    const noneB = !clusterB || clusterB === 'No Cluster' || clusterB === 'N/A';
+    if (noneA !== noneB) return noneA ? 1 : -1;
+    const clusterCompare = clusterA.localeCompare(clusterB);
+    if (clusterCompare !== 0) return clusterCompare;
+    return (a.name || '').localeCompare(b.name || '');
+}
+
 // Generate Report Function
 function generateReport() {
     const dateInput = document.getElementById('report-date').value;
@@ -1757,7 +1769,7 @@ function generateReport() {
             
             // Add visitors for this service
             if (serviceVisitors.length > 0) {
-                const sortedVisitors = serviceVisitors.sort((a, b) => a.name.localeCompare(b.name));
+                const sortedVisitors = serviceVisitors.slice().sort(compareVisitorsByClusterThenName);
                 
                 // Generate dynamic visitor section title based on service type
                 const visitorSectionTitle = serviceType.toUpperCase() + ' VISITORS';
@@ -1985,7 +1997,7 @@ function generateReport() {
         
         // Add visitors section if there are visitors
         if (visitors.length > 0) {
-            const sortedVisitors = visitors.sort((a, b) => a.name.localeCompare(b.name));
+            const sortedVisitors = visitors.slice().sort(compareVisitorsByClusterThenName);
             
             // Generate dynamic visitor section title based on service type
             const visitorSectionTitle = serviceFilter.toUpperCase() + ' VISITORS';
