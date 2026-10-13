@@ -60,6 +60,8 @@
         <div id="scan-tab" class="tab-content active" style="background: linear-gradient(135deg, #E3F2FD 0%, #E1F5FE 100%); padding: 20px; border-radius: 10px; min-height: 500px;">
             <div class="scan-section" style="position: relative;">
                 <div class="form-section">
+                    <label for="attendance-date" style="display: block; margin-bottom: 8px; font-weight: bold;">Attendance Date:</label>
+                    <input type="date" id="attendance-date" class="input-field" style="margin-bottom: 15px;">
                     <label for="service-type" style="display: block; margin-bottom: 8px; font-weight: bold;">Type of Service:</label>
                     <select id="service-type" class="input-field" style="margin-bottom: 15px;">
                         <option value="Sunday Worship">Sunday Worship</option>
@@ -81,6 +83,7 @@
                     <h3>✅ Attendance Logged!</h3>
                     <p><strong>Name:</strong> <span id="scanned-name"></span></p>
                     <p><strong>Cluster:</strong> <span id="scanned-cluster"></span></p>
+                    <p><strong>Attendance Date:</strong> <span id="scanned-date"></span></p>
                     <p><strong>Service Type:</strong> <span id="scanned-service"></span></p>
                     <p><strong>Time:</strong> <span id="scanned-time"></span></p>
                 </div>
@@ -137,6 +140,9 @@
                     <option value="UP CAMPUS/CP GARCIA">UP CAMPUS/CP GARCIA</option>
                     <option value="WHITE">WHITE</option>
                 </select>
+
+                <label for="visitor-attendance-date" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Attendance Date:</label>
+                <input type="date" id="visitor-attendance-date" class="input-field">
                 
                 <label for="visitor-service" style="display: block; margin-top: 15px; margin-bottom: 8px; font-weight: bold;">Service Type:</label>
                 <select id="visitor-service" class="input-field">
@@ -159,6 +165,7 @@
                     <p><strong>Type:</strong> <span id="visitor-result-type"></span></p>
                     <p><strong>Cluster:</strong> <span id="visitor-result-cluster"></span></p>
                     <p><strong>Service:</strong> <span id="visitor-result-service"></span></p>
+                    <p><strong>Attendance Date:</strong> <span id="visitor-result-date"></span></p>
                     <p><strong>Time:</strong> <span id="visitor-result-time"></span></p>
                 </div>
 
