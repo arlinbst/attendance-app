@@ -2225,10 +2225,34 @@ function exportAttendanceReportToCSV() {
 
 // Print Report Function
 function printReport() {
-    const reportContent = document.getElementById('report-content').innerHTML;
+    const reportElement = document.getElementById('report-content');
+    const reportContent = reportElement.innerHTML;
     
     if (!reportContent || reportContent.includes('empty-state')) {
         alert('Please generate a report first!');
+        return;
+    }
+
+    const filename = buildAttendanceReportFilename('.pdf');
+    const isAppleMobile = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    if (isAppleMobile) {
+        if (typeof html2pdf !== 'function') {
+            alert('The PDF generator could not load. Please reload the page and try again.');
+            return;
+        }
+
+        html2pdf().set({
+            filename,
+            margin: 0.35,
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: { scale: 1, useCORS: true },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
+            pagebreak: { mode: ['css', 'legacy'] }
+        }).from(reportElement).save().catch(() => {
+            alert('PDF generation failed. Please try again.');
+        });
         return;
     }
     
@@ -2236,7 +2260,7 @@ function printReport() {
     printWindow.document.write(`
         <html>
         <head>
-            <title>${buildAttendanceReportFilename('.pdf')}</title>
+            <title>${filename}</title>
             <style>
                 body { font-family: Arial, sans-serif; padding: 20px; }
                 h2, h3, h4, h5 { color: #333; }
