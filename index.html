@@ -441,6 +441,7 @@
                 <div style="display: flex; gap: 15px; justify-content: center; align-items: center; margin-top: 20px;">
                     <button onclick="generateReport()" class="btn btn-primary" style="width: 70px !important; height: 70px !important; min-width: 70px !important; min-height: 70px !important; max-width: 70px !important; max-height: 70px !important; border-radius: 50% !important; font-size: 32px !important; padding: 0 !important; display: flex !important; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2); flex-shrink: 0;" title="Generate Report">📊</button>
                     <button onclick="printReport()" class="btn btn-success" style="width: 70px !important; height: 70px !important; min-width: 70px !important; min-height: 70px !important; max-width: 70px !important; max-height: 70px !important; border-radius: 50% !important; font-size: 32px !important; padding: 0 !important; display: flex !important; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2); flex-shrink: 0;" title="Print Report">🖨️</button>
+                    <button onclick="exportAttendanceReportToCSV()" class="btn btn-success" style="width: 70px !important; height: 70px !important; min-width: 70px !important; min-height: 70px !important; max-width: 70px !important; max-height: 70px !important; border-radius: 50% !important; font-size: 32px !important; padding: 0 !important; display: flex !important; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.2); flex-shrink: 0;" title="Export Attendance Report CSV">📥</button>
                 </div>
                 
                 <!-- DATA MANAGEMENT SECTION -->
@@ -547,6 +548,7 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="auth-system.js?v=20260829"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="app.js?v=20260829"></script>
 </body>
 </html>
