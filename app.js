@@ -1525,6 +1525,19 @@ function generateReport() {
         alert('Please select a date!');
         return;
     }
+
+    // Leaders are always forced to their own cluster, even if the dropdown was tampered with.
+    const authUser = typeof AuthSystem !== 'undefined' ? AuthSystem.currentUser() : null;
+    let clusterFilter = '';
+    if (authUser && authUser.role === AuthSystem.USER_ROLES.LEADER) {
+        clusterFilter = authUser.cluster;
+    } else if (authUser && authUser.role === AuthSystem.USER_ROLES.ADMIN) {
+        clusterFilter = document.getElementById('report-cluster').value;
+    } else {
+        alert('Please login to view reports.');
+        return;
+    }
+    const clusterLabel = clusterFilter || 'All Clusters';
     
     console.log('📊 Generating report...');
     console.log('   Date input:', dateInput);
@@ -1540,6 +1553,10 @@ function generateReport() {
     if (serviceFilter) {
         filtered = filtered.filter(r => r.serviceType === serviceFilter);
         console.log('   Records after service filter:', filtered.length);
+    }
+    if (clusterFilter) {
+        filtered = filtered.filter(r => (r.cluster || '').trim() === clusterFilter.trim());
+        console.log('   Records after cluster filter:', filtered.length);
     }
     
     // Debug cluster information for filtered records
@@ -1564,7 +1581,8 @@ function generateReport() {
             <p class="empty-state">
                 ⚠️ No attendance records found.<br><br>
                 <strong>Date:</strong> ${reportDate}<br>
-                <strong>Service:</strong> ${serviceFilter || 'All Services'}<br><br>
+                <strong>Service:</strong> ${serviceFilter || 'All Services'}<br>
+                <strong>Cluster:</strong> ${escapeHtml(clusterLabel)}<br><br>
                 Please check if:<br>
                 • Records were scanned on this date<br>
                 • The correct service type is selected<br>
@@ -1618,6 +1636,7 @@ function generateReport() {
                 <div class="report-metadata">
                     <p><strong>Date:</strong> ${reportDate}</p>
                     <p><strong>Service Types:</strong> ${serviceTypes.join(', ')}</p>
+                    <p><strong>Cluster:</strong> ${escapeHtml(clusterLabel)}</p>
                     <p><strong>Total Attendance:</strong> ${filtered.length}</p>
                     <p><strong>Members:</strong> ${totalMembers} | <strong>Cadets:</strong> ${totalCadets} | <strong>Online Worshipper:</strong> ${totalOnline} | <strong>Visitors:</strong> ${totalVisitors}</p>
                     <p class="generated-time"><strong>Generated:</strong> ${generatedTimestamp}</p>
@@ -1807,6 +1826,7 @@ function generateReport() {
                 <div class="report-metadata">
                     <p><strong>Date:</strong> ${reportDate}</p>
                     <p><strong>Service Type:</strong> ${serviceFilter}</p>
+                    <p><strong>Cluster:</strong> ${escapeHtml(clusterLabel)}</p>
                     <p><strong>Total Attendance:</strong> ${filtered.length}</p>
                     <p><strong>Members:</strong> ${members.length} | <strong>Cadets:</strong> ${cadets.length} | <strong>Online Worshipper:</strong> ${onlineWorshippers.length} | <strong>Visitors:</strong> ${visitors.length}</p>
                     <p class="generated-time"><strong>Generated:</strong> ${generatedTimestamp}</p>
