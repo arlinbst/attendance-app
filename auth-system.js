@@ -419,6 +419,16 @@ function updateUserBadge() {
 
 function applyRoleBasedUI() {
     const role = currentUser.role;
+    const attendanceDateInput = document.getElementById('attendance-date');
+    if (attendanceDateInput) {
+        attendanceDateInput.disabled = role !== USER_ROLES.ADMIN;
+        attendanceDateInput.title = 'Only admins can backdate attendance.';
+    }
+    const visitorAttendanceDateInput = document.getElementById('visitor-attendance-date');
+    if (visitorAttendanceDateInput) {
+        visitorAttendanceDateInput.disabled = role !== USER_ROLES.ADMIN;
+        visitorAttendanceDateInput.title = 'Only admins can backdate visitor attendance.';
+    }
     
     // DELETE buttons - Admin only
     // Method 1: Select by ID and onclick attributes
