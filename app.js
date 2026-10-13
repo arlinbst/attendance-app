@@ -8,6 +8,22 @@ let lastScanTime = 0;
 let currentDisplayedRecords = [];
 let currentCamera = "environment"; // Track current camera: "environment" (back) or "user" (front)
 let editingVisitorRecordId = null; // Tracks which visitor attendance entry is being corrected
+let editingVisitorOriginalDate = null;
+
+function getLocalDateInputValue(date = new Date()) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function initializeAttendanceDate() {
+    const todayValue = getLocalDateInputValue();
+    ['attendance-date', 'visitor-attendance-date'].forEach(inputId => {
+        const dateInput = document.getElementById(inputId);
+        if (dateInput) {
+            dateInput.value = todayValue;
+            dateInput.max = todayValue;
+        }
+    });
+}
 
 function setElementHTML(elementId, html) {
     const element = document.getElementById(elementId);
@@ -120,6 +136,8 @@ let firebaseInitialized = false;
 document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ Page loaded - initializing...');
     console.log('📱 Device:', navigator.userAgent);
+
+    initializeAttendanceDate();
 
     if (typeof initAuthSystem === 'function') {
         initAuthSystem();
@@ -264,7 +282,53 @@ function flipCamera() {
     });
 }
 
-function onScanSuccess(decodedText, decodedResult) {
+function formatAttendanceDate(dateValue) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateValue);
+    if (!match) return null;
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    if (year < 1) return null;
+
+    const selectedDate = new Date(0);
+    selectedDate.setFullYear(year, month - 1, day);
+    selectedDate.setHours(0, 0, 0, 0);
+    if (selectedDate.getFullYear() !== year || selectedDate.getMonth() !== month - 1 || selectedDate.getDate() !== day) {
+        return null;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selectedDate > today) return null;
+
+    return selectedDate.toLocaleDateString();
+}
+
+function dateInputValueFromStoredDate(dateValue) {
+    if (typeof dateValue !== 'string' || !dateValue.trim()) return '';
+
+    const storedDate = dateValue.trim();
+    const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(storedDate);
+    if (isoMatch) {
+        const year = Number(isoMatch[1]);
+        const month = Number(isoMatch[2]);
+        const day = Number(isoMatch[3]);
+        const parsedDate = new Date(0);
+        parsedDate.setFullYear(year, month - 1, day);
+        parsedDate.setHours(0, 0, 0, 0);
+        if (year > 0 && parsedDate.getFullYear() === year && parsedDate.getMonth() === month - 1 && parsedDate.getDate() === day) {
+            return storedDate;
+        }
+        return '';
+    }
+
+    const parsedDate = new Date(storedDate);
+    if (Number.isNaN(parsedDate.getTime()) || parsedDate.toLocaleDateString() !== storedDate) return '';
+    return getLocalDateInputValue(parsedDate);
+}
+
+async function onScanSuccess(decodedText, decodedResult) {
     const now = Date.now();
     
     if (isProcessingScan) {
@@ -283,32 +347,42 @@ function onScanSuccess(decodedText, decodedResult) {
         const data = JSON.parse(decodedText);
         
         if (data.name && data.cluster) {
-            stopScanner();
-            
             const serviceType = document.getElementById('service-type').value;
-            const today = new Date().toLocaleDateString();
+            const isAdmin = AuthSystem.currentUser().role === AuthSystem.USER_ROLES.ADMIN;
+            const attendanceDate = isAdmin
+                ? formatAttendanceDate(document.getElementById('attendance-date').value)
+                : new Date().toLocaleDateString();
+
+            if (!attendanceDate) {
+                alert('Please select a valid attendance date that is not in the future.');
+                isProcessingScan = false;
+                return;
+            }
             
             // Enhanced duplicate check: same person + same date + same service type
-            const duplicateToday = attendanceRecords.find(record => 
+            const duplicateRecord = attendanceRecords.find(record => 
                 record.name === data.name && 
                 record.cluster === data.cluster &&
-                record.date === today &&
+                record.date === attendanceDate &&
                 record.serviceType === serviceType &&
                 !record.isVisitor
             );
             
-            if (duplicateToday) {
-                alert(`Duplicate attendance detected!\n\n${data.name} already attended ${serviceType} today.`);
+            if (duplicateRecord) {
+                alert(`Duplicate attendance detected!\n\n${data.name} already attended ${serviceType} on ${attendanceDate}.`);
                 setTimeout(() => {
                     isProcessingScan = false;
                 }, 2000);
                 return;
             }
+
+            stopScanner();
             
-            logAttendance(data.name, data.cluster, serviceType, data.category);
+            await logAttendance(data.name, data.cluster, serviceType, data.category, attendanceDate);
             
             document.getElementById('scanned-name').textContent = data.name;
             document.getElementById('scanned-cluster').textContent = data.cluster;
+            document.getElementById('scanned-date').textContent = attendanceDate;
             document.getElementById('scanned-service').textContent = serviceType;
             document.getElementById('scanned-time').textContent = new Date().toLocaleString();
             document.getElementById('scan-result').style.display = 'block';
@@ -335,17 +409,18 @@ function onScanError(errorMessage) {
 }
 
 // Attendance Logging
-async function logAttendance(name, cluster, serviceType, category) {
+async function logAttendance(name, cluster, serviceType, category, attendanceDate) {
+    const scanTimestamp = new Date();
     const record = {
         name: name.trim(),
         cluster: cluster.trim(),
         serviceType: serviceType,
         category: category || 'N/A',
-        timestamp: new Date(),
-        date: new Date().toLocaleDateString(),
-        time: new Date().toLocaleTimeString(),
+        timestamp: scanTimestamp,
+        date: attendanceDate,
+        time: scanTimestamp.toLocaleTimeString(),
         isVisitor: false,
-        scannedAt: new Date().toISOString() // Add timestamp when scanned
+        scannedAt: scanTimestamp.toISOString() // Add timestamp when scanned
     };
     
     console.log('📝 Logging attendance:', record);
@@ -371,18 +446,40 @@ async function addVisitor() {
     }
     
     const today = new Date().toLocaleDateString();
+    const isAdmin = typeof AuthSystem !== 'undefined' && AuthSystem.isAdmin();
+    const visitorDateInput = document.getElementById('visitor-attendance-date');
+    let eventDate;
+
+    if (editingVisitorRecordId && !isAdmin) {
+        eventDate = editingVisitorOriginalDate;
+    } else if (isAdmin) {
+        const selectedDate = visitorDateInput ? visitorDateInput.value : '';
+        eventDate = selectedDate ? formatAttendanceDate(selectedDate) : (editingVisitorRecordId ? editingVisitorOriginalDate : null);
+        if (selectedDate && !eventDate) {
+            alert('Please choose a valid attendance date that is today or earlier.');
+            return;
+        }
+    } else {
+        eventDate = today;
+    }
+
+    if (!eventDate) {
+        alert('The visitor attendance date could not be determined. Please cancel and reopen this entry.');
+        return;
+    }
+
     const clusterValue = visitorCluster || 'No Cluster';
     
     // Editing an existing entry instead of creating a new one
     if (editingVisitorRecordId) {
-        await updateVisitorAttendance(editingVisitorRecordId, name, clusterValue, serviceType, visitorType);
+        await updateVisitorAttendance(editingVisitorRecordId, name, clusterValue, serviceType, visitorType, eventDate);
         return;
     }
     
     // Check for duplicate visitor
     const duplicateVisitor = attendanceRecords.find(record => 
         record.name === name && 
-        record.date === today &&
+        record.date === eventDate &&
         record.serviceType === serviceType &&
         record.isVisitor === true
     );
@@ -403,7 +500,7 @@ async function addVisitor() {
         serviceType: serviceType,
         category: visitorType,
         timestamp: new Date(),
-        date: today,
+        date: eventDate,
         time: new Date().toLocaleTimeString(),
         isVisitor: true,
         visitorType: visitorType,
@@ -424,6 +521,7 @@ async function addVisitor() {
     document.getElementById('visitor-result-type').textContent = visitorType;
     document.getElementById('visitor-result-cluster').textContent = clusterValue;
     document.getElementById('visitor-result-service').textContent = serviceType;
+    document.getElementById('visitor-result-date').textContent = eventDate;
     document.getElementById('visitor-result-time').textContent = new Date().toLocaleString();
     document.getElementById('visitor-result').style.display = 'block';
     
@@ -442,13 +540,14 @@ async function addVisitor() {
 }
 
 // Update an existing visitor attendance entry (corrects typos before they reach the Report)
-async function updateVisitorAttendance(recordId, name, clusterValue, serviceType, visitorType) {
+async function updateVisitorAttendance(recordId, name, clusterValue, serviceType, visitorType, eventDate) {
     const updatedFields = {
         name: name,
         cluster: clusterValue,
         serviceType: serviceType,
         category: visitorType,
-        visitorType: visitorType
+        visitorType: visitorType,
+        date: eventDate
     };
 
     try {
@@ -466,7 +565,7 @@ async function updateVisitorAttendance(recordId, name, clusterValue, serviceType
             }
         }
 
-        alert(`✅ Visitor entry updated successfully!\n\nName: ${name}\nCluster: ${clusterValue}\nService: ${serviceType}`);
+        alert(`✅ Visitor entry updated successfully!\n\nName: ${name}\nCluster: ${clusterValue}\nService: ${serviceType}\nAttendance Date: ${eventDate}`);
         cancelVisitorEdit();
         clearVisitorSearch();
     } catch (error) {
@@ -484,10 +583,13 @@ function editVisitorRecord(recordId) {
     }
 
     editingVisitorRecordId = recordId;
+    editingVisitorOriginalDate = record.date;
     document.getElementById('visitor-name').value = record.name;
     document.getElementById('visitor-type').value = record.visitorType || record.category || '';
     document.getElementById('visitor-cluster').value = record.cluster === 'No Cluster' ? '' : record.cluster;
     document.getElementById('visitor-service').value = record.serviceType;
+    const visitorDateInput = document.getElementById('visitor-attendance-date');
+    if (visitorDateInput) visitorDateInput.value = dateInputValueFromStoredDate(record.date);
 
     document.getElementById('add-visitor-btn').textContent = '💾 Update Visitor';
     document.getElementById('cancel-visitor-edit-btn').style.display = 'inline-block';
@@ -498,8 +600,11 @@ function editVisitorRecord(recordId) {
 // Cancel visitor edit and reset the form back to "Add" mode
 function cancelVisitorEdit() {
     editingVisitorRecordId = null;
+    editingVisitorOriginalDate = null;
     document.getElementById('visitor-name').value = '';
     document.getElementById('visitor-cluster').value = '';
+    const visitorDateInput = document.getElementById('visitor-attendance-date');
+    if (visitorDateInput) visitorDateInput.value = getLocalDateInputValue();
     document.getElementById('add-visitor-btn').textContent = 'Add Visitor';
     document.getElementById('cancel-visitor-edit-btn').style.display = 'none';
 }
