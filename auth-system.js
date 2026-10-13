@@ -593,6 +593,44 @@ function applyRoleBasedUI() {
         console.log('✅ Cluster filter: All clusters available (Admin)');
     }
     
+    // REPORT CLUSTER FILTER - Leader is locked to own cluster; Admin can pick any cluster
+    const reportClusterFilter = document.getElementById('report-cluster');
+    if (reportClusterFilter) {
+        const reportClusters = ['CAMP AGUINALDO', 'CENTRAL', 'KAINGIN', 'KNL 1', 'KNL 2', 'PANSOL', 'RONAS GARDEN', 'UP CAMPUS/CP GARCIA', 'WHITE'];
+        const previousValue = reportClusterFilter.value;
+        reportClusterFilter.innerHTML = '';
+
+        if (role === USER_ROLES.LEADER) {
+            const option = document.createElement('option');
+            option.value = currentUser.cluster;
+            option.textContent = currentUser.cluster;
+            reportClusterFilter.appendChild(option);
+            reportClusterFilter.value = currentUser.cluster;
+            reportClusterFilter.disabled = true;
+        } else {
+            const allOption = document.createElement('option');
+            allOption.value = '';
+            allOption.textContent = 'All Clusters';
+            reportClusterFilter.appendChild(allOption);
+            reportClusters.forEach(cluster => {
+                const option = document.createElement('option');
+                option.value = cluster;
+                option.textContent = cluster;
+                reportClusterFilter.appendChild(option);
+            });
+            reportClusterFilter.value = role === USER_ROLES.ADMIN && reportClusters.includes(previousValue) ? previousValue : '';
+            reportClusterFilter.disabled = role !== USER_ROLES.ADMIN;
+        }
+
+        // Don't leave the previous user's report on screen after a login/logout switch.
+        if (reportClusterFilter.value !== previousValue) {
+            const reportContent = document.getElementById('report-content');
+            if (reportContent) {
+                reportContent.innerHTML = '<p class="empty-state">Select date and service type, then click "Generate Report" to view attendance summary.</p>';
+            }
+        }
+    }
+    
     // Update member/visitor counts based on cluster filter
     if (typeof updateMemberStats === 'function') {
         updateMemberStats();
