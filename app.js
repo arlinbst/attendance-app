@@ -1638,6 +1638,27 @@ function compareVisitorsByClusterThenName(a, b) {
     return (a.name || '').localeCompare(b.name || '');
 }
 
+function buildAttendanceReportFilename(extension) {
+    const authUser = typeof AuthSystem !== 'undefined' ? AuthSystem.currentUser() : null;
+    const selectedCluster = document.getElementById('report-cluster').value;
+    const cluster = authUser && authUser.role === AuthSystem.USER_ROLES.LEADER
+        ? authUser.cluster
+        : selectedCluster;
+    const service = document.getElementById('report-service').value;
+    const rawDate = document.getElementById('report-date').value;
+    const eventDate = dateInputValueFromStoredDate(rawDate) || rawDate;
+    const sanitize = (value) => String(value || '').replace(/[\\/:*?"<>|\s]+/g, '_').replace(/^_+|_+$/g, '');
+    const serviceName = sanitize(service || 'All_Services');
+
+    if (authUser && authUser.role === AuthSystem.USER_ROLES.ADMIN) {
+        return `${eventDate.replace(/-/g, '')}_${serviceName}${extension}`;
+    }
+
+    const clusterName = sanitize(cluster || 'All_Clusters');
+
+    return `${clusterName}_${serviceName}_Event_${sanitize(eventDate)}${extension}`;
+}
+
 // Generate Report Function
 function generateReport() {
     const dateInput = document.getElementById('report-date').value;
@@ -2151,6 +2172,57 @@ function generateReport() {
     document.getElementById('report-content').innerHTML = reportHTML;
 }
 
+function exportAttendanceReportToCSV() {
+    const dateInput = document.getElementById('report-date').value;
+    if (!dateInput) {
+        alert('Please select a date!');
+        return;
+    }
+
+    const authUser = typeof AuthSystem !== 'undefined' ? AuthSystem.currentUser() : null;
+    let clusterFilter = '';
+    if (authUser && authUser.role === AuthSystem.USER_ROLES.LEADER) {
+        clusterFilter = authUser.cluster;
+    } else if (authUser && authUser.role === AuthSystem.USER_ROLES.ADMIN) {
+        clusterFilter = document.getElementById('report-cluster').value;
+    } else {
+        alert('Please login to view reports.');
+        return;
+    }
+
+    const serviceFilter = document.getElementById('report-service').value;
+    let filteredRecords = attendanceRecords.filter(record => record.date === dateInput);
+    if (serviceFilter) {
+        filteredRecords = filteredRecords.filter(record => record.serviceType === serviceFilter);
+    }
+    if (clusterFilter) {
+        filteredRecords = filteredRecords.filter(record => (record.cluster || '').trim() === clusterFilter.trim());
+    }
+
+    if (filteredRecords.length === 0) {
+        alert('No attendance records found for the selected filters.');
+        return;
+    }
+
+    const escapeCSV = (value) => {
+        const text = String(value == null ? '' : value);
+        const safeText = /^[=+\-@]/.test(text.trimStart()) ? `'${text}` : text;
+        return `"${safeText.replace(/"/g, '""')}"`;
+    };
+    const headers = ['Name', 'Cluster', 'Service Type', 'Date', 'Time', 'Category/Visitor Type'];
+    const rows = filteredRecords.map(record => [
+        record.name,
+        record.cluster,
+        record.serviceType,
+        record.date,
+        record.time,
+        record.isVisitor ? (record.visitorType || record.category || 'N/A') : (record.category || 'N/A')
+    ]);
+    const csvContent = [headers, ...rows].map(row => row.map(escapeCSV).join(',')).join('\r\n');
+    const blob = new Blob(['\uFEFF', csvContent], { type: 'text/csv;charset=utf-8;' });
+    downloadBlob(blob, buildAttendanceReportFilename('.csv'));
+}
+
 // Print Report Function
 function printReport() {
     const reportContent = document.getElementById('report-content').innerHTML;
@@ -2164,7 +2236,7 @@ function printReport() {
     printWindow.document.write(`
         <html>
         <head>
-            <title>Attendance Report</title>
+            <title>${buildAttendanceReportFilename('.pdf')}</title>
             <style>
                 body { font-family: Arial, sans-serif; padding: 20px; }
                 h2, h3, h4, h5 { color: #333; }
@@ -3868,6 +3940,8 @@ window.exportToExcel = exportToExcel;
 window.closePreview = closePreview;
 window.generateReport = generateReport;
 window.printReport = printReport;
+window.exportAttendanceReportToCSV = exportAttendanceReportToCSV;
+window.buildAttendanceReportFilename = buildAttendanceReportFilename;
 window.recoverData = recoverData;
 window.openDateLookup = openDateLookup;
 window.closeDateLookup = closeDateLookup;
