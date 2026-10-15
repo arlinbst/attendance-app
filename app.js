@@ -1912,6 +1912,7 @@ function generateReport() {
                         <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
                             <thead>
                                 <tr style="background-color: #FF9800; color: white;">
+                                    <th class="visitor-number" style="width: 3em; border: 1px solid #ddd; padding: 8px; text-align: left;">No.</th>
                                     <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitors Name</th>
                                     <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
                                     <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitors Type</th>
@@ -1926,6 +1927,7 @@ function generateReport() {
                     const bgColor = index % 2 === 0 ? '#fff3e0' : 'white';
                     reportHTML += `
                         <tr style="background: ${bgColor};">
+                            <td class="visitor-number" style="width: 3em; border: 1px solid #ddd; padding: 8px;">${index + 1}</td>
                             <td style="border: 1px solid #ddd; padding: 8px;">${record.name}</td>
                             <td style="border: 1px solid #ddd; padding: 8px;">${visitorCluster}</td>
                             <td style="border: 1px solid #ddd; padding: 8px;">${visitorType}</td>
@@ -2140,6 +2142,7 @@ function generateReport() {
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
                         <thead>
                             <tr style="background-color: #FF9800; color: white;">
+                                <th class="visitor-number" style="width: 3em; border: 1px solid #ddd; padding: 8px; text-align: left;">No.</th>
                                 <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitors Name</th>
                                 <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cluster</th>
                                 <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Visitors Type</th>
@@ -2154,6 +2157,7 @@ function generateReport() {
                 const bgColor = index % 2 === 0 ? '#fff3e0' : 'white';
                 reportHTML += `
                     <tr style="background: ${bgColor};">
+                        <td class="visitor-number" style="width: 3em; border: 1px solid #ddd; padding: 8px;">${index + 1}</td>
                         <td style="border: 1px solid #ddd; padding: 8px;">${record.name}</td>
                         <td style="border: 1px solid #ddd; padding: 8px;">${visitorCluster}</td>
                         <td style="border: 1px solid #ddd; padding: 8px;">${visitorType}</td>
@@ -2234,124 +2238,57 @@ function printReport() {
     }
 
     const filename = buildAttendanceReportFilename('.pdf');
-    const isAppleMobile = /iPhone|iPad|iPod/i.test(navigator.userAgent)
-        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-    if (isAppleMobile) {
-        if (typeof html2pdf !== 'function') {
-            alert('The PDF generator could not load. Please reload the page and try again.');
-            return;
-        }
-
-        html2pdf().set({
-            filename,
-            margin: 0.35,
-            image: { type: 'jpeg', quality: 0.95 },
-            html2canvas: { scale: 1, useCORS: true },
-            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
-            pagebreak: { mode: ['css', 'legacy'] }
-        }).from(reportElement).save().catch(() => {
-            alert('PDF generation failed. Please try again.');
-        });
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        alert('Please allow pop-ups for this site and try again to print your report.');
         return;
     }
-    
-    const printWindow = window.open('', '_blank');
+
+    printWindow.addEventListener('load', () => {
+        printWindow.focus();
+        printWindow.print();
+    }, { once: true });
     printWindow.document.write(`
-        <html>
+        <!doctype html>
+        <html lang="en">
         <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
             <title>${filename}</title>
             <style>
-                body { font-family: Arial, sans-serif; padding: 20px; }
-                h2, h3, h4, h5 { color: #333; }
-                
-                /* Enhanced Report Header */
+                @page { margin: 12mm; }
+                * { box-sizing: border-box; }
+                html, body { width: 100%; margin: 0; padding: 0; }
+                body { font-family: Arial, sans-serif; font-size: 10pt; line-height: 1.35; color: #333; overflow-wrap: anywhere; }
+                h2, h3, h4, h5 { break-after: avoid; page-break-after: avoid; color: #333; }
+                h3, h4, h5 { font-size: 11pt !important; margin-top: 12pt !important; margin-bottom: 6pt !important; }
                 .report-header-enhanced {
-                    background: #fff;
-                    border: 1px solid #e0e0e0;
-                    border-radius: 8px;
-                    padding: 20px;
-                    margin-bottom: 25px;
+                    padding-bottom: 8pt;
+                    margin-bottom: 10pt;
+                    border-bottom: 1px solid #ddd;
                 }
-                .report-title {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    margin-bottom: 15px;
-                    padding-bottom: 15px;
-                    border-bottom: 2px solid #e0e0e0;
-                }
-                .report-icon { font-size: 24px; }
-                .report-title h2 {
-                    margin: 0;
-                    font-size: 20px;
-                    font-weight: 600;
-                    color: #333;
-                }
-                .report-metadata { line-height: 1.8; }
-                .report-metadata p {
-                    margin: 5px 0;
-                    color: #555;
-                    font-size: 14px;
-                }
-                .generated-time {
-                    margin-top: 10px;
-                    padding-top: 10px;
-                    border-top: 1px solid #f0f0f0;
-                    color: #777;
-                    font-size: 13px;
-                }
-                
-                .report-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-                .report-table th { background: #2196F3; color: white; padding: 10px; text-align: left; }
-                .report-table td { border: 1px solid #ddd; padding: 8px; }
-                
-                .cluster-detail-section {
-                    margin-bottom: 25px;
-                    padding: 15px;
-                    background: #fafafa;
-                    border-radius: 6px;
-                    border-left: 3px solid #2196F3;
-                    page-break-inside: avoid;
-                }
-                
-                .attendee-detail-list {
-                    list-style-position: inside;
-                    color: #333;
-                }
-                .attendee-detail-list li {
-                    padding: 3px 0;
-                    color: #444;
-                    font-size: 14px;
-                }
-                
-                /* Service Type Section - Page Break */
+                .report-title h2 { margin: 0 0 6pt; font-size: 14pt; }
+                .report-icon { display: none; }
+                .report-metadata p { margin: 2pt 0; }
+                .generated-time { font-size: 9pt; color: #666; }
+                table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-bottom: 8pt; }
+                th, td { border: 1px solid #ddd; padding: 4pt !important; font-size: 10pt; text-align: left; vertical-align: top; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
+                .visitor-number { width: 3em; }
+                .report-table th { background: #2196F3; color: white; }
+                thead { display: table-header-group; }
+                tbody { display: table-row-group; }
+                tr, li { break-inside: avoid; page-break-inside: avoid; }
+                section, .cluster-detail-section, .service-type-section, ul, ol, table, tbody { break-inside: auto; page-break-inside: auto; }
+                .cluster-detail-section { margin-bottom: 10pt; padding: 0; }
                 .service-type-section {
-                    page-break-after: always;
-                    margin-bottom: 40px;
-                    padding: 20px;
-                    border: 2px solid #2196F3;
-                    border-radius: 8px;
-                    background: #f9f9f9;
+                    margin: 12pt 0 !important;
+                    padding: 0 !important;
+                    border: 0 !important;
+                    background: white !important;
+                    break-before: auto;
+                    break-after: auto;
                 }
-                .service-type-section:last-child {
-                    page-break-after: auto;
-                }
-                
-                @media print {
-                    body { padding: 10px; }
-                    .cluster-detail-section { page-break-inside: avoid; }
-                    .service-type-section { 
-                        page-break-after: always;
-                        margin-bottom: 0;
-                    }
-                    .service-type-section:last-child {
-                        page-break-after: auto;
-                    }
-                    .report-header-enhanced {
-                        page-break-after: avoid;
-                    }
-                }
+                .attendee-detail-list li { padding: 0; font-size: 10pt; }
             </style>
         </head>
         <body>
@@ -2360,7 +2297,6 @@ function printReport() {
         </html>
     `);
     printWindow.document.close();
-    printWindow.print();
 }
 
 // QR Code Generation
