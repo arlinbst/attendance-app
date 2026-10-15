@@ -109,22 +109,17 @@ async function getAttendanceCorrectionAccess() {
     const session = currentUser;
     const role = session.role;
     const cluster = session.cluster;
-    const denied = { allowed: false, uid: '' };
-    if (!session.authenticated || !['admin', 'leader'].includes(session.role)) return denied;
+    const denied = { allowed: false };
+    if (!session.authenticated || session.role !== USER_ROLES.ADMIN) return denied;
     try {
         const user = await ensureAnonymousAuth();
         if (!user) return denied;
-        denied.uid = user.uid;
         const snapshot = await firebase.firestore().collection('users').doc(user.uid).get({ source: 'server' });
         if (currentUser !== session || !currentUser.authenticated || currentUser.role !== role || currentUser.cluster !== cluster ||
             firebase.auth().currentUser?.uid !== user.uid || !snapshot.exists) return denied;
         const trusted = snapshot.data();
         if (session.role === USER_ROLES.ADMIN && trusted.role === 'admin') {
-            return { allowed: true, role: 'admin', uid: user.uid };
-        }
-        if (session.role === USER_ROLES.LEADER && trusted.role === 'leader' &&
-            typeof trusted.cluster === 'string' && trusted.cluster.trim() && trusted.cluster === session.cluster) {
-            return { allowed: true, role: 'leader', cluster: trusted.cluster, uid: user.uid };
+            return { allowed: true, role: 'admin' };
         }
         return denied;
     } catch (error) {
@@ -505,7 +500,7 @@ function applyRoleBasedUI() {
     // SCAN TAB DELETE SECTION - Admin only
     const scanDeleteSection = document.getElementById('scan-delete-section');
     if (scanDeleteSection) {
-        if (role === USER_ROLES.ADMIN || role === USER_ROLES.LEADER) {
+        if (role === USER_ROLES.ADMIN) {
             scanDeleteSection.style.display = 'block';
         } else {
             scanDeleteSection.style.display = 'none';
