@@ -445,8 +445,8 @@ function applyRoleBasedUI() {
     if (typeof clearAttendanceCorrectionState === 'function') clearAttendanceCorrectionState();
     const attendanceDateInput = document.getElementById('attendance-date');
     if (attendanceDateInput) {
-        attendanceDateInput.disabled = role !== USER_ROLES.ADMIN;
-        attendanceDateInput.title = 'Only admins can backdate attendance.';
+        attendanceDateInput.disabled = role !== USER_ROLES.ADMIN && role !== USER_ROLES.LEADER;
+        attendanceDateInput.title = 'Only admins and cluster leaders can select past or current attendance dates in Scan.';
     }
     const visitorAttendanceDateInput = document.getElementById('visitor-attendance-date');
     if (visitorAttendanceDateInput) {
