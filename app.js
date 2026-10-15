@@ -14,9 +14,7 @@ let attendanceCorrectionEditorGeneration = 0;
 let attendanceCorrectionEditor = null;
 
 function canCorrectAttendanceRecord(record, access) {
-    return !!(access?.allowed && record?.isVisitor === false &&
-        (access.role === 'admin' || (access.role === 'leader' &&
-        typeof access.cluster === 'string' && access.cluster.trim() && record.cluster === access.cluster)));
+    return !!(access?.allowed && access.role === 'admin' && record?.isVisitor === false);
 }
 
 function attendanceCorrectionTime(record) {
@@ -45,11 +43,11 @@ async function requireAttendanceCorrectionAccess() {
     const session = AuthSystem.currentUser();
     const role = session.role;
     const cluster = session.cluster;
+    if (!session.authenticated || role !== 'admin') throw new Error('Admin login is required.');
     const access = await AuthSystem.getAttendanceCorrectionAccess();
     const current = AuthSystem.currentUser();
     if (!access.allowed || !current.authenticated || current !== session || current.role !== role ||
-        current.cluster !== cluster || current.role !== access.role ||
-        (access.role === 'leader' && current.cluster !== access.cluster)) {
+        current.cluster !== cluster || current.role !== access.role) {
         throw new Error('Attendance correction access is not verified.');
     }
     return access;
@@ -64,15 +62,13 @@ function buildAttendanceCorrectionPatch(record, values, access) {
         }
         patch[field] = values[field].trim();
     }
-    if (access.role === 'admin') {
-        const date = formatAttendanceDate(values.date);
-        if (!date || values.date > getLocalDateInputValue()) throw new Error('Choose a valid attendance date no later than today.');
-        if (typeof values.cluster !== 'string' || !values.cluster.trim() || values.cluster.trim().length > 100) {
-            throw new Error('Enter a valid cluster.');
-        }
-        patch.date = date;
-        patch.cluster = values.cluster.trim();
+    const date = formatAttendanceDate(values.date);
+    if (!date || values.date > getLocalDateInputValue()) throw new Error('Choose a valid attendance date no later than today.');
+    if (typeof values.cluster !== 'string' || !values.cluster.trim() || values.cluster.trim().length > 100) {
+        throw new Error('Enter a valid cluster.');
     }
+    patch.date = date;
+    patch.cluster = values.cluster.trim();
     return patch;
 }
 
@@ -83,7 +79,7 @@ async function mutateAttendanceCorrection(recordId, values) {
     const patch = await db.runTransaction(async transaction => {
         const snapshot = await transaction.get(reference);
         const verified = await requireAttendanceCorrectionAccess();
-        if (AuthSystem.currentUser() !== session || verified.uid !== access.uid || verified.role !== access.role || verified.cluster !== access.cluster ||
+        if (AuthSystem.currentUser() !== session || verified.role !== access.role ||
             !snapshot.exists || !canCorrectAttendanceRecord(snapshot.data(), verified)) {
             throw new Error('Attendance changed, was deleted, or is no longer authorized.');
         }
@@ -93,8 +89,7 @@ async function mutateAttendanceCorrection(recordId, values) {
         return update;
     });
     const current = AuthSystem.currentUser();
-    if (current !== session || !current.authenticated || current.role !== access.role ||
-        (access.role === 'leader' && current.cluster !== access.cluster)) {
+    if (current !== session || !current.authenticated || current.role !== access.role) {
         await refreshAttendanceCorrections();
         return;
     }
@@ -141,8 +136,6 @@ function clearAttendanceCorrectionState() {
         if (results) results.replaceChildren();
         const input = document.getElementById(`${surface}-search-name`);
         if (input) input.value = '';
-        const uid = document.getElementById(`${surface}-correction-uid`);
-        if (uid) uid.value = '';
         const section = document.getElementById(surface === 'scan' ? 'scan-delete-section' : 'records-correction-section');
         if (section) section.style.display = 'none';
     }
@@ -152,10 +145,8 @@ function renderAttendanceCorrectionResults(surface, access) {
     const results = document.getElementById(`${surface}-search-results`);
     if (!results) return;
     results.replaceChildren();
-    const uid = document.getElementById(`${surface}-correction-uid`);
-    if (uid) uid.value = access.uid || '';
     if (!access.allowed) {
-        results.textContent = 'Device enrollment or online verification required.';
+        results.textContent = 'Admin login and online permission verification required.';
         return;
     }
     const search = document.getElementById(`${surface}-search-name`)?.value || '';
@@ -195,7 +186,7 @@ async function refreshAttendanceCorrections() {
     const session = AuthSystem.currentUser();
     const role = session.role;
     const cluster = session.cluster;
-    if (!session.authenticated || !['admin', 'leader'].includes(role)) {
+    if (!session.authenticated || role !== 'admin') {
         clearAttendanceCorrectionState();
         return;
     }
@@ -203,7 +194,7 @@ async function refreshAttendanceCorrections() {
         const section = document.getElementById(surface === 'scan' ? 'scan-delete-section' : 'records-correction-section');
         if (section) section.style.display = 'block';
         const results = document.getElementById(`${surface}-search-results`);
-        if (results) { results.replaceChildren(); results.textContent = 'Verifying device access...'; }
+        if (results) { results.replaceChildren(); results.textContent = 'Verifying admin permissions...'; }
     }
     let access;
     try { access = await AuthSystem.getAttendanceCorrectionAccess(); }
@@ -211,7 +202,7 @@ async function refreshAttendanceCorrections() {
     const current = AuthSystem.currentUser();
     if (generation !== attendanceCorrectionGeneration || current !== session || !current.authenticated ||
         current.role !== role || current.cluster !== cluster) return;
-    if (access.allowed && (access.role !== role || (role === 'leader' && access.cluster !== cluster))) access = { allowed: false, uid: access.uid };
+    if (access.allowed && access.role !== role) access = { allowed: false };
     if (!access.allowed) cancelAttendanceCorrection();
     for (const surface of ['scan', 'records']) renderAttendanceCorrectionResults(surface, access);
 }
@@ -237,11 +228,11 @@ async function editAttendanceCorrection(recordId) {
                 input.appendChild(option);
             }
             if (field === 'date') {
-                input.type = access.role === 'leader' ? 'text' : 'date';
+                input.type = 'date';
                 input.max = getLocalDateInputValue();
             }
-            input.value = field === 'date' ? (access.role === 'leader' ? record.date : dateInputValueFromStoredDate(record.date)) : record[field] || '';
-            input.disabled = access.role === 'leader' && ['date', 'cluster'].includes(field);
+            input.value = field === 'date' ? dateInputValueFromStoredDate(record.date) : record[field] || '';
+            input.disabled = false;
         }
         document.getElementById('correction-save').disabled = false;
         document.getElementById('attendance-correction-editor').style.display = 'block';
