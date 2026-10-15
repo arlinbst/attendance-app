@@ -12,7 +12,7 @@ let editingVisitorOriginalDate = null;
 let attendanceCorrectionGeneration = 0;
 let attendanceCorrectionEditorGeneration = 0;
 let attendanceCorrectionEditor = null;
-const attendanceCorrectionQueries = { scan: '', records: '' };
+const attendanceCorrectionQueries = { scan: '' };
 
 function canCorrectAttendanceRecord(record, access) {
     return !!(access?.allowed && access.role === 'admin' && record?.isVisitor === false);
@@ -132,23 +132,25 @@ function cancelAttendanceCorrection() {
 function clearAttendanceCorrectionState() {
     attendanceCorrectionGeneration++;
     cancelAttendanceCorrection();
-    for (const surface of ['scan', 'records']) {
+    for (const surface of ['scan']) {
         attendanceCorrectionQueries[surface] = '';
         const results = document.getElementById(`${surface}-search-results`);
         if (results) results.replaceChildren();
         const input = document.getElementById(`${surface}-search-name`);
         if (input) input.value = '';
-        const section = document.getElementById(surface === 'scan' ? 'scan-delete-section' : 'records-correction-section');
+        const section = document.getElementById('scan-delete-section');
         if (section) section.style.display = 'none';
     }
 }
 
 function attendanceCorrectionQuery(surface) {
+    if (surface !== 'scan') return '';
     const query = attendanceCorrectionQueries[surface];
     return query && document.getElementById(`${surface}-search-name`)?.value.trim() === query ? query : '';
 }
 
 function invalidateAttendanceCorrectionSearch(surface, clearInput = false) {
+    if (surface !== 'scan') return;
     attendanceCorrectionQueries[surface] = '';
     document.getElementById(`${surface}-search-results`)?.replaceChildren();
     if (clearInput) {
@@ -159,11 +161,13 @@ function invalidateAttendanceCorrectionSearch(surface, clearInput = false) {
 }
 
 async function submitAttendanceCorrectionSearch(surface) {
+    if (surface !== 'scan') return;
     attendanceCorrectionQueries[surface] = document.getElementById(`${surface}-search-name`)?.value.trim() || '';
     await refreshAttendanceCorrections();
 }
 
 function renderAttendanceCorrectionResults(surface, access) {
+    if (surface !== 'scan') return;
     const results = document.getElementById(`${surface}-search-results`);
     if (!results) return;
     results.replaceChildren();
@@ -213,8 +217,8 @@ async function refreshAttendanceCorrections() {
         clearAttendanceCorrectionState();
         return;
     }
-    for (const surface of ['scan', 'records']) {
-        const section = document.getElementById(surface === 'scan' ? 'scan-delete-section' : 'records-correction-section');
+    for (const surface of ['scan']) {
+        const section = document.getElementById('scan-delete-section');
         if (section) section.style.display = 'block';
         const results = document.getElementById(`${surface}-search-results`);
         if (results) {
@@ -230,7 +234,7 @@ async function refreshAttendanceCorrections() {
         current.role !== role || current.cluster !== cluster) return;
     if (access.allowed && access.role !== role) access = { allowed: false };
     if (!access.allowed) cancelAttendanceCorrection();
-    for (const surface of ['scan', 'records']) renderAttendanceCorrectionResults(surface, access);
+    for (const surface of ['scan']) renderAttendanceCorrectionResults(surface, access);
 }
 
 async function editAttendanceCorrection(recordId) {
@@ -290,7 +294,7 @@ async function saveAttendanceCorrection(event) {
 }
 
 function initAttendanceCorrections() {
-    for (const surface of ['scan', 'records']) {
+    for (const surface of ['scan']) {
         const input = document.getElementById(`${surface}-search-name`);
         if (input) {
             input.addEventListener('input', () => { invalidateAttendanceCorrectionSearch(surface); });
@@ -490,6 +494,7 @@ function showTab(tabName) {
     }
     
     if (tabName === 'records') {
+        cancelAttendanceCorrection();
         populateClusterFilter();
     }
 }
