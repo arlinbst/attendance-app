@@ -647,8 +647,9 @@ async function onScanSuccess(decodedText, decodedResult) {
         
         if (data.name && data.cluster) {
             const serviceType = document.getElementById('service-type').value;
-            const isAdmin = AuthSystem.currentUser().role === AuthSystem.USER_ROLES.ADMIN;
-            const attendanceDate = isAdmin
+            const role = AuthSystem.currentUser().role;
+            const canSelectAttendanceDate = role === AuthSystem.USER_ROLES.ADMIN || role === AuthSystem.USER_ROLES.LEADER;
+            const attendanceDate = canSelectAttendanceDate
                 ? formatAttendanceDate(document.getElementById('attendance-date').value)
                 : new Date().toLocaleDateString();
 
