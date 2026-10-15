@@ -90,8 +90,6 @@
 
                 <div id="scan-delete-section" style="margin-top: 30px; padding: 20px; background: #e3f2fd; border-radius: 8px; border: 2px solid #90caf9; display: none;">
                     <h4 style="color: #333; margin-bottom: 10px;">Member Attendance Corrections</h4>
-                    <label for="scan-correction-uid">Device UID</label>
-                    <input id="scan-correction-uid" class="input-field" type="text" readonly>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch;">
                         <input type="text" id="scan-search-name" class="input-field" placeholder="Enter name to find scanned record" style="flex: 1; min-width: 200px;">
                         <button onclick="searchScannedRecordToDelete()" class="btn btn-primary" style="flex-shrink: 0;">🔍 Search</button>
@@ -187,8 +185,6 @@
         <div id="records-tab" class="tab-content" style="background: linear-gradient(135deg, #FCE4EC 0%, #FFF0F5 100%); padding: 20px; border-radius: 10px; min-height: 500px;">
             <section id="records-correction-section" class="form-section" style="display: none; max-width: 800px;">
                 <h3>Member Attendance Corrections</h3>
-                <label for="records-correction-uid">Device UID</label>
-                <input id="records-correction-uid" class="input-field" type="text" readonly>
                 <label for="records-search-name">Member name</label>
                 <input id="records-search-name" class="input-field" type="search" maxlength="200">
                 <button id="records-correction-search" type="button" class="btn btn-primary">Search</button>
