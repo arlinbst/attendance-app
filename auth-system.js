@@ -105,6 +105,33 @@ async function ensureAnonymousAuth() {
     }
 }
 
+async function getAttendanceCorrectionAccess() {
+    const session = currentUser;
+    const role = session.role;
+    const cluster = session.cluster;
+    const denied = { allowed: false, uid: '' };
+    if (!session.authenticated || !['admin', 'leader'].includes(session.role)) return denied;
+    try {
+        const user = await ensureAnonymousAuth();
+        if (!user) return denied;
+        denied.uid = user.uid;
+        const snapshot = await firebase.firestore().collection('users').doc(user.uid).get({ source: 'server' });
+        if (currentUser !== session || !currentUser.authenticated || currentUser.role !== role || currentUser.cluster !== cluster ||
+            firebase.auth().currentUser?.uid !== user.uid || !snapshot.exists) return denied;
+        const trusted = snapshot.data();
+        if (session.role === USER_ROLES.ADMIN && trusted.role === 'admin') {
+            return { allowed: true, role: 'admin', uid: user.uid };
+        }
+        if (session.role === USER_ROLES.LEADER && trusted.role === 'leader' &&
+            typeof trusted.cluster === 'string' && trusted.cluster.trim() && trusted.cluster === session.cluster) {
+            return { allowed: true, role: 'leader', cluster: trusted.cluster, uid: user.uid };
+        }
+        return denied;
+    } catch (error) {
+        return denied;
+    }
+}
+
 async function hashPin(pin) {
     const data = new TextEncoder().encode(pin);
     const digest = await crypto.subtle.digest('SHA-256', data);
@@ -312,6 +339,7 @@ async function logoutUser() {
         };
         
         sessionStorage.removeItem(AUTH_CONFIG.SESSION_KEY);
+        if (typeof clearAttendanceCorrectionState === 'function') clearAttendanceCorrectionState();
 
         // Revoke the proven admin role so this device needs the PIN again next time.
         const authUser = firebase.auth && firebase.auth().currentUser;
@@ -419,6 +447,7 @@ function updateUserBadge() {
 
 function applyRoleBasedUI() {
     const role = currentUser.role;
+    if (typeof clearAttendanceCorrectionState === 'function') clearAttendanceCorrectionState();
     const attendanceDateInput = document.getElementById('attendance-date');
     if (attendanceDateInput) {
         attendanceDateInput.disabled = role !== USER_ROLES.ADMIN;
@@ -446,6 +475,7 @@ function applyRoleBasedUI() {
     // Method 2: Select all buttons with "Delete" text (catch-all for member delete button)
     const allButtons = document.querySelectorAll('button');
     allButtons.forEach(btn => {
+        if (btn.dataset.attendanceCorrection === 'true') return;
         const buttonText = btn.textContent.trim();
         // Check if button contains delete-related text
         if (buttonText.includes('🗑️ Delete') || 
@@ -475,7 +505,7 @@ function applyRoleBasedUI() {
     // SCAN TAB DELETE SECTION - Admin only
     const scanDeleteSection = document.getElementById('scan-delete-section');
     if (scanDeleteSection) {
-        if (role === USER_ROLES.ADMIN) {
+        if (role === USER_ROLES.ADMIN || role === USER_ROLES.LEADER) {
             scanDeleteSection.style.display = 'block';
         } else {
             scanDeleteSection.style.display = 'none';
@@ -647,6 +677,7 @@ function applyRoleBasedUI() {
     }
     
     console.log('✅ UI updated for role:', role);
+    if (typeof refreshAttendanceCorrections === 'function') void refreshAttendanceCorrections();
 }
 
 // ========================================
@@ -731,6 +762,7 @@ if (document.readyState === 'loading') {
 // ========================================
 
 window.AuthSystem = {
+    getAttendanceCorrectionAccess,
     currentUser: () => currentUser,
     requireAuth,
     isAdmin,
