@@ -89,7 +89,9 @@
                 </div>
 
                 <div id="scan-delete-section" style="margin-top: 30px; padding: 20px; background: #e3f2fd; border-radius: 8px; border: 2px solid #90caf9; display: none;">
-                    <h4 style="color: #333; margin-bottom: 10px;">🔍 Search Scanned Record to Delete</h4>
+                    <h4 style="color: #333; margin-bottom: 10px;">Member Attendance Corrections</h4>
+                    <label for="scan-correction-uid">Device UID</label>
+                    <input id="scan-correction-uid" class="input-field" type="text" readonly>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch;">
                         <input type="text" id="scan-search-name" class="input-field" placeholder="Enter name to find scanned record" style="flex: 1; min-width: 200px;">
                         <button onclick="searchScannedRecordToDelete()" class="btn btn-primary" style="flex-shrink: 0;">🔍 Search</button>
@@ -183,6 +185,16 @@
 
         <!-- RECORDS TAB - MEMBER MANAGEMENT -->
         <div id="records-tab" class="tab-content" style="background: linear-gradient(135deg, #FCE4EC 0%, #FFF0F5 100%); padding: 20px; border-radius: 10px; min-height: 500px;">
+            <section id="records-correction-section" class="form-section" style="display: none; max-width: 800px;">
+                <h3>Member Attendance Corrections</h3>
+                <label for="records-correction-uid">Device UID</label>
+                <input id="records-correction-uid" class="input-field" type="text" readonly>
+                <label for="records-search-name">Member name</label>
+                <input id="records-search-name" class="input-field" type="search" maxlength="200">
+                <button id="records-correction-search" type="button" class="btn btn-primary">Search</button>
+                <button id="records-correction-clear" type="button" class="btn btn-secondary">Clear</button>
+                <div id="records-search-results" class="results-container" aria-live="polite"></div>
+            </section>
             <div class="form-section" style="max-width: 800px;">
                 <h3>📝 Members Information Maintenance</h3>
                 <p style="color: #666; margin-bottom: 20px;">Search, view, and update member details</p>
@@ -540,6 +552,33 @@
             </p>
         </footer>
     </div>
+
+    <section id="attendance-correction-editor" class="form-section" style="display: none; width: 100%; max-width: 800px; margin: 20px auto; padding: 20px; box-sizing: border-box;" aria-labelledby="correction-heading">
+        <h3 id="correction-heading">Edit Member Attendance</h3>
+        <form id="attendance-correction-form">
+            <label for="correction-name">Name</label>
+            <input id="correction-name" class="input-field" type="text" maxlength="200" required>
+            <label for="correction-category">Category</label>
+            <input id="correction-category" class="input-field" type="text" maxlength="100" required>
+            <label for="correction-serviceType">Service</label>
+            <select id="correction-serviceType" class="input-field" required>
+                <option value="Sunday Worship">Sunday Worship</option>
+                <option value="Evangelistic Service">Evangelistic Service</option>
+                <option value="Bible Study">Bible Study</option>
+                <option value="Prayer Meeting">Prayer Meeting</option>
+                <option value="Family Devotion">Family Devotion</option>
+                <option value="Church Anniversary">Church Anniversary</option>
+                <option value="HFGC">HFGC</option>
+                <option value="Extension Service">Extension Service</option>
+            </select>
+            <label for="correction-date">Attendance Date</label>
+            <input id="correction-date" class="input-field" type="date" required>
+            <label for="correction-cluster">Cluster</label>
+            <input id="correction-cluster" class="input-field" type="text" maxlength="100" required>
+            <button id="correction-save" type="submit" class="btn btn-success">Save</button>
+            <button id="correction-cancel" type="button" class="btn btn-secondary">Cancel</button>
+        </form>
+    </section>
 
     <!-- Scripts -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
