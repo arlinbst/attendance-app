@@ -12,6 +12,7 @@ let editingVisitorOriginalDate = null;
 let attendanceCorrectionGeneration = 0;
 let attendanceCorrectionEditorGeneration = 0;
 let attendanceCorrectionEditor = null;
+const attendanceCorrectionQueries = { scan: '', records: '' };
 
 function canCorrectAttendanceRecord(record, access) {
     return !!(access?.allowed && access.role === 'admin' && record?.isVisitor === false);
@@ -132,6 +133,7 @@ function clearAttendanceCorrectionState() {
     attendanceCorrectionGeneration++;
     cancelAttendanceCorrection();
     for (const surface of ['scan', 'records']) {
+        attendanceCorrectionQueries[surface] = '';
         const results = document.getElementById(`${surface}-search-results`);
         if (results) results.replaceChildren();
         const input = document.getElementById(`${surface}-search-name`);
@@ -141,15 +143,36 @@ function clearAttendanceCorrectionState() {
     }
 }
 
+function attendanceCorrectionQuery(surface) {
+    const query = attendanceCorrectionQueries[surface];
+    return query && document.getElementById(`${surface}-search-name`)?.value.trim() === query ? query : '';
+}
+
+function invalidateAttendanceCorrectionSearch(surface, clearInput = false) {
+    attendanceCorrectionQueries[surface] = '';
+    document.getElementById(`${surface}-search-results`)?.replaceChildren();
+    if (clearInput) {
+        const input = document.getElementById(`${surface}-search-name`);
+        if (input) input.value = '';
+        cancelAttendanceCorrection();
+    }
+}
+
+async function submitAttendanceCorrectionSearch(surface) {
+    attendanceCorrectionQueries[surface] = document.getElementById(`${surface}-search-name`)?.value.trim() || '';
+    await refreshAttendanceCorrections();
+}
+
 function renderAttendanceCorrectionResults(surface, access) {
     const results = document.getElementById(`${surface}-search-results`);
     if (!results) return;
     results.replaceChildren();
+    const search = attendanceCorrectionQuery(surface);
+    if (!search) return;
     if (!access.allowed) {
         results.textContent = 'Admin login and online permission verification required.';
         return;
     }
-    const search = document.getElementById(`${surface}-search-name`)?.value || '';
     const records = selectAttendanceCorrections(attendanceRecords, access, search);
     if (!records.length) {
         results.textContent = 'No matching member attendance.';
@@ -194,7 +217,10 @@ async function refreshAttendanceCorrections() {
         const section = document.getElementById(surface === 'scan' ? 'scan-delete-section' : 'records-correction-section');
         if (section) section.style.display = 'block';
         const results = document.getElementById(`${surface}-search-results`);
-        if (results) { results.replaceChildren(); results.textContent = 'Verifying admin permissions...'; }
+        if (results) {
+            results.replaceChildren();
+            if (attendanceCorrectionQuery(surface)) results.textContent = 'Verifying admin permissions...';
+        }
     }
     let access;
     try { access = await AuthSystem.getAttendanceCorrectionAccess(); }
@@ -266,11 +292,18 @@ async function saveAttendanceCorrection(event) {
 function initAttendanceCorrections() {
     for (const surface of ['scan', 'records']) {
         const input = document.getElementById(`${surface}-search-name`);
-        if (input) input.addEventListener('input', () => { void refreshAttendanceCorrections(); });
+        if (input) {
+            input.addEventListener('input', () => { invalidateAttendanceCorrectionSearch(surface); });
+            input.addEventListener('keydown', event => {
+                if (event.key !== 'Enter' || event.isComposing) return;
+                event.preventDefault();
+                void submitAttendanceCorrectionSearch(surface);
+            });
+        }
         const search = document.getElementById(`${surface}-correction-search`);
-        if (search) search.addEventListener('click', () => { void refreshAttendanceCorrections(); });
+        if (search) search.addEventListener('click', () => { void submitAttendanceCorrectionSearch(surface); });
         const clear = document.getElementById(`${surface}-correction-clear`);
-        if (clear) clear.addEventListener('click', () => { input.value = ''; void refreshAttendanceCorrections(); });
+        if (clear) clear.addEventListener('click', () => { invalidateAttendanceCorrectionSearch(surface, true); });
     }
     document.getElementById('attendance-correction-form')?.addEventListener('submit', saveAttendanceCorrection);
     document.getElementById('correction-cancel')?.addEventListener('click', cancelAttendanceCorrection);
@@ -955,13 +988,12 @@ function clearVisitorSearch() {
 }
 
 async function searchScannedRecordToDelete() {
-    await refreshAttendanceCorrections();
+    await submitAttendanceCorrectionSearch('scan');
 }
 
 // Clear scanned-record search box and results
 async function clearScanSearch() {
-    document.getElementById('scan-search-name').value = '';
-    await refreshAttendanceCorrections();
+    invalidateAttendanceCorrectionSearch('scan', true);
 }
 
 async function deleteScannedRecord(recordId, recordName) {
