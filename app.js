@@ -9,6 +9,281 @@ let currentDisplayedRecords = [];
 let currentCamera = "environment"; // Track current camera: "environment" (back) or "user" (front)
 let editingVisitorRecordId = null; // Tracks which visitor attendance entry is being corrected
 let editingVisitorOriginalDate = null;
+let attendanceCorrectionGeneration = 0;
+let attendanceCorrectionEditorGeneration = 0;
+let attendanceCorrectionEditor = null;
+
+function canCorrectAttendanceRecord(record, access) {
+    return !!(access?.allowed && record?.isVisitor === false &&
+        (access.role === 'admin' || (access.role === 'leader' &&
+        typeof access.cluster === 'string' && access.cluster.trim() && record.cluster === access.cluster)));
+}
+
+function attendanceCorrectionTime(record) {
+    for (const value of [record.scannedAt, record.timestamp]) {
+        if (value == null) continue;
+        const numeric = typeof value.toMillis === 'function' ? value.toMillis() :
+            typeof value.seconds === 'number' ? value.seconds * 1000 + (value.nanoseconds || 0) / 1000000 :
+            typeof value === 'number' ? value : Date.parse(value);
+        if (Number.isFinite(numeric)) return numeric;
+    }
+    const fallback = Date.parse(`${record.date || ''} ${record.time || ''}`);
+    return Number.isFinite(fallback) ? fallback : 0;
+}
+
+function selectAttendanceCorrections(records, access, searchTerm = '') {
+    const search = searchTerm.trim().toLowerCase();
+    return records.filter(record => canCorrectAttendanceRecord(record, access) &&
+        typeof record.name === 'string' && record.name.toLowerCase().includes(search))
+        .sort((first, second) => attendanceCorrectionTime(second) - attendanceCorrectionTime(first) ||
+            String(first.id).localeCompare(String(second.id)))
+        .slice(0, 3);
+}
+
+async function requireAttendanceCorrectionAccess() {
+    if (typeof AuthSystem === 'undefined' || !db) throw new Error('Online verification required.');
+    const session = AuthSystem.currentUser();
+    const role = session.role;
+    const cluster = session.cluster;
+    const access = await AuthSystem.getAttendanceCorrectionAccess();
+    const current = AuthSystem.currentUser();
+    if (!access.allowed || !current.authenticated || current !== session || current.role !== role ||
+        current.cluster !== cluster || current.role !== access.role ||
+        (access.role === 'leader' && current.cluster !== access.cluster)) {
+        throw new Error('Attendance correction access is not verified.');
+    }
+    return access;
+}
+
+function buildAttendanceCorrectionPatch(record, values, access) {
+    if (!canCorrectAttendanceRecord(record, access)) throw new Error('This member attendance is not authorized.');
+    const patch = {};
+    for (const [field, limit] of [['name', 200], ['serviceType', 100], ['category', 100]]) {
+        if (typeof values[field] !== 'string' || !values[field].trim() || values[field].trim().length > limit) {
+            throw new Error(`Enter a valid ${field}.`);
+        }
+        patch[field] = values[field].trim();
+    }
+    if (access.role === 'admin') {
+        const date = formatAttendanceDate(values.date);
+        if (!date || values.date > getLocalDateInputValue()) throw new Error('Choose a valid attendance date no later than today.');
+        if (typeof values.cluster !== 'string' || !values.cluster.trim() || values.cluster.trim().length > 100) {
+            throw new Error('Enter a valid cluster.');
+        }
+        patch.date = date;
+        patch.cluster = values.cluster.trim();
+    }
+    return patch;
+}
+
+async function mutateAttendanceCorrection(recordId, values) {
+    const session = AuthSystem.currentUser();
+    const access = await requireAttendanceCorrectionAccess();
+    const reference = db.collection('attendance').doc(recordId);
+    const patch = await db.runTransaction(async transaction => {
+        const snapshot = await transaction.get(reference);
+        const verified = await requireAttendanceCorrectionAccess();
+        if (AuthSystem.currentUser() !== session || verified.uid !== access.uid || verified.role !== access.role || verified.cluster !== access.cluster ||
+            !snapshot.exists || !canCorrectAttendanceRecord(snapshot.data(), verified)) {
+            throw new Error('Attendance changed, was deleted, or is no longer authorized.');
+        }
+        const update = values === null ? null : buildAttendanceCorrectionPatch(snapshot.data(), values, verified);
+        if (update === null) transaction.delete(reference);
+        else transaction.update(reference, update);
+        return update;
+    });
+    const current = AuthSystem.currentUser();
+    if (current !== session || !current.authenticated || current.role !== access.role ||
+        (access.role === 'leader' && current.cluster !== access.cluster)) {
+        await refreshAttendanceCorrections();
+        return;
+    }
+    attendanceRecords = patch === null ? attendanceRecords.filter(record => record.id !== recordId) :
+        attendanceRecords.map(record => record.id === recordId ? { ...record, ...patch } : record);
+    try {
+        saveRecords();
+        updateStats();
+        populateClusterFilter();
+        if (document.getElementById('report-content')) generateReport();
+    } catch (error) {
+        console.error('Attendance saved; display refresh failed.', error);
+    }
+    await refreshAttendanceCorrections();
+}
+
+async function requireAttendanceBulkAdmin() {
+    try {
+        const access = await requireAttendanceCorrectionAccess();
+        if (access.role === 'admin') return true;
+    } catch (error) {
+        console.error('Bulk attendance access denied.');
+    }
+    alert('Server-verified admin access is required.');
+    return false;
+}
+
+function cancelAttendanceCorrection() {
+    attendanceCorrectionEditorGeneration++;
+    attendanceCorrectionEditor = null;
+    const editor = document.getElementById('attendance-correction-editor');
+    if (editor) editor.style.display = 'none';
+    for (const field of ['name', 'category', 'serviceType', 'date', 'cluster']) {
+        const input = document.getElementById(`correction-${field}`);
+        if (input) input.value = '';
+    }
+}
+
+function clearAttendanceCorrectionState() {
+    attendanceCorrectionGeneration++;
+    cancelAttendanceCorrection();
+    for (const surface of ['scan', 'records']) {
+        const results = document.getElementById(`${surface}-search-results`);
+        if (results) results.replaceChildren();
+        const input = document.getElementById(`${surface}-search-name`);
+        if (input) input.value = '';
+        const uid = document.getElementById(`${surface}-correction-uid`);
+        if (uid) uid.value = '';
+        const section = document.getElementById(surface === 'scan' ? 'scan-delete-section' : 'records-correction-section');
+        if (section) section.style.display = 'none';
+    }
+}
+
+function renderAttendanceCorrectionResults(surface, access) {
+    const results = document.getElementById(`${surface}-search-results`);
+    if (!results) return;
+    results.replaceChildren();
+    const uid = document.getElementById(`${surface}-correction-uid`);
+    if (uid) uid.value = access.uid || '';
+    if (!access.allowed) {
+        results.textContent = 'Device enrollment or online verification required.';
+        return;
+    }
+    const search = document.getElementById(`${surface}-search-name`)?.value || '';
+    const records = selectAttendanceCorrections(attendanceRecords, access, search);
+    if (!records.length) {
+        results.textContent = 'No matching member attendance.';
+        return;
+    }
+    for (const record of records) {
+        const row = document.createElement('div');
+        row.className = 'result-item';
+        const title = document.createElement('h4');
+        title.textContent = record.name;
+        row.appendChild(title);
+        const detail = document.createElement('p');
+        detail.textContent = `${record.cluster} | ${record.category || ''} | ${record.serviceType} | ${record.date} ${record.time || ''}`;
+        row.appendChild(detail);
+        for (const action of ['Edit', 'Delete']) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = action === 'Delete' ? 'btn btn-danger' : 'btn btn-secondary';
+            button.textContent = action;
+            button.dataset.attendanceCorrection = 'true';
+            button.addEventListener('click', () => {
+                if (action === 'Edit') void editAttendanceCorrection(record.id);
+                else void deleteScannedRecord(record.id, record.name);
+            });
+            row.appendChild(button);
+        }
+        results.appendChild(row);
+    }
+}
+
+async function refreshAttendanceCorrections() {
+    const generation = ++attendanceCorrectionGeneration;
+    if (typeof AuthSystem === 'undefined') return;
+    const session = AuthSystem.currentUser();
+    const role = session.role;
+    const cluster = session.cluster;
+    if (!session.authenticated || !['admin', 'leader'].includes(role)) {
+        clearAttendanceCorrectionState();
+        return;
+    }
+    for (const surface of ['scan', 'records']) {
+        const section = document.getElementById(surface === 'scan' ? 'scan-delete-section' : 'records-correction-section');
+        if (section) section.style.display = 'block';
+        const results = document.getElementById(`${surface}-search-results`);
+        if (results) { results.replaceChildren(); results.textContent = 'Verifying device access...'; }
+    }
+    let access;
+    try { access = await AuthSystem.getAttendanceCorrectionAccess(); }
+    catch (error) { access = { allowed: false }; }
+    const current = AuthSystem.currentUser();
+    if (generation !== attendanceCorrectionGeneration || current !== session || !current.authenticated ||
+        current.role !== role || current.cluster !== cluster) return;
+    if (access.allowed && (access.role !== role || (role === 'leader' && access.cluster !== cluster))) access = { allowed: false, uid: access.uid };
+    if (!access.allowed) cancelAttendanceCorrection();
+    for (const surface of ['scan', 'records']) renderAttendanceCorrectionResults(surface, access);
+}
+
+async function editAttendanceCorrection(recordId) {
+    cancelAttendanceCorrection();
+    const generation = attendanceCorrectionEditorGeneration;
+    const session = AuthSystem.currentUser();
+    try {
+        await requireAttendanceCorrectionAccess();
+        const snapshot = await db.collection('attendance').doc(recordId).get({ source: 'server' });
+        const access = await requireAttendanceCorrectionAccess();
+        if (generation !== attendanceCorrectionEditorGeneration || session !== AuthSystem.currentUser()) return;
+        if (!snapshot.exists || !canCorrectAttendanceRecord(snapshot.data(), access)) throw new Error('This member attendance is no longer available.');
+        const record = snapshot.data();
+        attendanceCorrectionEditor = { id: recordId, session };
+        for (const field of ['name', 'category', 'serviceType', 'date', 'cluster']) {
+            const input = document.getElementById(`correction-${field}`);
+            if (field === 'serviceType' && record[field] && !Array.from(input.options).some(option => option.value === record[field])) {
+                const option = document.createElement('option');
+                option.value = record[field];
+                option.textContent = record[field];
+                input.appendChild(option);
+            }
+            if (field === 'date') {
+                input.type = access.role === 'leader' ? 'text' : 'date';
+                input.max = getLocalDateInputValue();
+            }
+            input.value = field === 'date' ? (access.role === 'leader' ? record.date : dateInputValueFromStoredDate(record.date)) : record[field] || '';
+            input.disabled = access.role === 'leader' && ['date', 'cluster'].includes(field);
+        }
+        document.getElementById('correction-save').disabled = false;
+        document.getElementById('attendance-correction-editor').style.display = 'block';
+        document.getElementById('attendance-correction-editor').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById('correction-name').focus({ preventScroll: true });
+    } catch (error) {
+        if (generation === attendanceCorrectionEditorGeneration && session === AuthSystem.currentUser()) alert(error.message);
+    }
+}
+
+async function saveAttendanceCorrection(event) {
+    event.preventDefault();
+    const editor = attendanceCorrectionEditor;
+    if (!editor || editor.session !== AuthSystem.currentUser()) return;
+    const button = document.getElementById('correction-save');
+    if (button.disabled) return;
+    button.disabled = true;
+    const values = {};
+    for (const field of ['name', 'category', 'serviceType', 'date', 'cluster']) values[field] = document.getElementById(`correction-${field}`).value;
+    try {
+        await mutateAttendanceCorrection(editor.id, values);
+        if (attendanceCorrectionEditor === editor) cancelAttendanceCorrection();
+    } catch (error) {
+        if (attendanceCorrectionEditor === editor) {
+            button.disabled = false;
+            alert(error.message);
+        }
+    }
+}
+
+function initAttendanceCorrections() {
+    for (const surface of ['scan', 'records']) {
+        const input = document.getElementById(`${surface}-search-name`);
+        if (input) input.addEventListener('input', () => { void refreshAttendanceCorrections(); });
+        const search = document.getElementById(`${surface}-correction-search`);
+        if (search) search.addEventListener('click', () => { void refreshAttendanceCorrections(); });
+        const clear = document.getElementById(`${surface}-correction-clear`);
+        if (clear) clear.addEventListener('click', () => { input.value = ''; void refreshAttendanceCorrections(); });
+    }
+    document.getElementById('attendance-correction-form')?.addEventListener('submit', saveAttendanceCorrection);
+    document.getElementById('correction-cancel')?.addEventListener('click', cancelAttendanceCorrection);
+}
 
 function getLocalDateInputValue(date = new Date()) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -108,13 +383,7 @@ function initAuthWrappers() {
 
     _originalDeleteScannedRecord = deleteScannedRecord;
     window.deleteScannedRecord = function(recordId, recordName) {
-        if (!AuthSystem.isAdmin()) {
-            AuthSystem.showAuthModal(AuthSystem.USER_ROLES.ADMIN, () => {
-                _originalDeleteScannedRecord(recordId, recordName);
-            });
-            return;
-        }
-        _originalDeleteScannedRecord(recordId, recordName);
+        return _originalDeleteScannedRecord(recordId, recordName);
     };
 }
 
@@ -138,6 +407,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('📱 Device:', navigator.userAgent);
 
     initializeAttendanceDate();
+    initAttendanceCorrections();
 
     if (typeof initAuthSystem === 'function') {
         initAuthSystem();
@@ -693,78 +963,28 @@ function clearVisitorSearch() {
     document.getElementById('visitor-search-results').innerHTML = '';
 }
 
-// Search scanned (non-visitor) attendance entries by name so a mistaken scan can be removed
-function searchScannedRecordToDelete() {
-    const searchTerm = document.getElementById('scan-search-name').value.trim().toLowerCase();
-    const resultsDiv = document.getElementById('scan-search-results');
-    if (!resultsDiv) {
-        return;
-    }
-
-    if (!searchTerm) {
-        alert('Please enter a name to search!');
-        return;
-    }
-
-    const matches = attendanceRecords
-        .filter(r => !r.isVisitor && r.name.toLowerCase().includes(searchTerm))
-        .sort((a, b) => (b.scannedAt || '').localeCompare(a.scannedAt || ''))
-        .slice(0, 20);
-
-    if (matches.length === 0) {
-        resultsDiv.innerHTML = '<p class="empty-state">No scanned records found matching that name.</p>';
-        return;
-    }
-
-    // Delete button is admin-only — hidden entirely from Guests and Cluster Leaders.
-    const canDelete = typeof AuthSystem !== 'undefined' && AuthSystem.isAdmin();
-
-    resultsDiv.innerHTML = matches.map(record => `
-        <div class="result-item">
-            <h4>${escapeHtml(record.name)}</h4>
-            <p><strong>Cluster:</strong> ${escapeHtml(record.cluster)} | <strong>Category:</strong> ${escapeHtml(record.category || 'N/A')}</p>
-            <p><strong>Service:</strong> ${record.serviceType} | <strong>Date:</strong> ${record.date} ${record.time}</p>
-            ${canDelete ? `<button class="btn btn-danger" style="margin-top: 8px;" onclick="deleteScannedRecord('${record.id}', '${escapeHtml(record.name).replace(/'/g, "\\'")}')">🗑️ Delete</button>` : ''}
-        </div>
-    `).join('');
+async function searchScannedRecordToDelete() {
+    await refreshAttendanceCorrections();
 }
 
 // Clear scanned-record search box and results
-function clearScanSearch() {
+async function clearScanSearch() {
     document.getElementById('scan-search-name').value = '';
-    document.getElementById('scan-search-results').innerHTML = '';
+    await refreshAttendanceCorrections();
 }
 
-// Permanently remove a scanned attendance entry — Admin role only (enforced client-side and by Firestore rules)
 async function deleteScannedRecord(recordId, recordName) {
-    const confirmed = confirm(
-        `⚠️ DELETE SCANNED RECORD\n` +
-        `═══════════════════════════════\n\n` +
-        `Delete the attendance entry for:\n${recordName}\n\n` +
-        `This action CANNOT be undone!\n\n` +
-        `Do you want to proceed?`
-    );
-
-    if (!confirmed) {
-        return;
-    }
-
     try {
-        if (firebaseInitialized && db) {
-            await db.collection('attendance').doc(recordId).delete();
-            console.log('✅ Scanned record deleted from Firebase:', recordId);
-        } else {
-            attendanceRecords = attendanceRecords.filter(r => r.id !== recordId);
-            saveRecords();
-            updateStats();
-            populateClusterFilter();
-        }
-
-        alert(`✅ Scanned record deleted: ${recordName}`);
-        searchScannedRecordToDelete();
+        const session = AuthSystem.currentUser();
+        const access = await requireAttendanceCorrectionAccess();
+        const record = attendanceRecords.find(entry => entry.id === recordId);
+        if (!canCorrectAttendanceRecord(record, access)) throw new Error('This member attendance is not authorized.');
+        if (!confirm(`Delete member attendance for ${recordName}? This cannot be undone.`)) return;
+        if (AuthSystem.currentUser() !== session) throw new Error('Session changed.');
+        await mutateAttendanceCorrection(recordId, null);
+        if (attendanceCorrectionEditor?.id === recordId) cancelAttendanceCorrection();
     } catch (error) {
-        console.error('❌ Error deleting scanned record:', error);
-        alert('❌ Could not delete scanned record: ' + error.message);
+        alert('Could not delete attendance: ' + error.message);
     }
 }
 
@@ -801,6 +1021,7 @@ async function initializeFirebase() {
             displayRecords();
             updateStats();
             populateClusterFilter();
+            void refreshAttendanceCorrections();
             
             // Save to localStorage as backup for offline access
             localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
@@ -887,11 +1108,12 @@ async function loadRecordsFromCloud() {
 }
 
 async function deleteRecordsByDateFromCloud(dateToDelete, serviceTypeToDelete = null) {
+    if (!await requireAttendanceBulkAdmin()) return false;
     if (firebaseInitialized && db) {
         try {
             console.log('🗑️ Deleting records from Firebase for date:', dateToDelete, 'service type:', serviceTypeToDelete || 'All Services');
             const batch = db.batch();
-            const snapshot = await db.collection('attendance').get();
+            const snapshot = await db.collection('attendance').get({ source: 'server' });
             let deleteCount = 0;
             
             snapshot.docs.forEach((doc) => {
@@ -906,6 +1128,7 @@ async function deleteRecordsByDateFromCloud(dateToDelete, serviceTypeToDelete = 
                 }
             });
             
+            if (!await requireAttendanceBulkAdmin()) throw new Error('Admin access changed.');
             await batch.commit();
             console.log('✅ Deleted', deleteCount, 'records from Firebase');
             return deleteCount;
@@ -914,23 +1137,24 @@ async function deleteRecordsByDateFromCloud(dateToDelete, serviceTypeToDelete = 
             throw error;
         }
     } else {
-        console.log('⚠️ Firebase not initialized, deleting locally only');
-        return 0;
+        throw new Error('Online Firebase connection required.');
     }
 }
 
 async function clearAllRecordsFromCloud() {
+    if (!await requireAttendanceBulkAdmin()) return false;
     if (firebaseInitialized && db) {
         try {
             console.log('❌ Clearing ALL records from Firebase...');
             const batch = db.batch();
-            const snapshot = await db.collection('attendance').get();
+            const snapshot = await db.collection('attendance').get({ source: 'server' });
             const deleteCount = snapshot.size;
             
             snapshot.docs.forEach((doc) => {
                 batch.delete(doc.ref);
             });
             
+            if (!await requireAttendanceBulkAdmin()) throw new Error('Admin access changed.');
             await batch.commit();
             console.log('✅ Cleared', deleteCount, 'records from Firebase');
             return deleteCount;
@@ -939,8 +1163,7 @@ async function clearAllRecordsFromCloud() {
             throw error;
         }
     } else {
-        console.log('⚠️ Firebase not initialized, clearing locally only');
-        return 0;
+        throw new Error('Online Firebase connection required.');
     }
 }
 
@@ -1005,6 +1228,7 @@ function recoverData() {
 
 // DELETE RECORDS FOR SELECTED DATE (with strong warning)
 async function deleteRecordsForDate() {
+    if (!await requireAttendanceBulkAdmin()) return;
     const dateInput = document.getElementById('report-date').value;
     const serviceTypeInput = document.getElementById('report-service').value;
     
@@ -1077,10 +1301,8 @@ async function deleteRecordsForDate() {
     
     try {
         // Delete from Firebase
-        if (firebaseInitialized && db) {
-            const deletedCount = await deleteRecordsByDateFromCloud(deleteDate, deleteServiceType);
-            console.log('✅ Deleted from Firebase:', deletedCount);
-        }
+        const cloudDeleted = await deleteRecordsByDateFromCloud(deleteDate, deleteServiceType);
+        if (cloudDeleted === false) throw new Error('Admin access changed.');
         
         // Delete from local array (onSnapshot will handle this, but do it anyway for immediate feedback)
         const beforeCount = attendanceRecords.length;
@@ -1132,6 +1354,7 @@ async function deleteRecordsForDate() {
 
 // CLEAR ALL RECORDS (with extra strong warning)
 async function clearAllRecords() {
+    if (!await requireAttendanceBulkAdmin()) return;
     const totalRecords = attendanceRecords.length;
     
     if (totalRecords === 0) {
@@ -1200,10 +1423,8 @@ async function clearAllRecords() {
     
     try {
         // Delete from Firebase
-        if (firebaseInitialized && db) {
-            const deletedCount = await clearAllRecordsFromCloud();
-            console.log('✅ Cleared from Firebase:', deletedCount, 'records');
-        }
+        const cloudDeleted = await clearAllRecordsFromCloud();
+        if (cloudDeleted === false) throw new Error('Admin access changed.');
         
         // Clear local array
         const deletedCount = attendanceRecords.length;
@@ -1246,7 +1467,8 @@ async function clearAllRecords() {
 }
 
 // Delete Records by Date
-function deleteRecordsByDate() {
+async function deleteRecordsByDate() {
+    if (!await requireAttendanceBulkAdmin()) return;
     const dateInput = document.getElementById('delete-date').value;
     
     if (!dateInput) {
@@ -1265,7 +1487,12 @@ function deleteRecordsByDate() {
     const confirmMsg = `Found ${recordsToDelete.length} record(s) for ${dateToDelete}.\n\nAre you sure you want to delete these records?\n\nThis action cannot be undone!`;
     
     if (confirm(confirmMsg)) {
-        deleteRecordsByDateFromCloud(dateToDelete);
+        try {
+            if (await deleteRecordsByDateFromCloud(dateToDelete) === false) return;
+        } catch (error) {
+            alert('Could not delete attendance. Verify access and connection.');
+            return;
+        }
         
         attendanceRecords = attendanceRecords.filter(r => r.date !== dateToDelete);
         saveRecords();
@@ -1279,7 +1506,8 @@ function deleteRecordsByDate() {
 }
 
 // Clear All Records with Enhanced Warning
-function clearAllRecords() {
+async function clearAllRecords() {
+    if (!await requireAttendanceBulkAdmin()) return;
     const totalRecords = attendanceRecords.length;
     
     if (totalRecords === 0) {
@@ -1293,7 +1521,12 @@ function clearAllRecords() {
         const finalConfirm = confirm(`FINAL CONFIRMATION:\n\nDelete all ${totalRecords} records?\n\nClick OK to permanently delete all data.`);
         
         if (finalConfirm) {
-            clearAllRecordsFromCloud();
+            try {
+                if (await clearAllRecordsFromCloud() === false) return;
+            } catch (error) {
+                alert('Could not clear attendance. Verify access and connection.');
+                return;
+            }
             
             attendanceRecords = [];
             saveRecords();
